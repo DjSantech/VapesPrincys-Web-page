@@ -54,7 +54,7 @@ export default function Navbar({
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar (nombre, categoría, SKU...)"
+                placeholder="Buscar (nombre)"
                 className="w-full pl-10 pr-44 py-3 text-sm bg-transparent placeholder-white/50 text-white outline-none"
                 aria-label="Buscar productos"
               />
