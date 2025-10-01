@@ -1,4 +1,4 @@
-import { api } from "./api";   // ← este api es tu axios preconfigurado
+import  api  from "./api";   // ← este api es tu axios preconfigurado
 import type { Product } from "../types/Product";
 
 // Obtener lista de productos con filtros opcionales

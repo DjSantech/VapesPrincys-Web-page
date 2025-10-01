@@ -4,7 +4,7 @@ import  {isAxiosError} from 'axios'
 import ErrorMessage from "../components/ErrorMessage"
 import type { RegisterForm } from "../types"
 import { toast } from 'sonner'
-import api from "../services/axios"
+import {api} from "../services/axios"
 
 
 export default function RegisterView() {

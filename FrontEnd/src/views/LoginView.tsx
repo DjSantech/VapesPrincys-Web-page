@@ -4,7 +4,7 @@ import ErrorMessage from "../components/ErrorMessage"
 import type { LoginForm } from "../types"
 import { toast } from "sonner"
 import { isAxiosError } from "axios" 
-import api from "../services/axios"
+import {api} from "../services/axios"
 
 
 export default function  LoginView() {

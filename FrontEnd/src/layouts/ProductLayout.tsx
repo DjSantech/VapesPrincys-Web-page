@@ -2,7 +2,7 @@
 import { Outlet, useLocation, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
-import { getProductById } from "../services/products.service";
+import { getProductById } from "../services/products_service";
 
 type ProductLite = { id: string; name: string; price: number; imageUrl?: string };
 
