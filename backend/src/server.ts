@@ -1,21 +1,22 @@
-import express from 'express'
-import cors from 'cors'
-import 'dotenv/config'
-import router from './router'
-import { connectDB } from './config/db';
-import { corsConfig } from './config/cors';
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import morgan from "morgan";
+import path from "path";
+import productsRouter from "./routes/products_routes";
 
-connectDB()
+const app = express();
 
-const app = express ();
+app.use(cors({ origin: ["http://localhost:5173"] }));
+app.use(morgan("dev"));
+app.use(express.json());
 
-//CORS
-app.use (cors(corsConfig))
+// sirve la carpeta public para imágenes
+app.use(express.static(path.join(process.cwd(), "public")));
+
+app.use("/api/products", productsRouter);
+
+app.get("/health", (_req, res) => res.json({ ok: true }));
 
 
-//Leer datos de formulario
-app.use(express.json())
-
-app.use('/', router) 
-
-export default app  
+export default app;

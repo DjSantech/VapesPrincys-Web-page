@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { PRODUCTS } from "../data/products";
+import { PRODUCTS } from "../data/products_data";
 
 export const listProducts = (req: Request, res: Response) => {
   const { q = "", page = "1", limit = "12" } = req.query as Record<string, string>;

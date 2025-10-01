@@ -1,16 +1,15 @@
-import {Router} from 'express'
-import { createAccount, login } from './handlers';
+import { Router } from "express";
+import { listProducts, getProductById } from "../controllers/products_controller";
+import { createAccount, login } from '../handlers';
 import {body} from 'express-validator'
-import { handleInputErrrors } from './middleware/validation';
+import { handleInputErrrors } from '../middleware/validation';
 
-const router = Router ()
+const router = Router();
 
-//Routing
-router.get("/" , (req, res) => {
-    res.send("Hola mundo en express")
-});
+router.get("/", listProducts);       // GET /api/products
+router.get("/:id", getProductById);  // GET /api/products/:id
 
-/* Autenticacion y registro */
+
 router.post('/auth/register',
     body ('handle')
         .notEmpty()
@@ -40,4 +39,5 @@ router.post('/auth/login',
 )
 
 
-export default router
+
+export default router;
