@@ -19,11 +19,11 @@ export default function ProductCard({ id, name, price, imageUrl, className = "" 
   return (
     <Link
       to={`/product/${id}`}
-      className={`group block rounded-2xl border border-green-700 bg-[#182c25] overflow-hidden
+      className={`group block rounded-2xl border border-green-700  overflow-hidden
                   shadow-sm transition-all duration-200 ease-out
                   hover:-translate-y-1 hover:shadow-lg focus:outline-none
-                  focus:ring-2 focus:ring-green-400 ${className}`}
-      aria-label={`Ver ${name}`}
+                  focus:ring-2 focus:ring-green-400 ${className} bg-[#182c25]`}
+      aria-label={`Ver ${name}`}  
     >
       {/* Imagen */}
       <div className="relative overflow-hidden bg-gray-900">
@@ -37,9 +37,9 @@ export default function ProductCard({ id, name, price, imageUrl, className = "" 
       </div>
 
       {/* Texto */}
-      <div className="p-4">
-        <h1 className="line-clamp-1 text-3xl font-bold text-white">{name}</h1>
-        <p className="mt-1 text-lg font-bold text-green-400">{formatPrice(price)}</p>
+      <div className="p-4 bg-green-500" >
+        <h1 className="line-clamp-1 text-3xl font-bold text-black">{name}</h1>
+        <p className="mt-1 text-lg font-bold text-black">{formatPrice(price)}</p>
       </div>
     </Link>
   );
