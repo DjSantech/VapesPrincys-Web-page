@@ -1,43 +1,53 @@
 import { Router } from "express";
+import { body } from "express-validator";
 import { listProducts, getProductById } from "../controllers/products_controller";
-import { createAccount, login } from '../handlers';
-import {body} from 'express-validator'
-import { handleInputErrrors } from '../middleware/validation';
+import { createAccount, login } from "../handlers";
+import { handleInputErrrors } from "../middleware/validation";
 
 const router = Router();
 
-router.get("/", listProducts);       // GET /api/products
-router.get("/:id", getProductById);  // GET /api/products/:id
+/* ===========================
+   🔹 RUTAS DE PRODUCTOS
+   =========================== */
+
+// GET /api/products?q=nombre&category=nombre_categoria
+router.get("/", listProducts);       // lista todos o filtra por nombre / categoría
+router.get("/:id", getProductById);  // obtiene un producto por ID
 
 
-router.post('/auth/register',
-    body ('handle')
-        .notEmpty()
-        .withMessage("El handle no puede ir vacio."),
-    body ('name')
-        .notEmpty()
-        .withMessage("El name no puede ir vacio."),
-    body ('email')
-        .isEmail()
-        .withMessage("El E-email no puede ir vacio."),
-    body ('password')
-        .notEmpty()
-        .isLength({min: 8})
-        .withMessage("El password es muy corto minimo ocho caracteres."),
-        handleInputErrrors,
-    createAccount)
+/* ===========================
+   🔹 AUTENTICACIÓN (REGISTER / LOGIN)
+   =========================== */
 
-router.post('/auth/login',
-    body ('email')
-        .isEmail()
-        .withMessage("El E-email no puede ir vacio."),
-    body ('password')
-        .notEmpty()
-        .withMessage("El password es obligatorio"),
-        handleInputErrrors,
-    login
-)
+router.post(
+  "/auth/register",
+  body("handle")
+    .notEmpty()
+    .withMessage("El handle no puede ir vacío."),
+  body("name")
+    .notEmpty()
+    .withMessage("El name no puede ir vacío."),
+  body("email")
+    .isEmail()
+    .withMessage("El email no es válido."),
+  body("password")
+    .notEmpty()
+    .isLength({ min: 8 })
+    .withMessage("El password es muy corto, mínimo ocho caracteres."),
+  handleInputErrrors,
+  createAccount
+);
 
-
+router.post(
+  "/auth/login",
+  body("email")
+    .isEmail()
+    .withMessage("El email no es válido."),
+  body("password")
+    .notEmpty()
+    .withMessage("El password es obligatorio."),
+  handleInputErrrors,
+  login
+);
 
 export default router;

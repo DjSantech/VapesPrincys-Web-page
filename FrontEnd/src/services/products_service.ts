@@ -1,16 +1,20 @@
-import  api  from "./api";   // ← este api es tu axios preconfigurado
+// src/services/products_service.ts
+import axios from "axios";
 import type { Product } from "../types/Product";
 
-// Obtener lista de productos con filtros opcionales
-export const getProducts = async (q?: string, page = 1, limit = 12) => {
-  const { data } = await api.get<{ items: Product[]; total: number }>("/products", {
-    params: { q, page, limit },
-  });
-  return data;
-};
+const API = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
-// Obtener un producto por id
-export const getProductById = async (id: string) => {
-  const { data } = await api.get<Product>(`/products/${id}`);
-  return data;
-};
+export async function getProducts(params?: { q?: string; category?: string }): Promise<Product[]> {
+  // construir params solo si existen
+  const p: Record<string, string> = {};
+  if (params?.q) p.q = params.q;
+  if (params?.category) p.category = params.category;
+
+  const resp = await axios.get<Product[]>(`${API}/products`, Object.keys(p).length ? { params: p } : undefined);
+  return resp.data;
+}
+
+export async function getProductById(id: string): Promise<Product> {
+  const resp = await axios.get<Product>(`${API}/products/${id}`);
+  return resp.data;
+}

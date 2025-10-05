@@ -1,24 +1,27 @@
+// src/controllers/products_controller.ts
 import { Request, Response } from "express";
-import { PRODUCTS } from "../data/products_data";
+import { PRODUCTS } from "../data/products_data"; // o tu fuente real de datos
 
 export const listProducts = (req: Request, res: Response) => {
-  const { q = "", page = "1", limit = "12" } = req.query as Record<string, string>;
-  const p = Math.max(1, parseInt(page));
-  const l = Math.max(1, parseInt(limit));
+  const q = (req.query.q as string)?.toLowerCase() || "";
+  const category = (req.query.category as string)?.trim().toLowerCase() || "";
 
-  const filtered = PRODUCTS.filter(p =>
-    p.name.toLowerCase().includes(String(q).toLowerCase())
-  );
+  let result = PRODUCTS;
 
-  const start = (p - 1) * l;
-  const items = filtered.slice(start, start + l);
+  if (q) {
+    result = result.filter(p => p.name.toLowerCase().includes(q));
+  }
+  if (category) {
+    result = result.filter(p => p.category.toLowerCase() === category);
+  }
 
-  return res.json({ items, total: filtered.length, page: p, limit: l });
+  res.json(result);
 };
 
 export const getProductById = (req: Request, res: Response) => {
-  const { id } = req.params;
-  const product = PRODUCTS.find(p => p.id === id);
-  if (!product) return res.status(404).json({ error: "Producto no encontrado" });
-  return res.json(product);
+  const product = PRODUCTS.find(p => p.id === req.params.id);
+  if (!product) {
+    return res.status(404).json({ error: "Producto no encontrado" });
+  }
+  res.json(product);
 };

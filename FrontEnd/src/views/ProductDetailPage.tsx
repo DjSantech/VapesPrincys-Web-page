@@ -158,7 +158,7 @@ export default function ProductDetailPage() {
       <div className="grid gap-8 md:grid-cols-2">
         {/* IZQUIERDA: Imagen */}
         <div className="relative overflow-hidden rounded-2xl border border-green-700 bg-black/20">
-          <img src={img} alt={product.name} className="w-full h-[28rem] object-cover" loading="lazy" />
+          <img src={img} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         </div>
 
         {/* DERECHA: Información + Formularios */}

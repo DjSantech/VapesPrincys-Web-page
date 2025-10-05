@@ -1,53 +1,76 @@
 // src/components/Navbar.tsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams, Link } from "react-router-dom";
 import { Search, Home } from "lucide-react";
-import CartButton from "../components/CartButton";
+import CartButton from "./CartButton";
 
+// Las categorías deben coincidir con tu backend.
+// "" significa "todas".
+const CATEGORIES = ["", "Desechables", "Pods", "Líquidos", "Accesorios"] as const;
+type Category = (typeof CATEGORIES)[number];
 
-type Props = {
-  onSearch?: (q: string, category: string) => void;
-  categories?: string[];
-};
+// (opcional) pequeño debounce para no spammear la URL
+function useDebounce<T>(value: T, delay = 300) {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
 
-export default function Navbar({
-  onSearch,
-  categories = ["Todas las categorías", "Desechables", "Pods", "Líquidos", "Accesorios"],
-}: Props) {
-  const [q, setQ] = useState("");
-  const [cat, setCat] = useState(categories[0]);
+export default function Navbar() {
+  const [params, setParams] = useSearchParams();
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch?.(q.trim(), cat);
-  };
+  // Lee valores iniciales de la URL
+  const [q, setQ] = useState<string>(params.get("q") ?? "");
+  const [cat, setCat] = useState<Category>(
+    (params.get("category") as Category) ?? ""
+  );
+
+  const qDebounced = useDebounce(q, 350);
+
+  // Sincroniza URL cuando cambie q (debounced) o categoría
+  useEffect(() => {
+    const next = new URLSearchParams(params);
+    // q
+    if (qDebounced) next.set("q", qDebounced);
+    else next.delete("q");
+    // category
+    if (cat) next.set("category", cat);
+    else next.delete("category");
+
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [qDebounced, cat]);
 
   return (
     <header className="w-full sticky top-0 z-50 bg-[#0f2b23] text-white shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="h-16 flex items-center gap-4">
           {/* Brand */}
-          <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2">
             <div className="h-9 w-9 rounded-xl bg-white/10 flex items-center justify-center">
               <span className="text-sm font-bold">VP</span>
             </div>
             <span className="text-lg sm:text-xl font-semibold tracking-wide">
               Vapitos Princys
             </span>
-          </div>
+          </Link>
 
-          {/* Home */}
-          <a
-            href="/"
+          {/* Home link */}
+          <Link
+            to="/"
             className="hidden sm:inline-flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition"
             aria-label="Ir a inicio"
             title="Inicio"
           >
             <Home className="size-4" />
             <span className="text-sm">Home</span>
-          </a>
+          </Link>
 
-          {/* Search */}
-          <form onSubmit={submit} className="ml-auto flex-1 max-w-2xl">
+          {/* Search + categorías */}
+          <div className="ml-auto flex-1 max-w-2xl">
             <div
               className="relative flex items-center rounded-full bg-[#0d241e] ring-1 ring-white/10 focus-within:ring-2 focus-within:ring-emerald-400 transition"
               role="search"
@@ -56,12 +79,12 @@ export default function Navbar({
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Buscar (nombre)"
-                className="w-full pl-10 pr-44 py-3 text-sm bg-transparent placeholder-white/50 text-white outline-none"
+                placeholder="Buscar (nombre del vape)"
+                className="w-full pl-10 pr-44 py-3 text-sm bg-transparent placeholder-white/60 text-white outline-none"
                 aria-label="Buscar productos"
               />
 
-              {/* Category selector aligned to the right inside the pill */}
+              {/* Selector de categoría dentro del pill, a la derecha */}
               <div className="absolute inset-y-0 right-0 flex items-center pr-2">
                 <div className="flex items-center gap-2 rounded-full bg-white/5 ring-1 ring-white/10 px-3 py-1.5">
                   <label htmlFor="nav-category" className="sr-only">
@@ -70,12 +93,13 @@ export default function Navbar({
                   <select
                     id="nav-category"
                     value={cat}
-                    onChange={(e) => setCat(e.target.value)}
+                    onChange={(e) => setCat(e.target.value as Category)}
                     className="bg-transparent text-white text-sm outline-none appearance-none pr-4"
+                    title="Categorías"
                   >
-                    {categories.map((c) => (
-                      <option key={c} className="bg-[#0f2b23]" value={c}>
-                        {c}
+                    {CATEGORIES.map((c) => (
+                      <option key={c || "all"} className="bg-[#0f2b23]" value={c}>
+                        {c || "Todas las categorías"}
                       </option>
                     ))}
                   </select>
@@ -89,9 +113,11 @@ export default function Navbar({
                   </svg>
                 </div>
               </div>
-              <CartButton />
             </div>
-          </form>
+          </div>
+
+          {/* Carrito (fuera del input para no romper el layout) */}
+          <CartButton />
         </div>
       </div>
     </header>

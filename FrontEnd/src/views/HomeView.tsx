@@ -1,38 +1,59 @@
-// src/pages/HomeView.tsx
+// src/views/HomeView.tsx
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { getProducts } from "../services/products_service";
+import type { Product } from "../types/Product";
 import ProductCard from "../components/ProductCard";
 
 export default function HomeView() {
-  // Demo de productos (precio en PESOS; abajo lo convierto a centavos)
-  const products = [
-    { id: "1", name: "Airmez", price: 60000, imageUrl: "/princys_img/airmez_image.jpeg" },
-    { id: "2", name: "Drilizy",              price: 120000, imageUrl: "/princys_img/drilizy_image.jpeg" },
-    { id: "3", name: "Ease vape",       price: 35000, imageUrl: "/princys_img/ease_vape.jpeg" },
-    { id: "4", name: "Easy ",              price: 25000,  imageUrl: "/princys_img/easy_image.jpeg" }, 
-    { id: "5", name: "Airmez", price: 60000, imageUrl: "/princys_img/airmez_image.jpeg" },
-    { id: "6", name: "Drilizy",              price: 120000, imageUrl: "/princys_img/drilizy_image.jpeg" },
-    { id: "7", name: "Ease vape",       price: 35000, imageUrl: "/princys_img/ease_vape.jpeg" },
-    { id: "8", name: "Easy ",              price: 25000,  imageUrl: "/princys_img/easy_image.jpeg" }, /// sin imagen => usa placeholder
-  ];
+  const [params] = useSearchParams();
+  const [items, setItems] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const q = params.get("q") || undefined;
+  const category = params.get("category") || undefined;
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        setError("");
+        setLoading(true);
+        // 👇 si no hay filtros, no envíes params
+        const data = await getProducts(q || category ? { q, category } : undefined);
+        if (active) setItems(data);
+      } catch (e) {
+        if (active) setError("No pudimos cargar los productos.");
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [q, category]);
 
   return (
     <div className="p-6 text-white">
       <h1 className="text-3xl font-bold">Bienvenido a Vapitos Princys</h1>
-      <p className="mt-2 text-white/70">
-        Esta es la página principal temporal. Aquí podrás mostrar productos, categorías o promociones destacadas.
-      </p>
+      <p className="mt-2 text-white/70">Explora nuestros productos o usa el buscador.</p>
 
-      <div className="mt-6 grid gap-5 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-        {products.map(p => (
-          <ProductCard
-            key={p.id}
-            id={p.id}
-            name={p.name}
-            price={p.price * 100}          // ← a centavos para el formateador
-            imageUrl={p.imageUrl}
-            className="bg-white"            // puedes quitarlo si ya viene por defecto
-          />
-        ))}
-      </div>
+      {error && <p className="mt-4 text-red-400">{error}</p>}
+
+      {loading ? (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="rounded-2xl bg-white/5 border border-white/10 h-64 animate-pulse" />
+          ))}
+        </div>
+      ) : items.length === 0 ? (
+        <p className="mt-6 text-white/60">No encontramos productos con esos filtros.</p>
+      ) : (
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {items.map((p) => (
+            <ProductCard key={p.id} id={p.id} name={p.name} price={p.price} imageUrl={p.imageUrl} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
