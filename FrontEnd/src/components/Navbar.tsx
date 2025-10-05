@@ -1,6 +1,8 @@
 // src/components/Navbar.tsx
 import { useState } from "react";
 import { Search, Home } from "lucide-react";
+import CartButton from "../components/CartButton";
+
 
 type Props = {
   onSearch?: (q: string, category: string) => void;
@@ -87,6 +89,7 @@ export default function Navbar({
                   </svg>
                 </div>
               </div>
+              <CartButton />
             </div>
           </form>
         </div>

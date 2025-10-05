@@ -4,6 +4,8 @@ import { useLocation, useParams, Link } from "react-router-dom";
 import axios from "axios";
 import { getProductById } from "../services/products_service";
 import type { Product } from "../types/Product";
+import { useCart } from "../store/cart_info";
+import type { CartItem } from "../types/Cart";
 
 // Helpers
 const formatCOP = (cents: number) =>
@@ -21,6 +23,9 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const state = (location.state as LocationState) ?? {};
+
+  // ✅ hooks SIEMPRE dentro del componente
+  const { addItem } = useCart();
 
   const [product, setProduct] = useState<Product | undefined>(state.product);
   const [loading, setLoading] = useState<boolean>(!state.product);
@@ -68,12 +73,11 @@ export default function ProductDetailPage() {
         setProduct(p);
 
         // sabores disponibles tomando del producto si viene, o default
-        const initialFlavors: string[] = Array.isArray(p.flavors) && p.flavors.length > 0
-          ? p.flavors
-          : DEFAULT_FLAVORS;
+        const initialFlavors: string[] =
+          Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
 
         // set default flavor si aún no hay
-        setFlavor(prev => prev || initialFlavors[0]);
+        setFlavor((prev) => prev || initialFlavors[0]);
       } catch (e: unknown) {
         if (axios.isAxiosError(e)) {
           const status = e.response?.status;
@@ -89,8 +93,10 @@ export default function ProductDetailPage() {
       }
     })();
 
-    return () => { active = false; };
-  }, [productId, product]); // ✅ no usamos DEFAULT_FLAVORS dentro del effect
+    return () => {
+      active = false;
+    };
+  }, [productId, product]); // no usamos DEFAULT_FLAVORS aquí adentro
 
   if (error) return <p className="p-6 text-red-400">{error}</p>;
   if (loading || !product) {
@@ -103,42 +109,50 @@ export default function ProductDetailPage() {
     );
   }
 
-  // construimos sabores disponibles sin romper hooks
-  const availableFlavors: string[] = Array.isArray(product.flavors) && product.flavors.length > 0
-    ? product.flavors
-    : DEFAULT_FLAVORS;
+  // sabores disponibles (fuera del effect para no romper deps)
+  const availableFlavors: string[] =
+    Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS;
 
   const img = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
   const inStock = product.stock ?? 0;
 
-  const addOnTotal =
-    (charger?.price ?? 0) +
-    (extraVape.price ?? 0);
-
+  const addOnTotal = (charger?.price ?? 0) + (extraVape.price ?? 0);
   const mainTotal = product.price * qty;
   const grandTotal = mainTotal + addOnTotal;
 
-  const canOpen2 = open1 && charger !== null;
-  const canOpen3 = open2 && !!extraVape.model;
+  const canOpen3 = open2 && !!extraVape.model; // (usamos la condición directamente para el 2)
 
+  // ✅ único addToCart DENTRO del componente
   const addToCart = () => {
-    const payload = {
-      main: { productId: product.id, qty, flavor },
-      addons: {
-        charger: charger ? { id: charger.id, name: charger.name, price: charger.price } : null,
-        extraVape: extraVape.model ? extraVape : null,
-        giftVape: giftVape.model ? giftVape : null,
-      },
-      totals: { mainTotal, addOnTotal, grandTotal },
+    const item: CartItem = {
+      id: product.id,
+      name: product.name,
+      price: product.price, // centavos
+      qty,
+      flavor,
+      imageUrl: product.imageUrl || product.images?.[0],
+      charger: charger ? { id: charger.id, name: charger.name, price: charger.price } : null,
+      extraVape: extraVape.model
+        ? {
+            model: extraVape.model,
+            flavor: extraVape.flavor,
+            qty: extraVape.qty || 1,
+            price: extraVape.price || 0,
+          }
+        : null,
+      giftVape: giftVape.model ? { model: giftVape.model, flavor: giftVape.flavor } : null,
     };
-    console.log("ADD TO CART", payload);
-    alert(`Añadido. Total: ${formatCOP(grandTotal)}`);
+
+    addItem(item);
+    alert("Producto agregado al carrito ✅");
   };
 
   return (
     <div className="p-6 text-white">
       <div className="mb-4">
-        <Link to="/" className="text-sm text-green-300 hover:underline">← Volver</Link>
+        <Link to="/" className="text-sm text-green-300 hover:underline">
+          ← Volver
+        </Link>
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -180,7 +194,9 @@ export default function ProductDetailPage() {
                 className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
               >
                 {availableFlavors.map((f: string) => (
-                  <option key={f} value={f}>{f}</option>
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
                 ))}
               </select>
             </div>
@@ -190,7 +206,7 @@ export default function ProductDetailPage() {
           <div className="rounded-2xl border border-green-700 overflow-hidden">
             <button
               type="button"
-              onClick={() => setOpen1(v => !v)}
+              onClick={() => setOpen1((v) => !v)}
               className="w-full text-left px-4 py-3 bg-[#182c25] hover:bg-[#1B3128] flex items-center justify-between"
             >
               <span className="font-semibold">➕ Agregar cargador</span>
@@ -214,7 +230,8 @@ export default function ProductDetailPage() {
                         checked={charger?.id === c.id}
                         onChange={() => setCharger(c)}
                       />
-                      {c.name} <span className="ml-2 text-green-300 font-semibold">{formatCOP(c.price)}</span>
+                      {c.name}{" "}
+                      <span className="ml-2 text-green-300 font-semibold">{formatCOP(c.price)}</span>
                     </label>
                   ))}
                 </div>
@@ -223,10 +240,14 @@ export default function ProductDetailPage() {
           </div>
 
           {/* ADD-ON 2: Otro vape (depende del 1) */}
-          <div className={`rounded-2xl border overflow-hidden ${open1 && charger ? "border-green-700" : "border-white/10 opacity-60 pointer-events-none"}`}>
+          <div
+            className={`rounded-2xl border overflow-hidden ${
+              open1 && charger ? "border-green-700" : "border-white/10 opacity-60 pointer-events-none"
+            }`}
+          >
             <button
               type="button"
-              onClick={() => open1 && charger && setOpen2(v => !v)}
+              onClick={() => open1 && charger && setOpen2((v) => !v)}
               className="w-full text-left px-4 py-3 bg-[#182c25] hover:bg-[#1B3128] flex items-center justify-between"
             >
               <span className="font-semibold">➕ Agregar otro vape</span>
@@ -242,10 +263,12 @@ export default function ProductDetailPage() {
                     value={extraVape.model ?? ""}
                     onChange={(e) => {
                       const model = extraVapeModels.find((m: ExtraVapeModel) => m.name === e.target.value);
-                      setExtraVape(prev => ({ ...prev, model: model?.name, price: model?.basePrice ?? 0 }));
+                      setExtraVape((prev) => ({ ...prev, model: model?.name, price: model?.basePrice ?? 0 }));
                     }}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {extraVapeModels.map((m: ExtraVapeModel) => (
                       <option key={m.name} value={m.name}>
                         {m.name} ({formatCOP(m.basePrice)})
@@ -259,11 +282,15 @@ export default function ProductDetailPage() {
                   <select
                     className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                     value={extraVape.flavor ?? ""}
-                    onChange={(e) => setExtraVape(prev => ({ ...prev, flavor: e.target.value }))}
+                    onChange={(e) => setExtraVape((prev) => ({ ...prev, flavor: e.target.value }))}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {availableFlavors.map((f: string) => (
-                      <option key={f} value={f}>{f}</option>
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -275,7 +302,9 @@ export default function ProductDetailPage() {
                     min={1}
                     max={99}
                     value={extraVape.qty ?? 1}
-                    onChange={(e) => setExtraVape(prev => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))}
+                    onChange={(e) =>
+                      setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))
+                    }
                     className="w-24 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                   />
                 </div>
@@ -284,28 +313,36 @@ export default function ProductDetailPage() {
           </div>
 
           {/* ADD-ON 3: Regalo (depende del 2) */}
-          <div className={`rounded-2xl border overflow-hidden ${open2 && extraVape.model ? "border-green-700" : "border-white/10 opacity-60 pointer-events-none"}`}>
+          <div
+            className={`rounded-2xl border overflow-hidden ${
+              canOpen3 ? "border-green-700" : "border-white/10 opacity-60 pointer-events-none"
+            }`}
+          >
             <button
               type="button"
-              onClick={() => open2 && extraVape.model && setOpen3(v => !v)}
+              onClick={() => canOpen3 && setOpen3((v) => !v)}
               className="w-full text-left px-4 py-3 bg-[#182c25] hover:bg-[#1B3128] flex items-center justify-between"
             >
               <span className="font-semibold">🎁 Vape de regalo</span>
               <span className="text-sm text-white/70">{open3 ? "Cerrar" : "Abrir"}</span>
             </button>
 
-            {open3 && open2 && extraVape.model && (
+            {open3 && canOpen3 && (
               <div className="bg-[#15221d] p-4 space-y-4">
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-24">Modelo</label>
                   <select
                     className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                     value={giftVape.model ?? ""}
-                    onChange={(e) => setGiftVape(prev => ({ ...prev, model: e.target.value }))}
+                    onChange={(e) => setGiftVape((prev) => ({ ...prev, model: e.target.value }))}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {giftVapeModels.map((m: GiftVapeModel) => (
-                      <option key={m.name} value={m.name}>{m.name}</option>
+                      <option key={m.name} value={m.name}>
+                        {m.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -315,11 +352,15 @@ export default function ProductDetailPage() {
                   <select
                     className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-400"
                     value={giftVape.flavor ?? ""}
-                    onChange={(e) => setGiftVape(prev => ({ ...prev, flavor: e.target.value }))}
+                    onChange={(e) => setGiftVape((prev) => ({ ...prev, flavor: e.target.value }))}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {availableFlavors.map((f: string) => (
-                      <option key={f} value={f}>{f}</option>
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -332,8 +373,12 @@ export default function ProductDetailPage() {
           {/* RESUMEN + CTA */}
           <div className="flex items-center justify-between rounded-2xl border border-green-700 bg-[#182c25] px-4 py-3">
             <div className="text-sm">
-              <div>Total producto: <span className="font-semibold">{formatCOP(mainTotal)}</span></div>
-              <div>Extras: <span className="font-semibold">{formatCOP(addOnTotal)}</span></div>
+              <div>
+                Total producto: <span className="font-semibold">{formatCOP(mainTotal)}</span>
+              </div>
+              <div>
+                Extras: <span className="font-semibold">{formatCOP(addOnTotal)}</span>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-green-300">Total: {formatCOP(grandTotal)}</div>
@@ -345,7 +390,6 @@ export default function ProductDetailPage() {
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
