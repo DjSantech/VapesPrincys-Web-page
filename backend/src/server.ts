@@ -7,16 +7,25 @@ import productsRouter from "./routes/products_routes";
 
 const app = express();
 
-app.use(cors({ origin: ["http://localhost:5173"] }));
+// ✅ Permitir frontend local y desplegado
+app.use(cors({
+  origin: [
+    "http://localhost:5173",        // desarrollo local
+    "https://vapes-princys-web-page.vercel.app" // reemplázalo con tu dominio real
+  ],
+  credentials: true,
+}));
+
 app.use(morgan("dev"));
 app.use(express.json());
 
-// sirve la carpeta public para imágenes
+// ✅ Servir imágenes (por ejemplo: /public/images/product1.jpg)
 app.use(express.static(path.join(process.cwd(), "public")));
 
+// ✅ Rutas principales
 app.use("/api/products", productsRouter);
 
+// ✅ Ruta de salud (para verificar despliegue)
 app.get("/health", (_req, res) => res.json({ ok: true }));
-
 
 export default app;

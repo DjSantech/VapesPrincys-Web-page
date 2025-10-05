@@ -1,12 +1,19 @@
-import {CorsOptions} from 'cors'
+import cors from "cors";
 
-export const corsConfig: CorsOptions = {
-    origin: function(origin,callback) {
-        const whiteList = [process.env.FRONT_END_URL]
-        if (origin === ){
-            callback(null,true)
-        } else {
-            callback(new Error('Error de cors'))
-        }
+const allowedOrigins = [
+  "http://localhost:5173",        // desarrollo local
+  "https://vapitosprincys.vercel.app" // dominio de tu frontend en producción
+];
+
+export const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("No permitido por CORS"));
     }
-}
+  },
+  credentials: true,
+};
+
+export default cors(corsOptions);
