@@ -12,8 +12,9 @@ export const listProducts = (req: Request, res: Response) => {
     result = result.filter(p => p.name.toLowerCase().includes(q));
   }
   if (category) {
-    result = result.filter(p => p.category.toLowerCase() === category);
-  }
+  result = result.filter(p => p.category?.toLowerCase() === category);
+}
+
 
   res.json(result);
 };
