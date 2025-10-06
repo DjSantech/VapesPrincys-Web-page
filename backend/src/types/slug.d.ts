@@ -7,6 +7,7 @@ declare module "slug" {
     remove?: RegExp;        // regex para remover caracteres
     trim?: boolean;         // recortar espacios
   }
+  const id = slug(nombre, { lower: true, locale: "es" });
   const slug: (input: string, opts?: SlugOptions) => string;
   export default slug;
 }
