@@ -11,7 +11,7 @@ const app = express();
 app.use(cors({
   origin: [
     "http://localhost:5173",        // desarrollo local
-    "https://vapes-princys-web-page.vercel.app" // reemplázalo con tu dominio real
+    "https://vapes-princys.vercel.app" // reemplázalo con tu dominio real
   ],
   credentials: true,
 }));
