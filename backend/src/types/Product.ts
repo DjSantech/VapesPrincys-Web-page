@@ -1,11 +1,11 @@
 export interface Product {
   id: string;
   name: string;
-  price: number;       // en centavos
+  price: number; 
+  category: string;
   description?: string;
   imageUrl?: string;
   images?: string[];
   stock?: number;
-  category?: string;
   categoryId?: string;
 }

@@ -1,70 +1,64 @@
-import type {Request,Response} from 'express' 
-import User from "../models/user" 
-import {validationResult} from 'express-validator'
-import { checkPassword, hashPassword } from '../utils/auth'
-import slug from 'slug'
-import { generateJWT } from '../utils/jwt'
+import type { Request, Response } from "express";
+import User from "../models/user";
+import { validationResult } from "express-validator";
+import { checkPassword, hashPassword } from "../utils/auth";
+import slug from "slug";
+import { generateJWT } from "../utils/jwt";
 
+export const createAccount = async (req: Request, res: Response) => {
+  // Valida errores de express-validator si los usas en la ruta
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
 
-export const createAccount = async (req : Request, res: Response) =>
-{   
-    
+  const { email, password, handle: handleRaw } = req.body;
 
+  // ¿ya existe el email?
+  const userExists = await User.findOne({ email });
+  if (userExists) {
+    return res.status(409).json({ error: "Un usuario ya está registrado con ese email" });
+  }
 
-    const {email,password} = req.body
-    const userExists = await User.findOne({email})
+  // genera el handle limpio
+  const handle = slug(handleRaw, {
+    lower: true,
+    locale: "es",
+    trim: true,
+    replacement: "-",
+  });
 
-    if(userExists){
-        const error = new Error("Un usuario ya esta registrado con ese gmail")
-        return res.status(409).json({error: error.message})
-    } else {
+  // ¿ya existe ese handle?
+  const handleExists = await User.findOne({ handle });
+  if (handleExists) {
+    return res.status(409).json({ error: "Handle de usuario no disponible" });
+  }
 
-    }
-    
-    const handle = slug(req.body.handle, '')
-    const handleExists = await User.findOne({handle})
-    if(handleExists){
-        const error = new Error("Handle de usuario no disponible")
-        return res.status(409).json({error: error.message})
-    } else {
-        console.log('Nombre de usuario disponible')
-    }
-    
+  // crea usuario
+  const user = new User({
+    ...req.body,
+    handle,
+    password: await hashPassword(password),
+  });
 
+  await user.save();
 
-    const user = new User(req.body)
-    user.password = await hashPassword(password)
-    user.handle = await handle
+  return res.status(201).send("Registro creado correctamente");
+};
 
-    await user.save()
-    
-    res.status(201).send('Registo creado correctamente')
-}
+export const login = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
 
+  const user = await User.findOne({ email });
+  if (!user) {
+    return res.status(404).json({ error: "Este usuario no existe" });
+  }
 
-export const login = async (req: Request, res: Response ) => {
-    
-  
-   
-    const {email,password} = req.body
-    const user = await User.findOne({email})
+  const isPasswordCorrect = await checkPassword(password, user.password);
+  if (!isPasswordCorrect) {
+    return res.status(401).json({ error: "La contraseña ingresada es incorrecta" });
+  }
 
-    //Recibar si el usuario existe
-    if(!user){
-        const error = new Error("Este usuario no existe")
-        return res.status(404).json({error: error.message})
-    } 
-    //verificacion de password
-    // const contraseña = user.password
-    const isPasswordCorrect = await checkPassword(password,user.password)
-    
-    if (!isPasswordCorrect) {
-        const error = new Error("La contraseña ingresada es incorrecta")
-        return res.status(401).json({error:error.message})
-    }
-
-    generateJWT(user)
-
-    res.send("Autenticado...")
-
-}
+  const token = generateJWT(user);
+  return res.json({ token });
+};
