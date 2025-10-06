@@ -28,4 +28,9 @@ app.use("/api/products", productsRouter);
 // ✅ Ruta de salud (para verificar despliegue)
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+app.get("/", (_req, res) => {
+  res.send("Vapitos Princys API – usa /health o /api/products");
+});
+
+
 export default app;
