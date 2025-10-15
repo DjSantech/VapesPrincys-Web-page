@@ -8,17 +8,23 @@ import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
 
 const PHONE = "573043602980"; // tu número sin '+'
 
+const FEE_BY_ZONE: Record<DeliveryZone, number> = {
+  DOSQUEBRADAS:    600000,  // $6.000
+  PEREIRA_CENTRO:  900000,  // $9.000
+  CUBA:           1200000,  // $12.000
+  NACIONAL:       2000000,  // $15.000
+};
+
 export default function CartButton() {
   const [open, setOpen] = useState(false);
   const {
     items, removeItem, updateQty, clear,
-    total, delivery, setDelivery, deliveryFee, totalWithDelivery
+    total, delivery, setDelivery,
   } = useCart();
 
   const count = items.reduce((n, i) => n + i.qty, 0);
   const sub = total();
-  const fee = deliveryFee();
-  const grand = totalWithDelivery();
+
 
   // Form domicilio
   const [form, setForm] = useState<DeliveryInfo>(
@@ -29,8 +35,14 @@ export default function CartButton() {
       paymentMethod: "EFECTIVO",
       changeFor: undefined,
       zone: "PEREIRA_CENTRO",
+      idCard: undefined,
     }
   );
+
+  // ⬇️ Calcula el fee y el total dinámicamente según la zona elegida
+  const fee = FEE_BY_ZONE[form.zone] ?? 0;
+  const grand = sub + fee;
+
 
   const handleChange = <K extends keyof DeliveryInfo>(key: K, value: DeliveryInfo[K]) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -179,7 +191,6 @@ export default function CartButton() {
               ))}
             </section>
           )}
-
           {/* Formulario de domicilio */}
           <section className="space-y-3 border border-white/10 rounded-xl p-3 bg-[#15221d]">
             <h4 className="font-semibold text-sm">Datos de domicilio</h4>
@@ -211,14 +222,37 @@ export default function CartButton() {
               <select
                 className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
                 value={form.zone}
-                onChange={(e) => handleChange("zone", e.target.value as DeliveryZone)}
-              >
+                onChange={(e) => {
+                          const newZone = e.target.value as DeliveryZone;
+                          handleChange("zone", newZone);
+                          // Si el usuario selecciona “NACIONAL”, forzamos el pago a “TRANSFERENCIA”
+                          if (newZone === "NACIONAL") {
+                            handleChange("paymentMethod", "TRANSFERENCIA"); // 👈 forza transferencia
+                            handleChange("changeFor", undefined);
+                          }
+                        }}
+                      >
                 <option value="DOSQUEBRADAS">Dosquebradas ($6.000)</option>
                 <option value="PEREIRA_CENTRO">Pereira Centro ($9.000)</option>
                 <option value="CUBA">Cuba ($12.000)</option>
-                <option value="NACIONAL">Envío Nacional - Contado ($15.000)</option>
+                <option value="NACIONAL">Envío Nacional ($20.000)</option>
               </select>
             </div>
+            {/* ⚠️ Nota aclaratoria */}
+            <p className="text-xs text-yellow-300 mt-1">
+              📦 El precio del envío puede variar según la zona del envio o de la ciudad de destino.  
+              Por favor asegúrate de llenar correctamente todos los campos del formulario para evitar demoras en la entrega.
+            </p>
+
+            {/* Campo Cédula solo para envíos nacionales */}
+            {form.zone === "NACIONAL" && (
+              <input
+                className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+                placeholder="🔖 CÉDULA (para envío nacional)"
+                value={form.idCard ?? ""}
+                onChange={(e) => handleChange("idCard", e.target.value)}
+              />
+            )}
 
             <div className="flex items-center gap-3">
               <label className="text-sm w-36">Pago</label>
@@ -226,13 +260,15 @@ export default function CartButton() {
                 className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
                 value={form.paymentMethod}
                 onChange={(e) => handleChange("paymentMethod", e.target.value as DeliveryInfo["paymentMethod"])}
-              >
+                disabled={form.zone === "NACIONAL"}   // 👈 no se puede cambiar
+                title={form.zone === "NACIONAL" ? "Para envíos nacionales el pago es solo por transferencia" : undefined}
+                >
                 <option value="EFECTIVO">Efectivo</option>
                 <option value="TRANSFERENCIA">Transferencia</option>
               </select>
             </div>
 
-            {form.paymentMethod === "EFECTIVO" && (
+            {form.paymentMethod === "EFECTIVO" && form.zone !== "NACIONAL" && (
               <div className="flex items-center gap-3">
                 <label className="text-sm w-36">Devuelta (opcional)</label>
                 <input
@@ -248,7 +284,7 @@ export default function CartButton() {
           </section>
         </div>
 
-        {/* Pie fijo */}
+        {/* Pie: usa fee/grand calculados arriba */}
         <div className="shrink-0 border-t border-white/10 p-4 space-y-3 bg-[#182c25]">
           <div className="flex items-center justify-between text-sm">
             <span>Subtotal</span><span>{formatCOP(sub)}</span>
@@ -263,7 +299,7 @@ export default function CartButton() {
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-xl bg-green-500 px-4 py-2 font-semibold text-black hover:bg-green-400 disabled:opacity-50"
-              disabled={items.length === 0 || !form.name || !form.phone || !form.address}
+              disabled={items.length === 0 || !form.name || !form.phone || !form.address || (form.zone === "NACIONAL" && !form.idCard)}
               onClick={handleWhatsApp}
             >
               Continuar con pago (WhatsApp)
@@ -273,7 +309,7 @@ export default function CartButton() {
             </button>
           </div>
           <p className="text-xs text-white/60">
-            Al continuar te enviaremos un mensaje a WhatsApp con el detalle del pedido y tus datos.
+            Al continuar te redigiremos con un mensaje a el WhatsApp con el detalle del pedido y tus datos, para que finalices con el pago.
           </p>
         </div>
       </aside>
@@ -282,7 +318,6 @@ export default function CartButton() {
 
   return (
     <>
-      {/* Botón en el Navbar */}
       <button
         onClick={() => setOpen(true)}
         className="relative rounded-xl p-2 hover:bg-white/10"
@@ -295,8 +330,6 @@ export default function CartButton() {
           </span>
         )}
       </button>
-
-      {/* Portal: el drawer se monta en <body>, fuera del Navbar */}
       {open && createPortal(Drawer, document.body)}
     </>
   );
