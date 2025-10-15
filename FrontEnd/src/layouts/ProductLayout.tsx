@@ -25,7 +25,7 @@ export default function ProductLayout() {
   }, [id, product]);
 
   return (
-    <div className="min-h-screen bg-[#182c25] text-white">
+    <div className="min-h-screen bg-[#55514e] text-white">
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-6">
         {loading ? <p>Cargando producto…</p> : <Outlet context={{ product }} />}

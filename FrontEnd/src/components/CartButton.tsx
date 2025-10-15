@@ -6,27 +6,22 @@ import { useCart } from "../store/cart_info";
 import { buildWhatsAppUrl, formatCOP } from "../lib/format";
 import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
 
-const PHONE = "573043602980"; // tu número sin '+'
+const PHONE = "573043602980";
 
 const FEE_BY_ZONE: Record<DeliveryZone, number> = {
-  DOSQUEBRADAS:    600000,  // $6.000
-  PEREIRA_CENTRO:  900000,  // $9.000
-  CUBA:           1200000,  // $12.000
-  NACIONAL:       2000000,  // $15.000
+  DOSQUEBRADAS:   600000,
+  PEREIRA_CENTRO: 900000,
+  CUBA:          1200000,
+  NACIONAL:      2000000,
 };
 
 export default function CartButton() {
   const [open, setOpen] = useState(false);
-  const {
-    items, removeItem, updateQty, clear,
-    total, delivery, setDelivery,
-  } = useCart();
+  const { items, removeItem, updateQty, clear, total, delivery, setDelivery } = useCart();
 
   const count = items.reduce((n, i) => n + i.qty, 0);
   const sub = total();
 
-
-  // Form domicilio
   const [form, setForm] = useState<DeliveryInfo>(
     delivery ?? {
       name: "",
@@ -39,13 +34,11 @@ export default function CartButton() {
     }
   );
 
-  // ⬇️ Calcula el fee y el total dinámicamente según la zona elegida
   const fee = FEE_BY_ZONE[form.zone] ?? 0;
   const grand = sub + fee;
 
-
   const handleChange = <K extends keyof DeliveryInfo>(key: K, value: DeliveryInfo[K]) =>
-    setForm(prev => ({ ...prev, [key]: value }));
+    setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleWhatsApp = () => {
     setDelivery(form);
@@ -53,11 +46,9 @@ export default function CartButton() {
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
-  // Scroll a listado
   const listRef = useRef<HTMLDivElement | null>(null);
   const scrollToList = () => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  // Bloquear scroll del body cuando el drawer está abierto
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -65,74 +56,74 @@ export default function CartButton() {
     return () => { document.body.style.overflow = prev; };
   }, [open]);
 
-  // --- Panel en portal (para salir del navbar) ---
   const Drawer = (
     <div className="fixed inset-0 z-[90]">
-      {/* overlay */}
-      <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px]" onClick={() => setOpen(false)} />
 
-      {/* panel */}
+      {/* Panel */}
       <aside
         className="
-          absolute right-0 top-0 h-full w-full
-          sm:w-[22rem] md:w-[24rem] lg:w-[28rem]
-          bg-[#182c25] text-white shadow-2xl border-l border-green-700
+          absolute right-0 top-0 h-full w-full sm:w-[22rem] md:w-[24rem] lg:w-[28rem]
+          bg-[#111315] text-zinc-100 border-l border-stone-700 shadow-2xl
           flex flex-col overflow-hidden
-          pt-safe pb-safe
         "
         role="dialog"
         aria-label="Carrito de compras"
       >
-        {/* Header fijo */}
-        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-white/10">
+        {/* Header */}
+        <div className="shrink-0 flex items-center justify-between px-4 py-3 border-b border-stone-700">
           <h3 className="text-lg font-semibold">Carrito</h3>
-          <button className="text-sm text-white/70 hover:underline" onClick={() => setOpen(false)}>
+          <button
+            className="text-sm text-zinc-400 hover:text-amber-400 transition"
+            onClick={() => setOpen(false)}
+          >
             Cerrar
           </button>
         </div>
 
-        {/* Contenido con scroll */}
+        {/* Content scrollable */}
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
-          {/* Previsualización (top 3) */}
-          <section className="border border-white/10 rounded-xl p-3 bg-[#15221d]">
+          {/* Preview */}
+          <section className="rounded-xl border border-stone-700 bg-[#1a1d1f] p-3">
             <div className="mb-2 flex items-center justify-between">
               <h4 className="font-semibold text-sm">Previsualización</h4>
               {items.length > 0 && (
-                <button onClick={scrollToList} className="text-xs text-green-300 hover:underline">
+                <button onClick={scrollToList} className="text-xs text-amber-400 hover:underline">
                   Ver todo
                 </button>
               )}
             </div>
 
             {items.length === 0 ? (
-              <p className="text-white/70 text-sm">Tu carrito está vacío.</p>
+              <p className="text-sm text-zinc-400">Tu carrito está vacío.</p>
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {items.slice(0, 3).map((i) => (
                   <div
                     key={`${i.id}-${i.flavor}-${i.charger?.id ?? "nochg"}-${i.extraVape?.model ?? "nomodel"}`}
-                    className="rounded-lg border border-white/10 bg-[#0f1a16] p-2"
+                    className="rounded-lg border border-stone-700 bg-[#131619] p-2"
                   >
                     <img
                       src={i.imageUrl || "https://picsum.photos/seed/vape/120"}
                       alt={i.name}
                       className="h-16 w-full rounded-md object-cover"
                     />
-                    <div className="mt-1 text-[11px] line-clamp-2">{i.name}</div>
-                    <div className="text-[10px] text-white/60">x{i.qty}</div>
+                    <div className="mt-1 text-[11px] line-clamp-2 text-zinc-200">{i.name}</div>
+                    <div className="text-[10px] text-zinc-400">x{i.qty}</div>
                   </div>
                 ))}
               </div>
             )}
           </section>
 
-          {/* Listado completo */}
+          {/* List */}
           {items.length > 0 && (
             <section ref={listRef} className="space-y-3">
               {items.map((i) => (
                 <article
                   key={`${i.id}-${i.flavor}-${i.charger?.id ?? "nochg"}-${i.extraVape?.model ?? "nomodel"}`}
-                  className="flex gap-3 rounded-xl border border-white/10 p-3 bg-[#15221d]"
+                  className="flex gap-3 rounded-xl border border-stone-700 bg-[#1a1d1f] p-3"
                 >
                   <img
                     src={i.imageUrl || "https://picsum.photos/seed/vape/120"}
@@ -143,19 +134,19 @@ export default function CartButton() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <div className="font-semibold text-sm line-clamp-1">{i.name}</div>
-                        {i.flavor && <div className="text-xs text-white/70">Sabor: {i.flavor}</div>}
+                        {i.flavor && <div className="text-xs text-zinc-400">Sabor: {i.flavor}</div>}
                         {i.charger && (
-                          <div className="text-xs text-white/70">
+                          <div className="text-xs text-zinc-400">
                             Cargador: {i.charger.name} ({formatCOP(i.charger.price)})
                           </div>
                         )}
                         {i.extraVape && (
-                          <div className="text-xs text-white/70">
+                          <div className="text-xs text-zinc-400">
                             Extra: {i.extraVape.model} x{i.extraVape.qty} ({formatCOP(i.extraVape.price)})
                           </div>
                         )}
                         {i.giftVape && (
-                          <div className="text-xs text-green-300">🎁 Regalo: {i.giftVape.model}</div>
+                          <div className="text-xs text-amber-400">🎁 Regalo: {i.giftVape.model}</div>
                         )}
                       </div>
                       <button
@@ -167,10 +158,10 @@ export default function CartButton() {
                     </div>
 
                     <div className="mt-2 flex items-center justify-between">
-                      <div className="text-green-300 font-semibold">{formatCOP(i.price)}</div>
+                      <div className="font-semibold text-amber-400">{formatCOP(i.price)}</div>
                       <div className="flex items-center gap-2">
                         <button
-                          className="px-2 py-1 rounded-lg bg-white/10"
+                          className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
                           onClick={() => updateQty(i.id, Math.max(1, i.qty - 1))}
                           aria-label="Disminuir cantidad"
                         >
@@ -178,7 +169,7 @@ export default function CartButton() {
                         </button>
                         <span className="w-6 text-center">{i.qty}</span>
                         <button
-                          className="px-2 py-1 rounded-lg bg-white/10"
+                          className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
                           onClick={() => updateQty(i.id, i.qty + 1)}
                           aria-label="Aumentar cantidad"
                         >
@@ -191,26 +182,27 @@ export default function CartButton() {
               ))}
             </section>
           )}
-          {/* Formulario de domicilio */}
-          <section className="space-y-3 border border-white/10 rounded-xl p-3 bg-[#15221d]">
+
+          {/* Delivery form */}
+          <section className="space-y-3 rounded-xl border border-stone-700 bg-[#1a1d1f] p-3">
             <h4 className="font-semibold text-sm">Datos de domicilio</h4>
 
             <input
-              className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 NOMBRE"
               value={form.name}
               onChange={(e) => handleChange("name", e.target.value)}
             />
 
             <input
-              className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 TELÉFONO (ej: 3001234567)"
               value={form.phone}
               onChange={(e) => handleChange("phone", e.target.value)}
             />
 
             <textarea
-              className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+              className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 DIRECCIÓN DETALLADA (Cra, Calle, Piso, Apto, Barrio)"
               rows={3}
               value={form.address}
@@ -218,36 +210,34 @@ export default function CartButton() {
             />
 
             <div className="flex items-center gap-3">
-              <label className="text-sm w-36">Zona / Envío</label>
+              <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
               <select
-                className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                 value={form.zone}
                 onChange={(e) => {
-                          const newZone = e.target.value as DeliveryZone;
-                          handleChange("zone", newZone);
-                          // Si el usuario selecciona “NACIONAL”, forzamos el pago a “TRANSFERENCIA”
-                          if (newZone === "NACIONAL") {
-                            handleChange("paymentMethod", "TRANSFERENCIA"); // 👈 forza transferencia
-                            handleChange("changeFor", undefined);
-                          }
-                        }}
-                      >
+                  const newZone = e.target.value as DeliveryZone;
+                  handleChange("zone", newZone);
+                  if (newZone === "NACIONAL") {
+                    handleChange("paymentMethod", "TRANSFERENCIA");
+                    handleChange("changeFor", undefined);
+                  }
+                }}
+              >
                 <option value="DOSQUEBRADAS">Dosquebradas ($6.000)</option>
                 <option value="PEREIRA_CENTRO">Pereira Centro ($9.000)</option>
                 <option value="CUBA">Cuba ($12.000)</option>
                 <option value="NACIONAL">Envío Nacional ($20.000)</option>
               </select>
             </div>
-            {/* ⚠️ Nota aclaratoria */}
-            <p className="text-xs text-yellow-300 mt-1">
-              📦 El precio del envío puede variar según la zona del envio o de la ciudad de destino.  
-              Por favor asegúrate de llenar correctamente todos los campos del formulario para evitar demoras en la entrega.
+
+            <p className="text-xs text-amber-300 mt-1">
+              📦 El precio del envío puede variar según la zona o ciudad de destino.
+              Completa bien el formulario para evitar demoras en la entrega.
             </p>
 
-            {/* Campo Cédula solo para envíos nacionales */}
             {form.zone === "NACIONAL" && (
               <input
-                className="w-full rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+                className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
                 placeholder="🔖 CÉDULA (para envío nacional)"
                 value={form.idCard ?? ""}
                 onChange={(e) => handleChange("idCard", e.target.value)}
@@ -255,14 +245,14 @@ export default function CartButton() {
             )}
 
             <div className="flex items-center gap-3">
-              <label className="text-sm w-36">Pago</label>
+              <label className="text-sm w-36 text-zinc-300">Pago</label>
               <select
-                className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
                 value={form.paymentMethod}
                 onChange={(e) => handleChange("paymentMethod", e.target.value as DeliveryInfo["paymentMethod"])}
-                disabled={form.zone === "NACIONAL"}   // 👈 no se puede cambiar
+                disabled={form.zone === "NACIONAL"}
                 title={form.zone === "NACIONAL" ? "Para envíos nacionales el pago es solo por transferencia" : undefined}
-                >
+              >
                 <option value="EFECTIVO">Efectivo</option>
                 <option value="TRANSFERENCIA">Transferencia</option>
               </select>
@@ -270,11 +260,11 @@ export default function CartButton() {
 
             {form.paymentMethod === "EFECTIVO" && form.zone !== "NACIONAL" && (
               <div className="flex items-center gap-3">
-                <label className="text-sm w-36">Devuelta (opcional)</label>
+                <label className="text-sm w-36 text-zinc-300">Devuelta (opcional)</label>
                 <input
                   type="number"
                   min={0}
-                  className="flex-1 rounded-xl bg-white/10 border border-white/20 px-3 py-2 text-sm"
+                  className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
                   placeholder="Ej: 100000"
                   value={form.changeFor ?? ""}
                   onChange={(e) => handleChange("changeFor", Number(e.target.value) || undefined)}
@@ -284,32 +274,36 @@ export default function CartButton() {
           </section>
         </div>
 
-        {/* Pie: usa fee/grand calculados arriba */}
-        <div className="shrink-0 border-t border-white/10 p-4 space-y-3 bg-[#182c25]">
+        {/* Footer */}
+        <div className="shrink-0 border-t border-stone-700 bg-[#111315] p-4 space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span>Subtotal</span><span>{formatCOP(sub)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span>Domicilio</span><span>{formatCOP(fee)}</span>
           </div>
-          <div className="flex items-center justify-between text-lg font-bold text-green-300">
+          <div className="flex items-center justify-between text-lg font-bold text-amber-400">
             <span>Total</span><span>{formatCOP(grand)}</span>
           </div>
 
           <div className="flex gap-3">
             <button
-              className="flex-1 rounded-xl bg-green-500 px-4 py-2 font-semibold text-black hover:bg-green-400 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-amber-500 px-4 py-2 font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
               disabled={items.length === 0 || !form.name || !form.phone || !form.address || (form.zone === "NACIONAL" && !form.idCard)}
               onClick={handleWhatsApp}
             >
               Continuar con pago (WhatsApp)
             </button>
-            <button className="rounded-xl bg-white/10 px-4 py-2 text-sm hover:bg-white/15" onClick={clear}>
+            <button
+              className="rounded-xl bg-white/5 border border-white/10 px-4 py-2 text-sm hover:bg-white/10"
+              onClick={clear}
+            >
               Vaciar
             </button>
           </div>
-          <p className="text-xs text-white/60">
-            Al continuar te redigiremos con un mensaje a el WhatsApp con el detalle del pedido y tus datos, para que finalices con el pago.
+
+          <p className="text-xs text-zinc-400">
+            Al continuar te redirigiremos a WhatsApp con el detalle del pedido y tus datos para finalizar el pago.
           </p>
         </div>
       </aside>
@@ -325,7 +319,7 @@ export default function CartButton() {
       >
         <ShoppingCart className="h-5 w-5" />
         {count > 0 && (
-          <span className="absolute -right-1 -top-1 min-w-[1.25rem] rounded-full bg-green-500 px-1 text-xs font-bold text-black text-center">
+          <span className="absolute -right-1 -top-1 min-w-[1.25rem] rounded-full bg-amber-500 px-1 text-xs font-bold text-black text-center">
             {count}
           </span>
         )}

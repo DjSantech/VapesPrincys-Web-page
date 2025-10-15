@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 export type ProductCardProps = {
   id: string;
   name: string;
-  price: number;      // en centavos
+  price: number; // en centavos
   imageUrl?: string;
   className?: string;
 };
@@ -29,13 +29,13 @@ export default function ProductCard({
   return (
     <Link
       to={`/product/${id}`}
-      className={`group block rounded-xl border border-green-700 bg-[#182c25] overflow-hidden 
+      className={`group block rounded-xl border border-stone-700 bg-[#1a1d1f] overflow-hidden 
                   shadow-md hover:-translate-y-1 hover:shadow-xl transition-all duration-200 ease-out 
-                  focus:outline-none focus:ring-2 focus:ring-green-400 ${className}`}
+                  focus:outline-none focus:ring-2 focus:ring-amber-400 ${className}`}
       aria-label={`Ver ${name}`}
     >
       {/* Imagen del producto */}
-      <div className="relative overflow-hidden bg-black/10">
+      <div className="relative overflow-hidden bg-black/20">
         <img
           src={img}
           alt={name}
@@ -43,16 +43,16 @@ export default function ProductCard({
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = fallback;
           }}
-          className="w-full h-32 sm:h-40 md:h-48 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
+          className="w-full h-40 sm:h-48 md:h-56 object-cover transition-transform duration-300 ease-out group-hover:scale-105"
         />
       </div>
 
       {/* Detalle del producto */}
-      <div className="p-2 sm:p-3 md:p-4 bg-green-500 group-hover:bg-green-400 transition-colors duration-300">
-        <h1 className="line-clamp-1 text-xs sm:text-sm md:text-lg font-bold text-black">
+      <div className="p-3 sm:p-4 bg-[#111315] group-hover:bg-[#181b1d] transition-colors duration-300">
+        <h1 className="line-clamp-1 text-sm sm:text-base md:text-lg font-semibold text-zinc-100">
           {name}
         </h1>
-        <p className="mt-1 text-xs sm:text-sm md:text-base font-bold text-black">
+        <p className="mt-1 text-sm sm:text-base md:text-lg font-bold text-amber-400">
           {formatPrice(price)}
         </p>
       </div>

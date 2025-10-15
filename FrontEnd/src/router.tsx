@@ -6,6 +6,8 @@ import MainLayout from "./layouts/MainLayout";
 import HomeView from "./views/HomeView";
 import ProductLayout from "./layouts/ProductLayout";
 import ProductDetailPage from "./views/ProductDetailPage";
+import AdminRoute from "./routes/AdminRoute";
+import AdminDashboard from "./views/AdminDashborad";
 
 export default function Router () {
     return (
@@ -20,6 +22,16 @@ export default function Router () {
                 </Route>
                 <Route element={<ProductLayout/>}>
                 <Route path="/product/:id" element={<ProductDetailPage/>} />
+                </Route>
+                <Route element={<MainLayout/>}>
+                <Route path="/auth/login" element={<LoginView/>} />
+                </Route>
+                <Route element={<MainLayout/>}>
+                <Route path="/admin"element={
+                <AdminRoute>
+                    <AdminDashboard />
+                </AdminRoute>
+                }/>
                 </Route>
 
                 
