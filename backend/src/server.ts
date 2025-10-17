@@ -7,6 +7,7 @@ import productsRouter from "./routes/products_routes";
 
 const app = express();
 
+
 // ✅ Permitir frontend local y desplegado
 app.use(cors({
   origin: [

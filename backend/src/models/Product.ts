@@ -1,13 +1,13 @@
+// src/models/Product.ts
 import { Schema, model } from "mongoose";
 
-const ProductSchema = new Schema({
-  name: { type: String, required: true },
-  price: { type: Number, required: true }, // en centavos
-  imageUrl: String,
-  category: { type: String, index: true }, // "Desechables", "Pods", etc.
-  flavors: [String],
-  stock: { type: Number, default: 0 },
-  description: String,
+const productSchema = new Schema({
+  sku:      { type: String, required: true, unique: true, index: true },
+  name:     { type: String, required: true, trim: true },
+  price:    { type: Number, required: true, min: 0 },
+  stock:    { type: Number, default: 0, min: 0 },
+  category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
+  isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
-export default model("Product", ProductSchema);
+export default model("Product", productSchema);

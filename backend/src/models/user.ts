@@ -1,43 +1,10 @@
-import mongoose, {Schema} from "mongoose";
-import slug from 'slug'
+// src/models/User.ts
+import { Schema, model } from "mongoose";
 
-interface User {
-    handle: string
-    name: string
-    email: string
-    password: string
-}
+const userSchema = new Schema({
+  email: { type: String, required: true, unique: true, lowercase: true, index: true },
+  passwordHash: { type: String, required: true },
+  role: { type: String, enum: ["admin","user"], default: "user", index: true }
+}, { timestamps: true });
 
-const userSchema = new Schema ({
-    handle : {
-        type: String,
-        required: true,
-        trim: true,
-        lowercase: true,
-        unique: true
-    },
-    name : {
-        type: String,
-        required: true,
-        trim: true
-    },
-
-    email: {
-        type: String,
-        required: true,
-        trim: true,
-        unique: true
-    },
-
-    password: {
-        type: String,
-        required: true,
-        trim: true
-    }
-
-
-})
-
-const User = mongoose.model<User>('user', userSchema)
-
-export default User
+export default model("User", userSchema);

@@ -1,28 +1,40 @@
-// src/controllers/products_controller.ts
+import Product from "../models/Product";
 import { Request, Response } from "express";
-import { PRODUCTS } from "../data/products_data"; // o tu fuente real de datos
 
-export const listProducts = (req: Request, res: Response) => {
+// LIST + filtros
+export const listProducts = async (req: Request, res: Response) => {
   const q = (req.query.q as string)?.toLowerCase() || "";
-  const category = (req.query.category as string)?.trim().toLowerCase() || "";
-
-  let result = PRODUCTS;
-
-  if (q) {
-    result = result.filter(p => p.name.toLowerCase().includes(q));
-  }
-  if (category) {
-  result = result.filter(p => p.category?.toLowerCase() === category);
-}
-
-
-  res.json(result);
+  const category = (req.query.category as string) || "";
+  const filter: any = {};
+  if (q) filter.name = { $regex: q, $options: "i" };
+  if (category) filter.category = category;
+  const items = await Product.find(filter).sort({ createdAt: -1 });
+  res.json(items);
 };
 
-export const getProductById = (req: Request, res: Response) => {
-  const product = PRODUCTS.find(p => p.id === req.params.id);
-  if (!product) {
-    return res.status(404).json({ error: "Producto no encontrado" });
-  }
-  res.json(product);
+// GET by id
+export const getProductById = async (req: Request, res: Response) => {
+  const p = await Product.findById(req.params.id);
+  if (!p) return res.status(404).json({ error: "Producto no encontrado" });
+  res.json(p);
+};
+
+// CREATE
+export const createProduct = async (req: Request, res: Response) => {
+  const p = await Product.create(req.body);
+  res.status(201).json(p);
+};
+
+// UPDATE
+export const updateProduct = async (req: Request, res: Response) => {
+  const p = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  if (!p) return res.status(404).json({ error: "Producto no encontrado" });
+  res.json(p);
+};
+
+// DELETE
+export const deleteProduct = async (req: Request, res: Response) => {
+  const p = await Product.findByIdAndDelete(req.params.id);
+  if (!p) return res.status(404).json({ error: "Producto no encontrado" });
+  res.json({ ok: true });
 };

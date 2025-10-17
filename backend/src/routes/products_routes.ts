@@ -1,53 +1,33 @@
+// src/routes/products.ts
 import { Router } from "express";
-import { body } from "express-validator";
-import { listProducts, getProductById } from "../controllers/products_controller";
-import { createAccount, login } from "../handlers";
-import { handleInputErrrors } from "../middleware/validation";
+import Product from "../models/Product";
+const r = Router();
 
-const router = Router();
+// listar (con filtro opcional por categoría y populate)
+r.get("/", async (req, res) => {
+  const { category } = req.query;
+  const q: any = {};
+  if (category) q.category = category;
+  const items = await Product.find(q).populate("category", "name slug").lean();
+  res.json(items);
+});
 
-/* ===========================
-   🔹 RUTAS DE PRODUCTOS
-   =========================== */
+// crear
+r.post("/", async (req, res) => {
+  const created = await Product.create(req.body);
+  res.status(201).json(created);
+});
 
-// GET /api/products?q=nombre&category=nombre_categoria
-router.get("/", listProducts);       // lista todos o filtra por nombre / categoría
-router.get("/:id", getProductById);  // obtiene un producto por ID
+// actualizar
+r.patch("/:id", async (req, res) => {
+  const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true });
+  res.json(updated);
+});
 
+// borrar
+r.delete("/:id", async (req, res) => {
+  await Product.findByIdAndDelete(req.params.id);
+  res.sendStatus(204);
+});
 
-/* ===========================
-   🔹 AUTENTICACIÓN (REGISTER / LOGIN)
-   =========================== */
-
-router.post(
-  "/auth/register",
-  body("handle")
-    .notEmpty()
-    .withMessage("El handle no puede ir vacío."),
-  body("name")
-    .notEmpty()
-    .withMessage("El name no puede ir vacío."),
-  body("email")
-    .isEmail()
-    .withMessage("El email no es válido."),
-  body("password")
-    .notEmpty()
-    .isLength({ min: 8 })
-    .withMessage("El password es muy corto, mínimo ocho caracteres."),
-  handleInputErrrors,
-  createAccount
-);
-
-router.post(
-  "/auth/login",
-  body("email")
-    .isEmail()
-    .withMessage("El email no es válido."),
-  body("password")
-    .notEmpty()
-    .withMessage("El password es obligatorio."),
-  handleInputErrrors,
-  login
-);
-
-export default router;
+export default r;
