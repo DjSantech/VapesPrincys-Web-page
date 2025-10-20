@@ -11,6 +11,7 @@ export interface AdminProduct {
   name: string;
   price: number;      // centavos
   stock: number;
+  puffs: number;
   visible: boolean;
   imageUrl: string;
   category: string;   // Opción A: guardado como texto
@@ -22,6 +23,7 @@ export interface CreateProductPayload {
   name: string;
   price: number;      // centavos
   stock?: number;
+  puffs: number;
   visible?: boolean;
   category?: string;  // nombre de la categoría
   image?: File | null;

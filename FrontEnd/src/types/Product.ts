@@ -4,6 +4,7 @@ export interface Product {
   price: number;        // en centavos
   description?: string; // opcional
   stock?: number;       // opcional
+  puffs?: number;      // opcional
   imageUrl?: string;    // para simplificar un solo campo
   images?: string[];    // si en el futuro guardas varias imágenes
   categoryId?: string;  // si vas a manejar categorías

@@ -234,6 +234,11 @@ export default function ProductDetailPage() {
           <div>
             <h1 className="text-3xl font-bold text-zinc-100">{product.name}</h1>
             <div className="mt-2 text-2xl font-bold text-amber-400">{formatCOP(product.price)}</div>
+            {typeof product.puffs === "number" && product.puffs > 0 && (
+            <div className="mt-1 text-sm text-zinc-400">
+              {product.puffs.toLocaleString("es-CO")} puffs
+            </div>
+            )}
             <p className="mt-2 text-zinc-300">{product.description ?? "—"}</p>
             <div className="mt-2 text-sm text-zinc-400">
               Stock disponible: <span className="font-semibold text-zinc-200">{inStock}</span> unidades

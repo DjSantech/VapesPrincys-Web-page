@@ -42,6 +42,7 @@ export default function AdminDashboard() {
     name: string;
     price: number;          // centavos
     stock: number;
+    puffs: number;          // NUEVO
     visible: boolean;
     category: string;       // guardaremos el NOMBRE de la categoría elegida
     flavorsCSV: string;     // texto crudo -> se parsea al enviar
@@ -51,6 +52,7 @@ export default function AdminDashboard() {
     name: "",
     price: 0,
     stock: 0,
+    puffs: 0,               // NUEVO
     visible: true,
     category: "",
     flavorsCSV: "",
@@ -73,6 +75,7 @@ export default function AdminDashboard() {
       name: "",
       price: 0,
       stock: 0,
+      puffs: 0,
       visible: true,
       category: "",
       flavorsCSV: "",
@@ -139,6 +142,7 @@ export default function AdminDashboard() {
       name: merged.name,
       price: Math.max(0, Math.round(merged.price ?? 0)),
       stock: Math.max(0, Math.round(merged.stock ?? 0)),
+      puffs: Math.max(0, Math.round(merged.puffs ?? 0)), // NUEVO
       visible: merged.visible,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
       flavors: draft.flavorsCSV !== undefined
@@ -183,6 +187,7 @@ export default function AdminDashboard() {
     if (!form.name.trim()) { toast.error("El nombre es obligatorio"); return; }
     if (form.price < 0)    { toast.error("El precio no puede ser negativo"); return; }
     if (form.stock < 0)    { toast.error("El stock no puede ser negativo"); return; }
+    if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; } // NUEVO
 
     try {
       const created = await createProduct({
@@ -190,6 +195,7 @@ export default function AdminDashboard() {
         name: form.name.trim(),
         price: Math.round(form.price),
         stock: Math.max(0, Math.round(form.stock)),
+        puffs: Math.max(0, Math.round(form.puffs)), // NUEVO
         visible: form.visible,
         // guardamos el NOMBRE de la categoría seleccionada (backend Opción A = texto)
         category: form.category.trim(),
@@ -277,6 +283,7 @@ export default function AdminDashboard() {
             const sku = (d.sku ?? p.sku) ?? "";
             const price = Math.round(d.price ?? p.price ?? 0);
             const stock = Math.round(d.stock ?? p.stock ?? 0);
+            const puffs = Math.round(d.puffs ?? p.puffs ?? 0); // NUEVO
             const category = (d.category ?? p.category) ?? "";
             const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
             const visible = (d.visible ?? p.visible) ?? true;
@@ -366,6 +373,17 @@ export default function AdminDashboard() {
                     />
                   </div>
 
+                  <div>
+                    <label className="text-xs text-zinc-400">Puffs</label>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                      value={puffs}
+                      onChange={e => setDraft(p.id, { puffs: Math.max(0, Number(e.target.value)) })}
+                      placeholder="5000"
+                    />
+                  </div>
+
                   {/* Categoría (select) */}
                   <div>
                     <label className="text-xs text-zinc-400">Categoría</label>
@@ -383,7 +401,6 @@ export default function AdminDashboard() {
                       Administra categorías en el botón “Categorías”.
                     </div>
                   </div>
-
 
                   <div className="lg:col-span-2">
                     <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
@@ -482,6 +499,17 @@ export default function AdminDashboard() {
               </div>
 
               <div>
+                <label className="text-xs text-zinc-400">Puffs</label>
+                <input
+                  type="number"
+                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                  value={form.puffs}
+                  onChange={e => setForm(f => ({ ...f, puffs: Math.max(0, Number(e.target.value)) }))}
+                  placeholder="5000"
+                />
+              </div>
+
+              <div>
                 <label className="text-xs text-zinc-400">SKU</label>
                 <input
                   className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 uppercase"
@@ -490,7 +518,6 @@ export default function AdminDashboard() {
                   placeholder="VAPE-UV-5000"
                 />
               </div>
-              
 
               <div>
                 <label className="text-xs text-zinc-400">Categoría</label>
