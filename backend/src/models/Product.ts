@@ -7,7 +7,7 @@ const productSchema = new Schema({
   price:    { type: Number, required: true, min: 0 },   // en centavos
   stock:    { type: Number, default: 0, min: 0 },
   imageUrl: { type: String, default: "" },
-  category: { type: Schema.Types.ObjectId, ref: "Category" },
+  category: { type: String, trim: true, default: "" },
   isActive: { type: Boolean, default: true },
 
   // NUEVO: solo lista de sabores

@@ -1,9 +1,7 @@
-// src/models/Category.ts
-import { Schema, model } from "mongoose";
+import mongoose from "mongoose";
 
-const categorySchema = new Schema({
-  name: { type: String, required: true, unique: true, trim: true },
-  slug: { type: String, required: true, unique: true, lowercase: true }
+const CategorySchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true, unique: true },
 }, { timestamps: true });
 
-export default model("Category", categorySchema);
+export default mongoose.model("Category", CategorySchema);

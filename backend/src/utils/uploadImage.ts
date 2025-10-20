@@ -1,4 +1,4 @@
-import cloudinary from "../config/cloudinary";
+import cloudinary from "../lib/cloudinary.js";
 
 export async function uploadImageToCloudinary(buffer: Buffer, folder: string) {
   return new Promise((resolve, reject) => {

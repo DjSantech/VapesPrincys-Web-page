@@ -1,7 +1,7 @@
 // src/pages/ProductDetailPage.tsx
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useParams, Link } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { getProductById } from "../services/products_service";
 import type { Product } from "../types/Product";
 import { useCart } from "../store/cart_info";
@@ -14,12 +14,14 @@ const formatCOP = (cents: number) =>
 
 type LocationState = { product?: Product };
 
-// Tipos para add-ons
-type AddOn = { id: string; name: string; price: number };
-type ExtraVapeModel = { name: string; basePrice: number };
+// Tipos locales
+
 type GiftVapeModel = { name: string; basePrice: number };
 
-// 1) Pequeño componente reutilizable (opcional)
+// Nuevos tipos: categorías y producto con _id opcional
+type Category = { id: string; name: string; slug?: string };
+type ProductWithMongoId = Product & { _id?: string };
+
 function StepNotice({ children }: { children: React.ReactNode }) {
   return (
     <p className="px-4 py-2 text-xs rounded-b-xl bg-[#0d0f10] text-zinc-300 border-t border-stone-800">
@@ -28,12 +30,10 @@ function StepNotice({ children }: { children: React.ReactNode }) {
   );
 }
 
-
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const state = (location.state as LocationState) ?? {};
-
   const { addItem } = useCart();
 
   const [product, setProduct] = useState<Product | undefined>(state.product);
@@ -44,12 +44,10 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState<number>(1);
   const [flavor, setFlavor] = useState<string>("");
 
-  // add-ons encadenados
-  const [open1, setOpen1] = useState<boolean>(false);
+  // add-ons (solo “otro vape” y “regalo”)
   const [open2, setOpen2] = useState<boolean>(false);
   const [open3, setOpen3] = useState<boolean>(false);
 
-  const [charger, setCharger] = useState<AddOn | null>(null);
   const [extraVape, setExtraVape] = useState<{ model?: string; flavor?: string; qty?: number; price?: number }>({});
   const [giftVape, setGiftVape] = useState<{ model?: string; flavor?: string }>({});
 
@@ -57,17 +55,26 @@ export default function ProductDetailPage() {
 
   // Datos estáticos
   const DEFAULT_FLAVORS: string[] = ["Mango", "Ice Mint", "Sandía", "Uva"];
-  const chargers: AddOn[] = [
-    { id: "usb-c",    name: "Cargador USB-C",        price: 25000 },
-    { id: "wall-20w", name: "Cargador de pared 20W", price: 49900 },
-  ];
-  const extraVapeModels: ExtraVapeModel[] = [
-    { name: "Vape Mini 1500", basePrice: 79900 },
-    { name: "Vape Pro 5000",  basePrice: 129900 },
-  ];
+
   const giftVapeModels: GiftVapeModel[] = [
     { name: "Vape Classic 1000 (Regalo)", basePrice: 0 },
   ];
+
+  // === NUEVO: estado para categorías y modelos por categoría ===
+  const baseURL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:8080/api";
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [catLoading, setCatLoading] = useState<boolean>(false);
+  const [catError, setCatError] = useState<string>("");
+
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
+  const [modelsByCategory, setModelsByCategory] = useState<ProductWithMongoId[]>([]);
+  const [modelsLoading, setModelsLoading] = useState<boolean>(false);
+  const [modelsError, setModelsError] = useState<string>("");
+
+  const [selectedModelId, setSelectedModelId] = useState<string>(""); // id del vape elegido (Product.id o _id)
+  const [selectedModelFlavors, setSelectedModelFlavors] = useState<string[]>([]); // sabores del vape elegido
+
+  const getProductKey = (p: ProductWithMongoId): string => p.id ?? p._id ?? "";
 
   useEffect(() => {
     if (!productId || product) return;
@@ -78,12 +85,10 @@ export default function ProductDetailPage() {
         setLoading(true);
         const p = await getProductById(productId);
         if (!active) return;
-
         setProduct(p);
 
         const initialFlavors: string[] =
           Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
-
         setFlavor((prev) => prev || initialFlavors[0]);
       } catch (e: unknown) {
         if (axios.isAxiosError(e)) {
@@ -100,10 +105,71 @@ export default function ProductDetailPage() {
       }
     })();
 
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [productId, product]);
+
+  // Cargar categorías cuando se abre el acordeón la primera vez
+  useEffect(() => {
+    if (!open2 || categories.length > 0) return;
+    let active = true;
+    (async () => {
+      try {
+        setCatLoading(true);
+        setCatError("");
+        // Ajusta la URL si tu endpoint es distinto (p.ej. /categories o /category)
+        const { data } = await axios.get<Category[]>(`${baseURL}/categories`);
+        if (!active) return;
+        setCategories(Array.isArray(data) ? data : []);
+      } catch (e: unknown) {
+        const err = e as AxiosError<{ error?: string }>;
+        setCatError(err.response?.data?.error ?? "No se pudieron cargar las categorías");
+      } finally {
+        if (active) setCatLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [open2, categories.length, baseURL]);
+
+  // Cargar modelos (vapes) cuando se elige una categoría
+  useEffect(() => {
+    if (!selectedCategoryId) return;
+    let active = true;
+    (async () => {
+      try {
+        setModelsLoading(true);
+        setModelsError("");
+        setModelsByCategory([]);
+        setSelectedModelId("");
+        setSelectedModelFlavors([]);
+        setExtraVape((prev) => ({ ...prev, model: undefined, price: undefined, flavor: undefined, qty: prev.qty ?? 1 }));
+
+        // Ajusta el nombre del query si tu backend usa otro (p.ej. categoryId, categorySlug, categoryName)
+        const { data } = await axios.get<ProductWithMongoId[]>(`${baseURL}/products`, { params: { categoryId: selectedCategoryId } });
+        if (!active) return;
+        setModelsByCategory(Array.isArray(data) ? data : []);
+      } catch (e: unknown) {
+        const err = e as AxiosError<{ error?: string }>;
+        setModelsError(err.response?.data?.error ?? "No se pudieron cargar los productos de la categoría");
+      } finally {
+        if (active) setModelsLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [selectedCategoryId, baseURL]);
+
+  // Cuando se elige un modelo, setear sabores y precio del extra
+  useEffect(() => {
+    if (!selectedModelId) return;
+    const chosen = modelsByCategory.find((p) => getProductKey(p) === selectedModelId);
+    const flavors = chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS;
+    setSelectedModelFlavors(flavors);
+    setExtraVape({
+      model: chosen?.name,
+      flavor: flavors[0],
+      qty: 1,
+      price: chosen?.price ?? 0,
+    });
+  }, [selectedModelId, modelsByCategory]);
 
   if (error) return <p className="p-6 text-red-400">{error}</p>;
   if (loading || !product) {
@@ -122,7 +188,7 @@ export default function ProductDetailPage() {
   const img = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
   const inStock = product.stock ?? 0;
 
-  const addOnTotal = (charger?.price ?? 0) + (extraVape.price ?? 0);
+  const addOnTotal = extraVape.price ?? 0;
   const mainTotal = product.price * qty;
   const grandTotal = mainTotal + addOnTotal;
 
@@ -136,18 +202,17 @@ export default function ProductDetailPage() {
       qty,
       flavor,
       imageUrl: product.imageUrl || product.images?.[0],
-      charger: charger ? { id: charger.id, name: charger.name, price: charger.price } : null,
+      charger: null,
       extraVape: extraVape.model
         ? {
             model: extraVape.model,
             flavor: extraVape.flavor,
-            qty: extraVape.qty || 1,
-            price: extraVape.price || 0,
+            qty: extraVape.qty ?? 1,
+            price: extraVape.price ?? 0,
           }
         : null,
       giftVape: giftVape.model ? { model: giftVape.model, flavor: giftVape.flavor } : null,
     };
-
     addItem(item);
     alert("Producto agregado al carrito ✅");
   };
@@ -155,9 +220,7 @@ export default function ProductDetailPage() {
   return (
     <div className="p-6 text-zinc-100">
       <div className="mb-4">
-        <Link to="/" className="text-sm text-amber-400 hover:underline">
-          ← Volver
-        </Link>
+        <Link to="/" className="text-sm text-amber-400 hover:underline">← Volver</Link>
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -199,110 +262,90 @@ export default function ProductDetailPage() {
                 className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 {availableFlavors.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
+                  <option key={f} value={f}>{f}</option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* ADD-ON 1: Cargador */}
+          {/* ADD-ON 2: Agregar otro vape (CATEGORÍA → MODELO → SABOR) */}
           <div className="rounded-2xl border border-stone-700 overflow-hidden">
             <button
               type="button"
-              onClick={() => setOpen1((v) => !v)}
+              onClick={() => setOpen2((v) => !v)}
               className="w-full text-left px-4 py-3 bg-[#1a1d1f] hover:bg-[#181b1d] flex items-center justify-between"
             >
-              <span className="font-semibold text-zinc-100">➕ Agregar cargador</span>
-              <span className="text-sm text-zinc-400">{open1 ? "Cerrar" : "Abrir"}</span>
-            </button>
-
-            {open1 && (
-              <div className="bg-[#111315] p-4 space-y-3">
-                <div className="text-sm text-zinc-400">Elige un cargador</div>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {chargers.map((c) => (
-                    <label
-                      key={c.id}
-                      className={`cursor-pointer rounded-xl border px-4 py-3 text-sm
-                        ${charger?.id === c.id ? "border-amber-400 bg-zinc-900" : "border-stone-700 bg-[#0d0f10]"}`}
-                    >
-                      <input
-                        type="radio"
-                        name="charger"
-                        className="mr-2 accent-amber-400"
-                        checked={charger?.id === c.id}
-                        onChange={() => setCharger(c)}
-                      />
-                      <span className="text-zinc-200">{c.name}</span>
-                      <span className="ml-2 text-amber-400 font-semibold">{formatCOP(c.price)}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ADD-ON 2: Otro vape */}
-          <div
-            className={`rounded-2xl border overflow-hidden ${
-              open1 && charger ? "border-stone-700" : "border-stone-800 opacity-60 pointer-events-none"
-            }`}
-          >
-            <button
-                type="button"
-                onClick={() => open1 && charger && setOpen2((v) => !v)}
-                className="w-full text-left px-4 py-3 bg-[#1a1d1f] hover:bg-[#181b1d] flex items-center justify-between"
-                aria-disabled={!open1 || !charger}
-                title={!open1 || !charger ? "Primero abre 'Agregar cargador' y elige uno" : undefined}
-              >
               <span className="font-semibold text-zinc-100">➕ Agregar otro vape</span>
               <span className="text-sm text-zinc-400">{open2 ? "Cerrar" : "Abrir"}</span>
             </button>
 
-            {/* AVISO cuando está bloqueado */}
-            {(!open1 || !charger) && (
-              <StepNotice>
-                Para habilitar este paso, primero abre <span className="font-semibold">“Agregar cargador”</span> y elige uno.
-              </StepNotice>
-            )}
-
-            {open2 && open1 && charger && (
+            {open2 && (
               <div className="bg-[#111315] p-4 space-y-4">
+                {/* Categoría */}
                 <div className="flex items-center gap-3">
-                  <label className="text-sm w-24 text-zinc-300">Modelo</label>
+                  <label className="text-sm w-24 text-zinc-300">Categoría</label>
                   <select
                     className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    value={extraVape.model ?? ""}
-                    onChange={(e) => {
-                      const model = extraVapeModels.find((m) => m.name === e.target.value);
-                      setExtraVape((prev) => ({ ...prev, model: model?.name, price: model?.basePrice ?? 0 }));
-                    }}
+                    value={selectedCategoryId}
+                    onChange={(e) => setSelectedCategoryId(e.target.value)}
                   >
-                    <option value="" disabled>Selecciona…</option>
-                    {extraVapeModels.map((m) => (
-                      <option key={m.name} value={m.name}>
-                        {m.name} ({formatCOP(m.basePrice)})
-                      </option>
+                    <option value="">Selecciona…</option>
+                    {catLoading && <option value="" disabled>Cargando categorías…</option>}
+                    {catError && <option value="" disabled>{catError}</option>}
+                    {!catLoading && !catError && categories.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
                 </div>
 
+                {/* Modelo (vapes de la categoría) */}
+                <div className="flex items-center gap-3 opacity-100">
+                  <label className="text-sm w-24 text-zinc-300">Modelo</label>
+                  <select
+                    className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    value={selectedModelId}
+                    onChange={(e) => setSelectedModelId(e.target.value)}
+                    disabled={!selectedCategoryId || modelsLoading || !!modelsError}
+                    title={!selectedCategoryId ? "Elige una categoría primero" : undefined}
+                  >
+                    {!selectedCategoryId && <option value="">Selecciona categoría primero…</option>}
+                    {selectedCategoryId && modelsLoading && <option value="">Cargando modelos…</option>}
+                    {selectedCategoryId && modelsError && <option value="">{modelsError}</option>}
+                    {selectedCategoryId && !modelsLoading && !modelsError && (
+                      <>
+                        <option value="">Selecciona…</option>
+                        {modelsByCategory.map((p) => (
+                          <option key={getProductKey(p)} value={getProductKey(p)}>
+                            {p.name} ({formatCOP(p.price)})
+                          </option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+
+                {/* Sabor del vape elegido */}
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-24 text-zinc-300">Sabor</label>
                   <select
                     className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={extraVape.flavor ?? ""}
                     onChange={(e) => setExtraVape((prev) => ({ ...prev, flavor: e.target.value }))}
+                    disabled={!selectedModelId}
+                    title={!selectedModelId ? "Elige un modelo primero" : undefined}
                   >
-                    <option value="" disabled>Selecciona…</option>
-                    {availableFlavors.map((f) => (
-                      <option key={f} value={f}>{f}</option>
-                    ))}
+                    {!selectedModelId && <option value="">Selecciona modelo primero…</option>}
+                    {selectedModelId && (
+                      <>
+                        {selectedModelFlavors.map((f) => (
+                          <option key={f} value={f}>{f}</option>
+                        ))}
+                      </>
+                    )}
                   </select>
                 </div>
 
+                {/* Cantidad */}
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-24 text-zinc-300">Cantidad</label>
                   <input
@@ -312,13 +355,15 @@ export default function ProductDetailPage() {
                     value={extraVape.qty ?? 1}
                     onChange={(e) => setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))}
                     className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                    disabled={!selectedModelId}
+                    title={!selectedModelId ? "Elige un modelo primero" : undefined}
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* ADD-ON 3: Regalo */}
+          {/* ADD-ON 3: Regalo (igual que antes) */}
           <div
             className={`rounded-2xl border overflow-hidden ${
               canOpen3 ? "border-stone-700" : "border-stone-800 opacity-60 pointer-events-none"
@@ -332,12 +377,12 @@ export default function ProductDetailPage() {
               <span className="font-semibold text-zinc-100">🎁 Vape de regalo</span>
               <span className="text-sm text-zinc-400">{open3 ? "Cerrar" : "Abrir"}</span>
             </button>
-             {/* AVISO cuando está bloqueado */}
-              {!canOpen3 && (
-                <StepNotice>
-                  Este paso se habilita al elegir un modelo en <span className="font-semibold">“Agregar otro vape”</span>.
-                </StepNotice>
-              )}
+
+            {!canOpen3 && (
+              <StepNotice>
+                Este paso se habilita al elegir un modelo en <span className="font-semibold">“Agregar otro vape”</span>.
+              </StepNotice>
+            )}
 
             {open3 && canOpen3 && (
               <div className="bg-[#111315] p-4 space-y-4">
@@ -367,23 +412,18 @@ export default function ProductDetailPage() {
                       <option key={f} value={f}>{f}</option>
                     ))}
                   </select>
-                  
                 </div>
 
                 <p className="text-sm text-amber-400">Este ítem es gratis como promoción.</p>
               </div>
             )}
           </div>
-          
+
           {/* RESUMEN + CTA */}
           <div className="flex items-center justify-between rounded-2xl border border-stone-700 bg-[#1a1d1f] px-4 py-3">
             <div className="text-sm text-zinc-300">
-              <div>
-                Total producto: <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span>
-              </div>
-              <div>
-                Extras: <span className="font-semibold text-zinc-100">{formatCOP(addOnTotal)}</span>
-              </div>
+              <div>Total producto: <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span></div>
+              <div>Extras: <span className="font-semibold text-zinc-100">{formatCOP(addOnTotal)}</span></div>
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-amber-400">Total: {formatCOP(grandTotal)}</div>
@@ -395,6 +435,7 @@ export default function ProductDetailPage() {
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>

@@ -9,10 +9,7 @@ import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary";
 const r = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
-// utils
-const isValidObjectId = (v: unknown): v is string =>
-  typeof v === "string" && mongoose.Types.ObjectId.isValid(v);
-
+// Mapear documento -> DTO para el front
 const mapDoc = (p: any) => ({
   id: String(p._id),
   sku: p.sku ?? "",
@@ -21,13 +18,33 @@ const mapDoc = (p: any) => ({
   stock: p.stock ?? 0,
   visible: p.isActive ?? true,
   imageUrl: p.imageUrl ?? "",
-  category: p.category ? String(p.category) : "",
-  flavors: Array.isArray(p.flavors) ? p.flavors : []
+  category: typeof p.category === "string" ? p.category : "", // <-- texto
+  flavors: Array.isArray(p.flavors) ? p.flavors : [],
+});
+
+
+
+
+// =========================
+// GET /api/products/:id  (detalle)
+// =========================
+r.get("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+    const doc = await Product.findById(id).lean();
+    if (!doc) return res.status(404).json({ error: "Not found" });
+    return res.json(mapDoc(doc));
+  } catch (e) {
+    console.error("GET /products/:id error:", e);
+    return res.status(500).json({ error: "Error interno" });
+  }
 });
 
 // =========================
-// GET /api/products
-// Soporta filtros ?q= y ?category=
+// GET /api/products  (lista, con filtros ?q= y ?category= )
 // =========================
 r.get("/", async (req, res) => {
   try {
@@ -37,12 +54,12 @@ r.get("/", async (req, res) => {
     if (q && q.trim() !== "") {
       filter.name = { $regex: q.trim(), $options: "i" };
     }
-    // Si tu category es un ObjectId, valida; si la guardas como texto, ajusta aquí:
+
+    // categoría como string (match exacto; si quieres case-insensitive exacto usa regex)
     if (category && category.trim() !== "") {
-      // ejemplo: si guardas ObjectId
-      if (isValidObjectId(category)) filter.category = category;
-      // si guardas texto de categoría, cambia a:
-      // filter.categoryText = category.trim();
+      filter.category = category.trim();
+      // Alternativa exacta case-insensitive:
+      // filter.category = { $regex: `^${category.trim()}$`, $options: "i" };
     }
 
     const rows = await Product.find(filter).lean();
@@ -55,7 +72,7 @@ r.get("/", async (req, res) => {
 
 // =========================
 // POST /api/products  (multipart/form-data)
-// Campos: sku, name, price, stock?, visible?, category?, flavors? (array o CSV), image? (File)
+// Campos: sku, name, price, stock?, visible?, category (texto), flavors? (array o CSV), image? (File)
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   try {
@@ -65,23 +82,25 @@ r.post("/", upload.single("image"), async (req, res) => {
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
 
     const priceNum = Number(price);
-    if (!Number.isFinite(priceNum) || priceNum < 0)
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
       return res.status(400).json({ error: "Precio inválido" });
+    }
 
     const stockNum = stock != null ? Number(stock) : 0;
-    if (!Number.isFinite(stockNum) || stockNum < 0)
+    if (!Number.isFinite(stockNum) || stockNum < 0) {
       return res.status(400).json({ error: "Stock inválido" });
+    }
 
-    // flavors: array o CSV
+    // flavors puede venir como array o CSV
     let flavorsArr: string[] = [];
     if (Array.isArray(flavors)) {
       flavorsArr = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
-    } else if (typeof flavors === "string" && flavors.trim() !== "") {
+    } else if (typeof flavors === "string") {
       flavorsArr = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    // category: ObjectId válido o undefined
-    const categoryVal = isValidObjectId(category) ? category : undefined;
+    // categoría como texto
+    const categoryStr = typeof category === "string" ? category.trim() : "";
 
     // Imagen (opcional) -> Cloudinary
     let imageUrl = "";
@@ -97,9 +116,9 @@ r.post("/", upload.single("image"), async (req, res) => {
       price: priceNum,
       stock: stockNum,
       imageUrl,
-      category: categoryVal,
+      category: categoryStr, // <-- guarda texto
       isActive: visible !== undefined ? String(visible) === "true" : true,
-      flavors: flavorsArr
+      flavors: flavorsArr,
     });
 
     return res.status(201).json(mapDoc(created));
@@ -139,9 +158,10 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    // category: si viene y no es ObjectId válido, la ignoramos
-    if (update.category && !isValidObjectId(update.category)) {
-      delete update.category;
+    // category: string (limpiar vacíos)
+    if (typeof update.category === "string") {
+      update.category = (update.category as string).trim();
+      if (update.category === "") delete update.category;
     }
 
     // Imagen (opcional) -> Cloudinary
@@ -166,6 +186,26 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: e.message });
     }
     return res.status(500).json({ error: "Error interno actualizando producto" });
+  }
+});
+
+// =========================
+// DELETE /api/products/:id
+// =========================
+r.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    const doc = await Product.findByIdAndDelete(id);
+    if (!doc) return res.status(404).json({ error: "Not found" });
+
+    return res.status(204).send();
+  } catch (e) {
+    console.error("DELETE /products/:id error:", e);
+    return res.status(500).json({ error: "Error interno eliminando producto" });
   }
 });
 
