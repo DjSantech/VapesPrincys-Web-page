@@ -2,9 +2,9 @@
 import type { CartItem } from "../types/Cart";
 import type { DeliveryInfo } from "../types/checkout";
 
-export const formatCOP = (cents: number) =>
+export const formatCOP = (pesos: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
-    .format(cents / 100);
+    .format(pesos || 0);
 
 const zoneLabel: Record<NonNullable<DeliveryInfo["zone"]>, string> = {
   DOSQUEBRADAS: "Dosquebradas",

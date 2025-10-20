@@ -9,12 +9,12 @@ export type ProductCardProps = {
   className?: string;
 };
 
-const formatPrice = (cents: number) =>
+const formatPrice = (pesos: number) =>
   new Intl.NumberFormat("es-CO", {
     style: "currency",
     currency: "COP",
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).format(pesos || 0);
 
 export default function ProductCard({
   id,

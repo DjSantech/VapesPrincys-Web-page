@@ -21,7 +21,7 @@ const fromArray = (arr?: string[]): string => (arr ?? []).join(", ");
 
 const fmt = (cents: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
-    .format((cents || 0) / 100);
+    .format((cents || 0));
 
 type Drafts = Record<string, Partial<AdminProduct> & { flavorsCSV?: string }>;
 
@@ -346,7 +346,7 @@ export default function AdminDashboard() {
                   </div>
 
                   <div>
-                    <label className="text-xs text-zinc-400">Precio (centavos)</label>
+                    <label className="text-xs text-zinc-400">Precio (Pesos Colombianos)</label>
                     <input
                       type="number"
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
@@ -490,6 +490,7 @@ export default function AdminDashboard() {
                   placeholder="VAPE-UV-5000"
                 />
               </div>
+              
 
               <div>
                 <label className="text-xs text-zinc-400">Categoría</label>

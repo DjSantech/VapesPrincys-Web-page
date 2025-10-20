@@ -8,9 +8,9 @@ import { useCart } from "../store/cart_info";
 import type { CartItem } from "../types/Cart";
 
 // Helpers
-const formatCOP = (cents: number) =>
+const formatCOP = (pesos: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
-    .format(cents / 100);
+    .format(pesos || 0);
 
 type LocationState = { product?: Product };
 

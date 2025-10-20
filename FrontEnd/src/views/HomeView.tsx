@@ -22,7 +22,11 @@ export default function HomeView() {
         setError("");
         setLoading(true);
         const data = await getProducts(q || category ? { q, category } : undefined);
-        if (active) setItems(data);
+
+        // ✅ Solo productos visibles/activos
+        const visibles = data.filter(p => (p.visible ?? p.isActive ?? true) === true);
+
+        if (active) setItems(visibles);
       } catch (e) {
         console.error("Error al obtener productos:", e);
         if (active) setError("No pudimos cargar los productos.");
@@ -30,9 +34,7 @@ export default function HomeView() {
         if (active) setLoading(false);
       }
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [q, category]);
 
   return (
@@ -45,10 +47,7 @@ export default function HomeView() {
       {loading ? (
         <div className="mt-6 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse"
-            />
+            <div key={i} className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (

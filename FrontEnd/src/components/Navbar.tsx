@@ -1,15 +1,13 @@
 // src/components/Navbar.tsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Search, Home } from "lucide-react";
 import CartButton from "../components/CartButton";
 
-// "" = todas; los nombres deben coincidir con tu backend
-const CATEGORIES = ["", "Desechables", "Pods", "Líquidos", "Accesorios"] as const;
-type Category = (typeof CATEGORIES)[number];
+type CategoryDTO = { id: string; name: string };
 
 function useDebounce<T>(value: T, delay = 300) {
-  const [debounced, setDebounced] = useState(value);
+  const [debounced, setDebounced] = useState<T>(value);
   useEffect(() => {
     const id = setTimeout(() => setDebounced(value), delay);
     return () => clearTimeout(id);
@@ -20,28 +18,63 @@ function useDebounce<T>(value: T, delay = 300) {
 export default function Navbar() {
   const [params, setParams] = useSearchParams();
 
+  // query
   const [q, setQ] = useState<string>(params.get("q") ?? "");
-  const [cat, setCat] = useState<Category>((params.get("category") as Category) ?? "");
   const qDebounced = useDebounce(q, 350);
 
+  // categorías dinámicas
+  const [cats, setCats] = useState<CategoryDTO[]>([]);
+  const [catsLoading, setCatsLoading] = useState<boolean>(false);
+  const [catsError, setCatsError] = useState<string>("");
+
+  // categoría seleccionada (string: nombre de categoría o "")
+  const initialCat = params.get("category") ?? "";
+  const [cat, setCat] = useState<string>(initialCat);
+
+  // cargar categorías públicas (sin auth)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setCatsLoading(true);
+        setCatsError("");
+        const apiBase = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:8080/api";
+        const res = await fetch(`${apiBase}/categories`);
+        if (!res.ok) throw new Error(`GET /categories failed (${res.status})`);
+        const data = (await res.json()) as CategoryDTO[];
+        if (!alive) return;
+        setCats(data);
+        // si hay category en URL pero no existe en la lista, no forzamos nada; queda “custom”
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "Error cargando categorías";
+        setCatsError(msg);
+      } finally {
+        setCatsLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
+
+  // sincroniza URL cuando cambian q / category
   useEffect(() => {
     const next = new URLSearchParams(params);
 
-    if (qDebounced) {
-      next.set("q", qDebounced);
-    } else {
-      next.delete("q");
-    }
+    if (qDebounced) next.set("q", qDebounced);
+    else next.delete("q");
 
-    if (cat) {
-      next.set("category", cat);
-    } else {
-      next.delete("category");
-    }
+    if (cat) next.set("category", cat);
+    else next.delete("category");
 
     setParams(next, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qDebounced, cat]);
+
+  // opciones del select (incluye “Todas” primero)
+  const categoryOptions = useMemo(() => {
+    const base: Array<{ value: string; label: string }> = [{ value: "", label: "Todas" }];
+    const fromApi = cats.map(c => ({ value: c.name, label: c.name }));
+    return base.concat(fromApi);
+  }, [cats]);
 
   return (
     <header className="sticky top-0 z-50 bg-[#1a1d1f]/95 backdrop-blur border-b border-stone-800 text-zinc-100">
@@ -91,13 +124,14 @@ export default function Navbar() {
                 <select
                   id="nav-category"
                   value={cat}
-                  onChange={(e) => setCat(e.target.value as Category)}
+                  onChange={(e) => setCat(e.target.value)}
                   className="bg-[#1f2123] text-zinc-200 ring-1 ring-stone-800 rounded-full px-2.5 py-1.5 text-xs sm:text-sm outline-none hover:ring-stone-700"
                   title="Categorías"
+                  disabled={catsLoading}
                 >
-                  {CATEGORIES.map((c) => (
-                    <option key={c || "all"} className="bg-[#0f1113] text-zinc-100" value={c}>
-                      {c || "Todas"}
+                  {categoryOptions.map(opt => (
+                    <option key={opt.value || "all"} className="bg-[#0f1113] text-zinc-100" value={opt.value}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>
@@ -108,13 +142,16 @@ export default function Navbar() {
                 <CartButton />
               </div>
             </div>
+
+            {/* Error de categorías (opcional) */}
+            {catsError && (
+              <div className="mt-1 text-[11px] text-red-400">
+                {catsError}
+              </div>
+            )}
           </div>
         </div>
       </div>
-
-      {/* Si quieres conservar una variante móvil extra del selector, 
-          guárdala en otro componente o usa {false && (<div>...</div>)} para
-          evitar el warning de “unused expressions”. */}
     </header>
   );
 }

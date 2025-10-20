@@ -9,10 +9,10 @@ import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
 const PHONE = "573043602980";
 
 const FEE_BY_ZONE: Record<DeliveryZone, number> = {
-  DOSQUEBRADAS:   600000,
-  PEREIRA_CENTRO: 900000,
-  CUBA:          1200000,
-  NACIONAL:      2000000,
+  DOSQUEBRADAS:   6000,
+  PEREIRA_CENTRO: 9000,
+  CUBA:          12000,
+  NACIONAL:      20000,
 };
 
 export default function CartButton() {
