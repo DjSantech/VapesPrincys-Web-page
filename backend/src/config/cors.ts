@@ -2,7 +2,7 @@ import cors from "cors";
 
 const allowedOrigins = [
   "http://localhost:5173",        // desarrollo local
-  "https://vapitosprincys.vercel.app" // dominio de tu frontend en producción
+  "https://vapes-princys-web-page.vercel.app" // dominio de tu frontend en producción
 ];
 
 export const corsOptions: cors.CorsOptions = {

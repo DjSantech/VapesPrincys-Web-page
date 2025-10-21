@@ -61,7 +61,8 @@ export default function ProductDetailPage() {
   ];
 
   // === NUEVO: estado para categorías y modelos por categoría ===
-  const baseURL = (import.meta as unknown as { env: { VITE_API_URL?: string } }).env.VITE_API_URL || "http://localhost:8080/api";
+  const baseURL = import.meta.env.VITE_API_URL || "/api";
+
   const [categories, setCategories] = useState<Category[]>([]);
   const [catLoading, setCatLoading] = useState<boolean>(false);
   const [catError, setCatError] = useState<string>("");

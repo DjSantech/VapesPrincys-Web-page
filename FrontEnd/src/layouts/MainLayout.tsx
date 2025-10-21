@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 export default function MainLayout() {
   return (
     <div className="min-h-screen flex flex-col bg-[#55514e]"
-    style={{ backgroundImage: "url('public/princys_img/FondoHome.jpg')" }}>
+    style={{ backgroundImage: "url('/princys_img/FondoHome.jpg')" }}>
       <Navbar />
       <main className="flex-1">
         <Outlet />
