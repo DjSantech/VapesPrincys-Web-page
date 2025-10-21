@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Curl healthcheck
         run: |
-          curl -fsS https://vapesprincys-web-page.onrender.com/api/health > /dev/null
+          curl -fsS https://vapesprincys-web-page.onrender.com/health > /dev/null
