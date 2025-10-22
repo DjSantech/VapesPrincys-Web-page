@@ -3,9 +3,12 @@ export type DeliveryZone = "DOSQUEBRADAS" | "PEREIRA_CENTRO" | "CUBA" | "NACIONA
 export interface DeliveryInfo {
   name: string;
   phone: string;
-  address: string;        // "Cra, Calle, Piso, Apto, Barrio"
+  address: string;
   paymentMethod: "EFECTIVO" | "TRANSFERENCIA";
-  changeFor?: number;     // solo si efectivo
-  idCard?: string;        // solo si envíos nacionales
+  changeFor?: number;
   zone: DeliveryZone;
+  idCard?: string;     // (si lo usas en otro lado)
+  cedula?: string;     // para nacional
+  department?: string; // ✅ nuevo: departamento (nacional)
+  city?: string;       // ✅ nuevo: ciudad/municipio (nacional)
 }

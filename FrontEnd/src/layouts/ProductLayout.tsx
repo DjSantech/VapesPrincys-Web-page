@@ -25,7 +25,8 @@ export default function ProductLayout() {
   }, [id, product]);
 
   return (
-    <div className="min-h-screen bg-[#55514e] text-white">
+    <div className="min-h-screen bg-[#55514e] text-white"
+    style={{ backgroundImage: "url('/princys_img/FondoHome.jpg')" }}>
       <Navbar />
       <main className="mx-auto max-w-7xl px-4 py-6">
         {loading ? <p>Cargando producto…</p> : <Outlet context={{ product }} />}

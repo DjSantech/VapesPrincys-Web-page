@@ -1,4 +1,3 @@
-// src/lib/format.ts
 import type { CartItem } from "../types/Cart";
 import type { DeliveryInfo } from "../types/checkout";
 
@@ -6,14 +5,6 @@ export const formatCOP = (pesos: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
     .format(pesos || 0);
 
-const zoneLabel: Record<NonNullable<DeliveryInfo["zone"]>, string> = {
-  DOSQUEBRADAS: "Dosquebradas",
-  PEREIRA_CENTRO: "Pereira Centro",
-  CUBA: "Cuba",
-  NACIONAL: "Envío Nacional (contado)",
-};
-
-// NUEVA FIRMA: 5 argumentos
 export const buildWhatsAppUrl = (
   phone: string,
   items: CartItem[],
@@ -22,33 +13,41 @@ export const buildWhatsAppUrl = (
   deliveryFee = 0
 ) => {
   const lines: string[] = [];
-  lines.push("Hola! Quiero continuar con esta compra:\n");
 
-  items.forEach((i, idx) => {
-    lines.push(`Producto #${idx + 1}`);
-    lines.push(`- ${i.name} x${i.qty} (${formatCOP(i.price)})`);
-    if (i.flavor)   lines.push(`  • Sabor: ${i.flavor}`);
-    if (i.charger)  lines.push(`  • Cargador: ${i.charger.name} (${formatCOP(i.charger.price)})`);
-    if (i.extraVape) lines.push(`  • Extra: ${i.extraVape.model} x${i.extraVape.qty} (${formatCOP(i.extraVape.price)})`);
-    if (i.giftVape) lines.push(`  • Regalo: ${i.giftVape.model}${i.giftVape.flavor ? " ("+i.giftVape.flavor+")" : ""}`);
-    lines.push("");
+  lines.push(`🛒 *Nuevo pedido*`);
+  lines.push(`--------------------------------`);
+  items.forEach((it) => {
+    lines.push(`• ${it.name} x${it.qty} - ${formatCOP(it.price * it.qty)}`);
+    if (it.flavor) lines.push(`   Sabor: ${it.flavor}`);
+    if (it.charger) lines.push(`   Cargador: ${it.charger.name} (${formatCOP(it.charger.price)})`);
+    if (it.extraVape) lines.push(`   Extra: ${it.extraVape.model} x${it.extraVape.qty} (${formatCOP(it.extraVape.price)})`);
+    if (it.giftVape) lines.push(`   🎁 Regalo: ${it.giftVape.model}`);
   });
-
-  lines.push(`SUBTOTAL: ${formatCOP(subtotal)}`);
+  lines.push(`--------------------------------`);
+  lines.push(`Subtotal: ${formatCOP(subtotal)}`);
   if (delivery) {
-    lines.push(`DOMICILIO (${zoneLabel[delivery.zone]}): ${formatCOP(deliveryFee)}`);
-    lines.push(`TOTAL: ${formatCOP(subtotal + deliveryFee)}`);
-    lines.push("\nDatos de domicilio:");
-    lines.push(`🔖 NOMBRE: ${delivery.name}`);
-    lines.push(`🔖 TELÉFONO: ${delivery.phone}`);
-    lines.push(`🔖 DIRECCIÓN DETALLADA: ${delivery.address}`);
-    lines.push(`🔖 PAGO: ${delivery.paymentMethod === "EFECTIVO" ? "Efectivo" : "Transferencia"}`);
-    if (delivery.paymentMethod === "EFECTIVO" && delivery.changeFor) {
-      lines.push(`🔖 DEVUELTA: ${formatCOP(delivery.changeFor)}`);
+    lines.push(`Domicilio: ${formatCOP(deliveryFee)}`);
+    lines.push(`Total: ${formatCOP(subtotal + deliveryFee)}`);
+    lines.push(`--------------------------------`);
+    lines.push(`👤 Nombre: ${delivery.name}`);
+    lines.push(`📞 Teléfono: ${delivery.phone}`);
+    lines.push(`📍 Dirección: ${delivery.address}`);
+    lines.push(`🗺️ Zona: ${delivery.zone}`);
+    lines.push(`💳 Pago: ${delivery.paymentMethod}`);
+
+    // ✅ Datos extra para envío nacional
+    if (delivery.zone === "NACIONAL") {
+      if (delivery.cedula)     lines.push(`🪪 Cédula: ${delivery.cedula}`);
+      if (delivery.department) lines.push(`🏛️ Departamento: ${delivery.department}`);
+      if (delivery.city)       lines.push(`🏙️ Ciudad/Municipio: ${delivery.city}`);
     }
-    lines.push(`\nESTAR PENDIENTE DE EL DOMICILIARIO`);
+
+    if (delivery.paymentMethod === "EFECTIVO" && delivery.changeFor) {
+      lines.push(`💵 Cambio para: ${formatCOP(delivery.changeFor)}`);
+    }
   }
 
   const text = encodeURIComponent(lines.join("\n"));
-  return `https://wa.me/${phone}?text=${text}`;
+  const clean = phone.replace(/[^\d]/g, "");
+  return `https://wa.me/${clean}?text=${text}`;
 };

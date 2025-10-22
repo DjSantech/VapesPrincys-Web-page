@@ -1,10 +1,19 @@
 // src/components/CartButton.tsx
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "../store/cart_info";
 import { buildWhatsAppUrl, formatCOP } from "../lib/format";
 import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
+
+type FormErrors = {
+  name?: string;
+  phone?: string;
+  address?: string;
+  cedula?: string;
+  department?: string;
+  city?: string;
+};
 
 const PHONE = "573043602980";
 
@@ -13,6 +22,73 @@ const FEE_BY_ZONE: Record<DeliveryZone, number> = {
   PEREIRA_CENTRO: 9000,
   CUBA:          12000,
   NACIONAL:      20000,
+};
+
+// ———————————————————————————————————————
+// Listas de Colombia (departamentos y ciudades frecuentes)
+// (Si quieres TODAS las ciudades, luego cambiamos este objeto por un JSON completo.)
+// ———————————————————————————————————————
+const CO_DEPARTMENTS = [
+  "Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare",
+  "Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena",
+  "Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia","Santander",
+  "Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"
+] as const;
+
+const CITIES_BY_DEPT: Record<typeof CO_DEPARTMENTS[number], string[]> = {
+  "Amazonas": ["Leticia"],
+  "Antioquia": ["Medellín","Bello","Envigado","Itagüí","Rionegro","Sabaneta"],
+  "Arauca": ["Arauca","Saravena"],
+  "Atlántico": ["Barranquilla","Soledad","Malambo","Puerto Colombia"],
+  "Bogotá D.C.": ["Bogotá"],
+  "Bolívar": ["Cartagena","Magangué","Turbaco"],
+  "Boyacá": ["Tunja","Duitama","Sogamoso","Chiquinquirá"],
+  "Caldas": ["Manizales","Chinchiná","Villamaría"],
+  "Caquetá": ["Florencia"],
+  "Casanare": ["Yopal","Aguazul","Villanueva"],
+  "Cauca": ["Popayán","Santander de Quilichao"],
+  "Cesar": ["Valledupar","Aguachica"],
+  "Chocó": ["Quibdó","Istmina"],
+  "Córdoba": ["Montería","Lorica","Sahagún"],
+  "Cundinamarca": ["Soacha","Chía","Zipaquirá","Facatativá","Girardot","Fusagasugá"],
+  "Guainía": ["Inírida"],
+  "Guaviare": ["San José del Guaviare"],
+  "Huila": ["Neiva","Pitalito","Garzón"],
+  "La Guajira": ["Riohacha","Maicao","Uribia"],
+  "Magdalena": ["Santa Marta","Ciénaga"],
+  "Meta": ["Villavicencio","Acacías","Restrepo"],
+  "Nariño": ["Pasto","Ipiales","Tumaco"],
+  "Norte de Santander": ["Cúcuta","Ocaña","Pamplona","Los Patios"],
+  "Putumayo": ["Mocoa","Puerto Asís"],
+  "Quindío": ["Armenia","Montenegro","La Tebaida","Quimbaya"],
+  "Risaralda": ["Pereira","Dosquebradas","La Virginia","Santa Rosa de Cabal"],
+  "San Andrés y Providencia": ["San Andrés"],
+  "Santander": ["Bucaramanga","Floridablanca","Giron","Piedecuesta","Barrancabermeja"],
+  "Sucre": ["Sincelejo","Corozal","Sampués"],
+  "Tolima": ["Ibagué","Espinal","Melgar"],
+  "Valle del Cauca": ["Cali","Palmira","Yumbo","Buga","Tuluá","Cartago"],
+  "Vaupés": ["Mitú"],
+  "Vichada": ["Puerto Carreño"]
+};
+
+// ———————————————————————————————————————
+// Validaciones
+// ———————————————————————————————————————
+const isColPhone = (v: string) => /^\d{10}$/.test(v.trim());
+const isNumericId = (v: string) => /^\d{6,}$/.test(v.trim()); // 6+ dígitos
+
+const validateForm = (f: DeliveryInfo): FormErrors => {
+  const e: FormErrors = {};
+  if (!f.name?.trim()) e.name = "El nombre es obligatorio.";
+  if (!isColPhone(f.phone || "")) e.phone = "Teléfono debe tener 10 dígitos.";
+  if (!f.address?.trim()) e.address = "La dirección es obligatoria.";
+
+  if (f.zone === "NACIONAL") {
+    if (!isNumericId(f.cedula || "")) e.cedula = "Cédula solo números (mín. 6 dígitos).";
+    if (!f.department?.trim()) e.department = "Departamento obligatorio para envío nacional.";
+    if (!f.city?.trim()) e.city = "Ciudad/Municipio obligatorio para envío nacional.";
+  }
+  return e;
 };
 
 export default function CartButton() {
@@ -31,8 +107,13 @@ export default function CartButton() {
       changeFor: undefined,
       zone: "PEREIRA_CENTRO",
       idCard: undefined,
+      cedula: "",
+      department: "",
+      city: "",
     }
   );
+
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const fee = FEE_BY_ZONE[form.zone] ?? 0;
   const grand = sub + fee;
@@ -41,6 +122,10 @@ export default function CartButton() {
     setForm((prev) => ({ ...prev, [key]: value }));
 
   const handleWhatsApp = () => {
+    const e = validateForm(form);
+    setErrors(e);
+    if (Object.keys(e).length > 0) return;
+
     setDelivery(form);
     const url = buildWhatsAppUrl(PHONE, items, sub, form, fee);
     window.open(url, "_blank", "noopener,noreferrer");
@@ -55,6 +140,15 @@ export default function CartButton() {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [open]);
+
+  // Ciudades disponibles según departamento seleccionado
+  const availableCities = useMemo(() => {
+    const d = (form.department || "") as (typeof CO_DEPARTMENTS)[number] | "";
+    return d && CITIES_BY_DEPT[d] ? CITIES_BY_DEPT[d] : [];
+  }, [form.department]);
+
+  // Deshabilitado del botón por errores
+  const hasBlockingErrors = useMemo(() => Object.keys(validateForm(form)).length > 0, [form]);
 
   const Drawer = (
     <div className="fixed inset-0 z-[90]">
@@ -187,28 +281,39 @@ export default function CartButton() {
           <section className="space-y-3 rounded-xl border border-stone-700 bg-[#1a1d1f] p-3">
             <h4 className="font-semibold text-sm">Datos de domicilio</h4>
 
+            {/* Nombre */}
             <input
               className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 NOMBRE"
               value={form.name}
               onChange={(e) => handleChange("name", e.target.value)}
+              onBlur={() => setErrors((p) => ({ ...p, name: form.name?.trim() ? undefined : "El nombre es obligatorio." }))}
             />
+            {errors.name && <p className="text-xs text-red-400 -mt-2">{errors.name}</p>}
 
+            {/* Teléfono */}
             <input
               className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 TELÉFONO (ej: 3001234567)"
               value={form.phone}
-              onChange={(e) => handleChange("phone", e.target.value)}
+              inputMode="numeric"
+              onChange={(e) => handleChange("phone", e.target.value.replace(/\D/g, ""))}
+              onBlur={() => setErrors((p) => ({ ...p, phone: isColPhone(form.phone || "") ? undefined : "Teléfono debe tener 10 dígitos." }))}
             />
+            {errors.phone && <p className="text-xs text-red-400 -mt-2">{errors.phone}</p>}
 
+            {/* Dirección */}
             <textarea
               className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
               placeholder="🔖 DIRECCIÓN DETALLADA (Cra, Calle, Piso, Apto, Barrio)"
               rows={3}
               value={form.address}
               onChange={(e) => handleChange("address", e.target.value)}
+              onBlur={() => setErrors((p) => ({ ...p, address: form.address?.trim() ? undefined : "La dirección es obligatoria." }))}
             />
+            {errors.address && <p className="text-xs text-red-400 -mt-2">{errors.address}</p>}
 
+            {/* Zona */}
             <div className="flex items-center gap-3">
               <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
               <select
@@ -235,15 +340,68 @@ export default function CartButton() {
               Completa bien el formulario para evitar demoras en la entrega.
             </p>
 
+            {/* Datos extra si es NACIONAL */}
             {form.zone === "NACIONAL" && (
-              <input
-                className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
-                placeholder="🔖 CÉDULA (para envío nacional)"
-                value={form.idCard ?? ""}
-                onChange={(e) => handleChange("idCard", e.target.value)}
-              />
+              <>
+                {/* Cédula */}
+                <input
+                  className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm placeholder:text-zinc-400"
+                  placeholder="🔖 CÉDULA (para envío nacional)"
+                  value={form.cedula ?? ""}
+                  inputMode="numeric"
+                  onChange={(e) => handleChange("cedula", e.target.value.replace(/\D/g, ""))}
+                  onBlur={() => setErrors((p) => ({ ...p, cedula: isNumericId(form.cedula || "") ? undefined : "Cédula solo números (mín. 6 dígitos)." }))}
+                />
+                {errors.cedula && <p className="text-xs text-red-400 -mt-2">{errors.cedula}</p>}
+
+                {/* Departamento (select) */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm w-36 text-zinc-300">Departamento</label>
+                  <select
+                    className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                    value={form.department ?? ""}
+                    onChange={(e) => {
+                      handleChange("department", e.target.value);
+                      // Reinicia ciudad al cambiar de depto
+                      handleChange("city", "");
+                    }}
+                    onBlur={() => setErrors((p) => ({ ...p, department: form.department?.trim() ? undefined : "Departamento obligatorio para envío nacional." }))}
+                  >
+                    <option value="">Selecciona…</option>
+                    {CO_DEPARTMENTS.map((d) => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </div>
+                {errors.department && <p className="text-xs text-red-400 -mt-2">{errors.department}</p>}
+
+                {/* Ciudad/Municipio (select dependiente) */}
+                <div className="flex items-center gap-3">
+                  <label className="text-sm w-36 text-zinc-300">Ciudad/Mpio</label>
+                  <select
+                    className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                    value={form.city ?? ""}
+                    onChange={(e) => handleChange("city", e.target.value)}
+                    disabled={!form.department}
+                    onBlur={() => setErrors((p) => ({ ...p, city: form.city?.trim() ? undefined : "Ciudad/Municipio obligatorio para envío nacional." }))}
+                    title={!form.department ? "Selecciona primero el departamento" : undefined}
+                  >
+                    {!form.department && <option value="">Selecciona un departamento primero</option>}
+                    {form.department && (
+                      <>
+                        <option value="">Selecciona…</option>
+                        {availableCities.map((c) => (
+                          <option key={c} value={c}>{c}</option>
+                        ))}
+                      </>
+                    )}
+                  </select>
+                </div>
+                {errors.city && <p className="text-xs text-red-400 -mt-2">{errors.city}</p>}
+              </>
             )}
 
+            {/* Pago */}
             <div className="flex items-center gap-3">
               <label className="text-sm w-36 text-zinc-300">Pago</label>
               <select
@@ -258,6 +416,7 @@ export default function CartButton() {
               </select>
             </div>
 
+            {/* Devuelta */}
             {form.paymentMethod === "EFECTIVO" && form.zone !== "NACIONAL" && (
               <div className="flex items-center gap-3">
                 <label className="text-sm w-36 text-zinc-300">Devuelta (opcional)</label>
@@ -289,7 +448,7 @@ export default function CartButton() {
           <div className="flex gap-3">
             <button
               className="flex-1 rounded-xl bg-amber-500 px-4 py-2 font-semibold text-black hover:bg-amber-400 disabled:opacity-50"
-              disabled={items.length === 0 || !form.name || !form.phone || !form.address || (form.zone === "NACIONAL" && !form.idCard)}
+              disabled={items.length === 0 || hasBlockingErrors}
               onClick={handleWhatsApp}
             >
               Continuar con pago (WhatsApp)
