@@ -8,11 +8,16 @@ import {
   patchProductImage,
   deleteProduct,
   type AdminProduct,
-  // --- categorías:
+  // categorías:
   getCategories,
   createCategory,
   deleteCategoryById,
   type AdminCategory,
+  // ===== PLUS =====
+  getPluses,
+  createPlus,
+  deletePlusById,
+  type AdminPlus,
 } from "../services/admin";
 
 // helpers CSV
@@ -23,7 +28,17 @@ const fmt = (cents: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
     .format((cents || 0));
 
-type Drafts = Record<string, Partial<AdminProduct> & { flavorsCSV?: string }>;
+type Drafts = Record<
+  string,
+  Partial<AdminProduct> & {
+    flavorsCSV?: string;
+    pluses?: string[];               // NUEVO: pluses (nombres)
+  }
+>;
+
+function toggleString(arr: readonly string[], value: string): string[] {
+  return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+}
 
 export default function AdminDashboard() {
   const [items, setItems] = useState<AdminProduct[]>([]);
@@ -35,6 +50,12 @@ export default function AdminDashboard() {
   const [showCats, setShowCats] = useState<boolean>(false);
   const [newCat, setNewCat] = useState<string>("");
 
+  // ---- pluses ----
+  const [pluses, setPluses] = useState<AdminPlus[]>([]);
+  const [plusesLoading, setPlusesLoading] = useState<boolean>(false);
+  const [showPluses, setShowPluses] = useState<boolean>(false);
+  const [newPlus, setNewPlus] = useState<string>("");
+
   // ---- crear producto ----
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState<{
@@ -42,26 +63,28 @@ export default function AdminDashboard() {
     name: string;
     price: number;          // centavos
     stock: number;
-    puffs: number;          // NUEVO
+    puffs: number;
     visible: boolean;
-    category: string;       // guardaremos el NOMBRE de la categoría elegida
-    flavorsCSV: string;     // texto crudo -> se parsea al enviar
+    category: string;       // nombre de categoría
+    flavorsCSV: string;     // texto → se parsea al enviar
+    pluses: string[];       // nombres de plus seleccionados
     image: File | null;
   }>({
     sku: "",
     name: "",
     price: 0,
     stock: 0,
-    puffs: 0,               // NUEVO
+    puffs: 0,
     visible: true,
     category: "",
     flavorsCSV: "",
+    pluses: [],
     image: null,
   });
 
   // ---- borradores por fila ----
   const [drafts, setDrafts] = useState<Drafts>({});
-  const setDraft = (id: string, patch: Partial<AdminProduct> & { flavorsCSV?: string }) =>
+  const setDraft = (id: string, patch: Drafts[string]) =>
     setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
 
   const imagePreview = useMemo(
@@ -79,6 +102,7 @@ export default function AdminDashboard() {
       visible: true,
       category: "",
       flavorsCSV: "",
+      pluses: [],
       image: null,
     });
   };
@@ -108,8 +132,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const loadPluses = async () => {
+    try {
+      setPlusesLoading(true);
+      const data = await getPluses();
+      setPluses(data);
+    } catch {
+      toast.error("No se pudieron cargar los pluses");
+    } finally {
+      setPlusesLoading(false);
+    }
+  };
+
   useEffect(() => { void loadProducts(); }, []);
   useEffect(() => { void loadCategories(); }, []);
+  useEffect(() => { void loadPluses(); }, []);
 
   // ---- update solo imagen (multipart) ----
   const updateImage = async (id: string, file: File) => {
@@ -134,22 +171,20 @@ export default function AdminDashboard() {
     const draft = drafts[id] ?? {};
     const merged: AdminProduct = { ...current, ...draft };
 
-    // si el usuario quiso vaciar categoría, no mandes category: ""
     const categoryTrim = (merged.category ?? "").trim();
+    const nextPluses = draft.pluses ?? merged.pluses ?? [];
 
-    const patch: Partial<AdminProduct> = {
+    const patch: Partial<AdminProduct> & { imageUrl?: undefined } = {
       sku: merged.sku,
       name: merged.name,
       price: Math.max(0, Math.round(merged.price ?? 0)),
       stock: Math.max(0, Math.round(merged.stock ?? 0)),
-      puffs: Math.max(0, Math.round(merged.puffs ?? 0)), // NUEVO
+      puffs: Math.max(0, Math.round(merged.puffs ?? 0)),
       visible: merged.visible,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
-      flavors: draft.flavorsCSV !== undefined
-        ? toArray(draft.flavorsCSV)
-        : (merged.flavors ?? []),
+      flavors: draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []),
+      pluses: nextPluses, // ← guardar pluses por nombre
       imageUrl: undefined,
-      id: undefined as unknown as never,
     };
 
     try {
@@ -187,7 +222,7 @@ export default function AdminDashboard() {
     if (!form.name.trim()) { toast.error("El nombre es obligatorio"); return; }
     if (form.price < 0)    { toast.error("El precio no puede ser negativo"); return; }
     if (form.stock < 0)    { toast.error("El stock no puede ser negativo"); return; }
-    if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; } // NUEVO
+    if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; }
 
     try {
       const created = await createProduct({
@@ -195,12 +230,12 @@ export default function AdminDashboard() {
         name: form.name.trim(),
         price: Math.round(form.price),
         stock: Math.max(0, Math.round(form.stock)),
-        puffs: Math.max(0, Math.round(form.puffs)), // NUEVO
+        puffs: Math.max(0, Math.round(form.puffs)),
         visible: form.visible,
-        // guardamos el NOMBRE de la categoría seleccionada (backend Opción A = texto)
         category: form.category.trim(),
         image: form.image,
         flavors: toArray(form.flavorsCSV),
+        pluses: form.pluses, // ← pluses seleccionados
       });
       setItems(prev => [created, ...prev]);
       toast.success("Producto creado");
@@ -235,12 +270,51 @@ export default function AdminDashboard() {
     try {
       await deleteCategoryById(id);
       setCats(prev => prev.filter(c => c.id !== id));
-      // si la categoría eliminada estaba seleccionada en el formulario, límpiala
       setForm(f => (f.category === cat.name ? { ...f, category: "" } : f));
       toast.success("Categoría eliminada");
     } catch (e) {
       console.error(e);
       toast.error("No se pudo eliminar la categoría");
+    }
+  };
+
+  // ---- pluses: crear y eliminar ----
+  const onCreatePlus = async () => {
+    const name = newPlus.trim();
+    if (!name) return;
+    try {
+      const created = await createPlus(name);
+      setPluses(prev => [created, ...prev]);
+      setNewPlus("");
+      toast.success("Plus creado");
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo crear el plus");
+    }
+  };
+
+  const onDeletePlus = async (id: string) => {
+    const pl = pluses.find(p => p.id === id);
+    if (!pl) return;
+    const ok = window.confirm(`¿Eliminar el plus "${pl.name}"?`);
+    if (!ok) return;
+    try {
+      await deletePlusById(id);
+      setPluses(prev => prev.filter(p => p.id !== id));
+      // quitarlo del form si estaba seleccionado
+      setForm(f => ({ ...f, pluses: f.pluses.filter(n => n !== pl.name) }));
+      // quitarlo de borradores
+      setDrafts(prev => {
+        const next: Drafts = {};
+        for (const [pid, d] of Object.entries(prev)) {
+          next[pid] = { ...d, pluses: (d.pluses ?? []).filter(n => n !== pl.name) };
+        }
+        return next;
+      });
+      toast.success("Plus eliminado");
+    } catch (e) {
+      console.error(e);
+      toast.error("No se pudo eliminar el plus");
     }
   };
 
@@ -254,6 +328,12 @@ export default function AdminDashboard() {
             onClick={() => setShowCats(true)}
           >
             Categorías
+          </button>
+          <button
+            className="rounded-lg bg-sky-600 hover:bg-sky-700 px-3 py-1.5 text-sm text-white"
+            onClick={() => setShowPluses(true)}
+          >
+            Pluses
           </button>
           <button
             className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
@@ -283,10 +363,13 @@ export default function AdminDashboard() {
             const sku = (d.sku ?? p.sku) ?? "";
             const price = Math.round(d.price ?? p.price ?? 0);
             const stock = Math.round(d.stock ?? p.stock ?? 0);
-            const puffs = Math.round(d.puffs ?? p.puffs ?? 0); // NUEVO
+            const puffs = Math.round(d.puffs ?? p.puffs ?? 0);
             const category = (d.category ?? p.category) ?? "";
             const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
             const visible = (d.visible ?? p.visible) ?? true;
+
+            // pluses por nombre (con fallback a [])
+            const assignedPluses: string[] = d.pluses ?? p.pluses ?? [];
 
             return (
               <div key={p.id} className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-4">
@@ -425,6 +508,32 @@ export default function AdminDashboard() {
                     />
                     <label htmlFor={`visible-${p.id}`} className="text-xs text-zinc-400">Visible</label>
                   </div>
+
+                  {/* PLUS: selección por checkboxes */}
+                  <div className="sm:col-span-2 lg:col-span-4">
+                    <label className="text-xs text-zinc-400">Pluses</label>
+                    <div className="mt-1 flex flex-wrap gap-2">
+                      {pluses.map(pl => {
+                        const checked = assignedPluses.includes(pl.name);
+                        return (
+                          <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
+                            <input
+                              type="checkbox"
+                              className="accent-sky-400"
+                              checked={checked}
+                              onChange={() =>
+                                setDraft(p.id, { pluses: toggleString(assignedPluses, pl.name) })
+                              }
+                            />
+                            {pl.name}
+                          </label>
+                        );
+                      })}
+                      {pluses.length === 0 && (
+                        <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Acciones (móvil) */}
@@ -546,6 +655,32 @@ export default function AdminDashboard() {
                 />
               </div>
 
+              {/* PLUS: selección para nuevo producto */}
+              <div className="sm:col-span-2">
+                <label className="text-xs text-zinc-400">Pluses</label>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {pluses.map(pl => {
+                    const checked = form.pluses.includes(pl.name);
+                    return (
+                      <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
+                        <input
+                          type="checkbox"
+                          className="accent-sky-400"
+                          checked={checked}
+                          onChange={() =>
+                            setForm(f => ({ ...f, pluses: toggleString(f.pluses, pl.name) }))
+                          }
+                        />
+                        {pl.name}
+                      </label>
+                    );
+                  })}
+                  {pluses.length === 0 && (
+                    <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
+                  )}
+                </div>
+              </div>
+
               <div className="flex items-center gap-2 mt-1">
                 <input
                   id="visible"
@@ -648,6 +783,73 @@ export default function AdminDashboard() {
               <button
                 className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-[#323230]"
                 onClick={() => setShowCats(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pluses */}
+      {showPluses && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
+          <div className="w-full max-w-lg rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-zinc-100">Pluses</h2>
+              <button
+                className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
+                onClick={() => setShowPluses(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="mb-3">
+              <label className="text-xs text-zinc-400">Nuevo plus</label>
+              <div className="flex gap-2">
+                <input
+                  className="flex-1 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                  value={newPlus}
+                  onChange={e => setNewPlus(e.target.value)}
+                  placeholder="Batería extra, Edición limitada…"
+                />
+                <button
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
+                  onClick={() => void onCreatePlus()}
+                  disabled={plusesLoading}
+                >
+                  Crear
+                </button>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-stone-800 overflow-hidden">
+              <div className="bg-[#0f1113] px-3 py-2 text-xs text-zinc-400">
+                {plusesLoading ? "Cargando pluses…" : `Total: ${pluses.length}`}
+              </div>
+              <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
+                {pluses.map(pl => (
+                  <li key={pl.id} className="flex items-center justify-between px-3 py-2">
+                    <span className="text-sm text-zinc-100">{pl.name}</span>
+                    <button
+                      className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
+                      onClick={() => void onDeletePlus(pl.id)}
+                    >
+                      Eliminar
+                    </button>
+                  </li>
+                ))}
+                {pluses.length === 0 && !plusesLoading && (
+                  <li className="px-3 py-3 text-sm text-zinc-400">No hay pluses</li>
+                )}
+              </ul>
+            </div>
+
+            <div className="mt-3 text-right">
+              <button
+                className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-[#323230]"
+                onClick={() => setShowPluses(false)}
               >
                 Cerrar
               </button>

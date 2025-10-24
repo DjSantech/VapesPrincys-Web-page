@@ -14,8 +14,9 @@ export interface AdminProduct {
   puffs: number;
   visible: boolean;
   imageUrl: string;
-  category: string;   // Opción A: guardado como texto
+  category: string;   // nombre de categoría (texto)
   flavors: string[];
+  pluses?: string[];  // nombres de plus asignados
 }
 
 export interface CreateProductPayload {
@@ -28,14 +29,24 @@ export interface CreateProductPayload {
   category?: string;  // nombre de la categoría
   image?: File | null;
   flavors?: string[];
+  pluses?: string[];  // nombres de plus
 }
 
 export type PatchProductPayload = Partial<
-  Pick<AdminProduct, "sku" | "name" | "price" | "stock" | "visible" | "category" | "flavors">
+  Pick<
+    AdminProduct,
+    "sku" | "name" | "price" | "stock" | "puffs" | "visible" | "category" | "flavors" | "pluses"
+  >
 >;
 
 // Categorías
 export interface AdminCategory {
+  id: string;
+  name: string;
+}
+
+// Pluses
+export interface AdminPlus {
   id: string;
   name: string;
 }
@@ -94,10 +105,18 @@ export async function createProduct(payload: CreateProductPayload): Promise<Admi
   if (payload.visible != null) fd.append("visible", String(payload.visible));
   if (payload.category)        fd.append("category", payload.category);
   if (payload.image)           fd.append("image", payload.image);
-  if (payload.flavors?.length) {
-    // backend acepta array repitiendo la key
+
+  // Enviar sabores:
+  if (payload.flavors && payload.flavors.length > 0) {
+    // Opción A (keys repetidas). Si tu backend prefiere JSON, usa: fd.append("flavors", JSON.stringify(payload.flavors))
     for (const f of payload.flavors) fd.append("flavors", f);
+  } else {
+    // asegura campo aunque vacío si tu backend lo espera
+    // fd.append("flavors", JSON.stringify([]));
   }
+
+  // Enviar pluses como JSON (recomendado para multipart)
+  fd.append("pluses", JSON.stringify(payload.pluses ?? []));
 
   const res = await fetch(`${API_BASE}/products`, {
     method: "POST",
@@ -137,5 +156,37 @@ export async function deleteCategoryById(id: string): Promise<void> {
   });
   if (!res.ok && res.status !== 204) {
     throw new Error(`DELETE /categories/${id} failed`);
+  }
+}
+
+// ===== Pluses =====
+export async function getPluses(): Promise<AdminPlus[]> {
+  const res = await fetch(`${API_BASE}/pluses`, {
+    headers: { ...authHeader() },
+  });
+  if (!res.ok) throw new Error("GET /pluses failed");
+  return res.json() as Promise<AdminPlus[]>;
+}
+
+export async function createPlus(name: string): Promise<AdminPlus> {
+  const res = await fetch(`${API_BASE}/pluses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader(),
+    },
+    body: JSON.stringify({ name }),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<AdminPlus>;
+}
+
+export async function deletePlusById(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/pluses/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeader() },
+  });
+  if (!res.ok && res.status !== 204) {
+    throw new Error(`DELETE /pluses/${id} failed`);
   }
 }

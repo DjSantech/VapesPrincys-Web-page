@@ -3,6 +3,7 @@ import { Outlet, useLocation, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useEffect, useState } from "react";
 import { getProductById } from "../services/products_service";
+import Footer from "../components/Footer";
 
 type ProductLite = { id: string; name: string; price: number; imageUrl?: string };
 
@@ -28,9 +29,10 @@ export default function ProductLayout() {
     <div className="min-h-screen bg-[#55514e] text-white"
     style={{ backgroundImage: "url('/princys_img/FondoHome.jpg')" }}>
       <Navbar />
-      <main className="mx-auto max-w-7xl px-4 py-6">
+      <main className="mx-auto max-w-7xl px-4 py-6 flex-1 pb-16">
         {loading ? <p>Cargando producto…</p> : <Outlet context={{ product }} />}
       </main>
+      <Footer/>
     </div>
   );
 }
