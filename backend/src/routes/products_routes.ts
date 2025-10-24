@@ -23,7 +23,7 @@ async function resolveCategoryId(input?: unknown) {
   return String(cat._id);
 }
 
-// Mapear documento -> DTO para el front (se deja igual)
+// Mapear documento -> DTO para el front
 const mapDoc = (p: any) => {
   const catId = p.category ? String(p.category._id ?? p.category) : "";
   const catName = p.category?.name ?? (typeof p.category === "string" ? p.category : "");
@@ -39,6 +39,7 @@ const mapDoc = (p: any) => {
     category: catName,        // compat: sigue siendo texto para tu UI actual
     categoryId: catId,        // nuevo: id real por si lo quieres usar en el <select>
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
+    pluses: Array.isArray(p.pluses) ? p.pluses : [], // ✅ incluir pluses
   };
 };
 
@@ -106,6 +107,7 @@ r.get("/", async (req, res) => {
 // =========================
 // POST /api/products  (multipart/form-data)
 // Campos: sku, name, price, stock?, visible?, category (id o nombre), flavors? (array o CSV), puffs?, image? (File)
+// Además: pluses? (string JSON o array)
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   try {
@@ -137,6 +139,21 @@ r.post("/", upload.single("image"), async (req, res) => {
       flavorsArr = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
+    // pluses: JSON (string) o array
+    let plusesArr: string[] = [];
+    try {
+      if (Array.isArray((req.body as any).pluses)) {
+        plusesArr = ((req.body as any).pluses as string[]).map(s => String(s).trim()).filter(Boolean);
+      } else if (typeof (req.body as any).pluses === "string") {
+        const parsed = JSON.parse((req.body as any).pluses as string);
+        if (Array.isArray(parsed)) {
+          plusesArr = parsed.map(s => String(s).trim()).filter(Boolean);
+        }
+      }
+    } catch {
+      plusesArr = [];
+    }
+
     // resolver categoría (id o nombre)
     const catId = await resolveCategoryId(category);
 
@@ -158,6 +175,7 @@ r.post("/", upload.single("image"), async (req, res) => {
       ...(catId === null ? {} : { category: catId }),
       isActive: visible !== undefined ? String(visible) === "true" : true,
       flavors: flavorsArr,
+      pluses: plusesArr, // ✅ guardar pluses
     });
 
     const saved = await Product.findById(created._id).populate("category", "name").lean();
@@ -181,6 +199,7 @@ r.post("/", upload.single("image"), async (req, res) => {
 // PATCH /api/products/:id  (JSON o multipart)
 // Acepta cambios parciales y/o imagen (campo 'image')
 // category: id, nombre, "" (limpiar) o undefined (no tocar)
+// Además: pluses? (string JSON o array)
 // =========================
 r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
@@ -217,6 +236,25 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
       update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
+    }
+
+    // pluses: JSON o array o string vacío
+    if (Object.prototype.hasOwnProperty.call(req.body, "pluses")) {
+      try {
+        const plusesRaw = (req.body as any).pluses;
+        if (Array.isArray(plusesRaw)) {
+          update.pluses = (plusesRaw as string[]).map(s => String(s).trim()).filter(Boolean);
+        } else if (typeof plusesRaw === "string") {
+          const parsed = JSON.parse(plusesRaw);
+          if (Array.isArray(parsed)) {
+            update.pluses = parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
+          } else if (plusesRaw.trim() === "") {
+            update.pluses = [];
+          }
+        }
+      } catch {
+        update.pluses = [];
+      }
     }
 
     // categoría: resolver id/nombre/limpiar
