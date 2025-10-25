@@ -12,6 +12,7 @@ import {
   getCategories,
   createCategory,
   deleteCategoryById,
+  patchCategory,          // ⬅️ NUEVO
   type AdminCategory,
   // ===== PLUS =====
   getPluses,
@@ -49,6 +50,14 @@ export default function AdminDashboard() {
   const [catsLoading, setCatsLoading] = useState<boolean>(false);
   const [showCats, setShowCats] = useState<boolean>(false);
   const [newCat, setNewCat] = useState<string>("");
+
+  // ordenadas por homeOrder (menor primero), luego nombre
+  const catsOrdered = useMemo(
+    () => [...cats].sort(
+      (a, b) => (a.homeOrder ?? 1000) - (b.homeOrder ?? 1000) || a.name.localeCompare(b.name, "es")
+    ),
+    [cats]
+  );
 
   // ---- pluses ----
   const [pluses, setPluses] = useState<AdminPlus[]>([]);
@@ -762,15 +771,43 @@ export default function AdminDashboard() {
                 {catsLoading ? "Cargando categorías…" : `Total: ${cats.length}`}
               </div>
               <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
-                {cats.map(c => (
-                  <li key={c.id} className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-zinc-100">{c.name}</span>
-                    <button
-                      className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
-                      onClick={() => void onDeleteCategory(c.id)}
-                    >
-                      Eliminar
-                    </button>
+                {catsOrdered.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-2 px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        className="w-16 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100"
+                        value={c.homeOrder ?? 1000}
+                        onChange={e => {
+                          const val = Number(e.target.value);
+                          setCats(prev => prev.map(x => x.id === c.id ? { ...x, homeOrder: val } : x));
+                        }}
+                        title="Orden en Home (menor sale primero)"
+                      />
+                      <span className="text-sm text-zinc-100">{c.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        className="rounded-md bg-amber-600 hover:bg-amber-700 px-2 py-1 text-xs text-white"
+                        onClick={async () => {
+                          try {
+                            const updated = await patchCategory(c.id, { homeOrder: c.homeOrder ?? 1000 });
+                            setCats(prev => prev.map(x => x.id === c.id ? updated : x));
+                            toast.success("Orden actualizado");
+                          } catch {
+                            toast.error("No se pudo actualizar el orden");
+                          }
+                        }}
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
+                        onClick={() => void onDeleteCategory(c.id)}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
                   </li>
                 ))}
                 {cats.length === 0 && !catsLoading && (

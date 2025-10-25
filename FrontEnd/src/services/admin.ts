@@ -5,6 +5,7 @@ const API_BASE = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:8
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("admin_token") ?? ""}` });
 
 console.info("[admin.ts] API_BASE =", API_BASE);
+
 // ===== Tipos =====
 export interface AdminProduct {
   id: string;
@@ -40,13 +41,14 @@ export type PatchProductPayload = Partial<
   >
 >;
 
-// Categorías
+// ===== Categorías =====
 export interface AdminCategory {
   id: string;
   name: string;
+  homeOrder?: number; // ⬅️ NUEVO: orden para el Home (menor = primero)
 }
 
-// Pluses
+// ===== Pluses =====
 export interface AdminPlus {
   id: string;
   name: string;
@@ -109,11 +111,7 @@ export async function createProduct(payload: CreateProductPayload): Promise<Admi
 
   // Enviar sabores:
   if (payload.flavors && payload.flavors.length > 0) {
-    // Opción A (keys repetidas). Si tu backend prefiere JSON, usa: fd.append("flavors", JSON.stringify(payload.flavors))
     for (const f of payload.flavors) fd.append("flavors", f);
-  } else {
-    // asegura campo aunque vacío si tu backend lo espera
-    // fd.append("flavors", JSON.stringify([]));
   }
 
   // Enviar pluses como JSON (recomendado para multipart)
@@ -147,6 +145,20 @@ export async function createCategory(name: string): Promise<AdminCategory> {
     body: JSON.stringify({ name }),
   });
   if (!res.ok) throw new Error(await res.text());
+  return res.json() as Promise<AdminCategory>;
+}
+
+// ⬇️ NUEVO: actualizar orden (y/o nombre) de la categoría
+export async function patchCategory(id: string, patch: Partial<Pick<AdminCategory, "name" | "homeOrder">>): Promise<AdminCategory> {
+  const res = await fetch(`${API_BASE}/categories/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeader(),
+    },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) throw new Error(`PATCH /categories/${id} failed`);
   return res.json() as Promise<AdminCategory>;
 }
 
@@ -193,4 +205,3 @@ export async function deletePlusById(id: string): Promise<void> {
 }
 
 // Log temporal para ver a qué host pega el front
-

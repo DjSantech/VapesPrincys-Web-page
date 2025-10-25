@@ -6,16 +6,21 @@ import type { Product } from "../types/Product";
 import ProductCard from "../components/ProductCard";
 import Container from "../components/Container";
 
-/** ───────── helpers de tipos seguros ───────── */
+/* =========================
+   Helpers de tipado seguro
+   ========================= */
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
+
 function hasBooleanKey<T extends object, K extends PropertyKey>(
   obj: T,
   key: K
 ): obj is T & Record<K, boolean> {
   return isRecord(obj) && typeof (obj as Record<PropertyKey, unknown>)[key] === "boolean";
 }
+
 function hasStringArrayKey<T extends object, K extends PropertyKey>(
   obj: T,
   key: K
@@ -23,28 +28,55 @@ function hasStringArrayKey<T extends object, K extends PropertyKey>(
   const v = isRecord(obj) ? (obj as Record<PropertyKey, unknown>)[key] : undefined;
   return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
+
+function hasStringKey<T extends object, K extends PropertyKey>(
+  obj: T,
+  key: K
+): obj is T & Record<K, string> {
+  return isRecord(obj) && typeof (obj as Record<PropertyKey, unknown>)[key] === "string";
+}
+
+/** Extrae el número (último bloque numérico) de un SKU para ordenar; si no tiene, va al final. */
+function skuNumber(sku?: string): number {
+  if (!sku) return Number.MAX_SAFE_INTEGER;
+  const m = sku.match(/\d+/g);
+  if (!m || m.length === 0) return Number.MAX_SAFE_INTEGER;
+  return Number.parseInt(m[m.length - 1] as string, 10);
+}
+
+/** Lee el nombre de categoría desde distintas formas posibles en Product. */
 function getCategoryNameFromProduct(p: Product): string {
-  // category: string
   if ("category" in p) {
     const cat = (p as Record<string, unknown>)["category"];
     if (typeof cat === "string") return cat;
-    // category: { name: string }
-    if (isRecord(cat) && "name" in cat && typeof (cat as Record<string, unknown>)["name"] === "string") {
-      return (cat as Record<string, unknown>)["name"] as string;
-    }
+    if (isRecord(cat) && hasStringKey(cat, "name")) return cat.name;
   }
-  // categoryName: string
-  if ("categoryName" in p && typeof (p as Record<string, unknown>)["categoryName"] === "string") {
+
+  // Aquí cambiamos la línea problemática
+  if (isRecord(p) && typeof (p as Record<string, unknown>)["categoryName"] === "string") {
     return (p as Record<string, unknown>)["categoryName"] as string;
   }
+
   return "Otros";
 }
+
+
+/** Lee el id de categoría si el backend lo envía; si no, cadena vacía. */
+function getCategoryIdFromProduct(p: Product): string {
+  if (hasStringKey(p as object, "categoryId")) {
+    return (p as Record<"categoryId", string>)["categoryId"];
+  }
+  return "";
+}
+
+/** Producto visible: usa visible o isActive; por defecto true. */
 function isVisibleProduct(p: Product): boolean {
-  // visible o isActive si existen; por defecto true
   if (hasBooleanKey(p, "visible")) return p["visible"];
   if (hasBooleanKey(p, "isActive")) return p["isActive"];
   return true;
 }
+
+/** Populares: múltiples banderas o tags/badges. */
 function isPopularProduct(p: Product): boolean {
   if (hasBooleanKey(p, "isPopular")) return p["isPopular"];
   if (hasBooleanKey(p, "populares")) return p["populares"];
@@ -55,78 +87,171 @@ function isPopularProduct(p: Product): boolean {
   return false;
 }
 
-/** ───────── componente ───────── */
+/* =========================
+   Tipos locales
+   ========================= */
+
+type PublicCategory = {
+  id: string;
+  name: string;
+  homeOrder?: number;
+};
+
+/* =========================
+   API pública de categorías
+   ========================= */
+
+async function fetchPublicCategories(): Promise<PublicCategory[]> {
+  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8080/api";
+  const res = await fetch(`${base}/categories`);
+  if (!res.ok) return [];
+  return (await res.json()) as PublicCategory[];
+}
+
+/* =========================
+   Componente
+   ========================= */
+
 export default function HomeView() {
   const [params] = useSearchParams();
   const [items, setItems] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [cats, setCats] = useState<PublicCategory[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [catsLoading, setCatsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string>("");
 
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
 
+  // Cargar productos
   useEffect(() => {
-    let active = true;
+    let alive = true;
     (async () => {
       try {
         setError("");
         setLoading(true);
         const data = await getProducts(q || category ? { q, category } : undefined);
-
-        // ✅ Solo productos visibles/activos, de forma segura
         const visibles = data.filter(isVisibleProduct);
-
-        if (active) setItems(visibles);
+        if (alive) setItems(visibles);
       } catch (e) {
         console.error("Error al obtener productos:", e);
-        if (active) setError("No pudimos cargar los productos.");
+        if (alive) setError("No pudimos cargar los productos.");
       } finally {
-        if (active) setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
     return () => {
-      active = false;
+      alive = false;
     };
   }, [q, category]);
 
-  // 🗂️ Agrupación (solo cuando no hay filtros)
-  const { popularItems, categoryGroups, orderedCategoryNames } = useMemo(() => {
-    const popular = items.filter(isPopularProduct);
+  // Cargar categorías (para homeOrder)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setCatsLoading(true);
+        const data = await fetchPublicCategories();
+        if (alive) setCats(data);
+      } finally {
+        if (alive) setCatsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
+  /* =========================
+     Agrupación y orden global
+     ========================= */
+  const { popularItems, categoryGroups, orderedCategoryNames } = useMemo(() => {
+    // Índices para priorizar por id y por nombre
+    const orderById = new Map<string, number>(cats.map((c) => [c.id, c.homeOrder ?? 1000]));
+    const orderByName = new Map<string, number>(
+      cats.map((c) => [c.name.toLowerCase(), c.homeOrder ?? 1000])
+    );
+
+    // Populares (ordenados por número de SKU)
+    const popular = items
+      .filter(isPopularProduct)
+      .slice()
+      .sort((a, b) => skuNumber((a as Product & { sku?: string }).sku) - skuNumber((b as Product & { sku?: string }).sku));
+
+    // Agrupar resto por categoría
     const groups = new Map<string, Product[]>();
-    items.forEach((p) => {
-      // Evitar duplicar en su categoría si ya está en Populares
-      if (isPopularProduct(p)) return;
-      const cat = getCategoryNameFromProduct(p);
-      if (!groups.has(cat)) groups.set(cat, []);
-      groups.get(cat)!.push(p);
+    for (const p of items) {
+      if (isPopularProduct(p)) continue;
+      const catName = getCategoryNameFromProduct(p);
+      const list = groups.get(catName);
+      if (list) {
+        list.push(p);
+      } else {
+        groups.set(catName, [p]);
+      }
+    }
+
+    // Ordenar productos dentro de cada grupo por número de SKU
+    for (const [name, arr] of groups.entries()) {
+      const sorted = arr.slice().sort(
+        (a, b) =>
+          skuNumber((a as Product & { sku?: string }).sku) -
+          skuNumber((b as Product & { sku?: string }).sku)
+      );
+      groups.set(name, sorted);
+    }
+
+    // Ordenar nombres de categorías por homeOrder; empate por nombre
+    const names = Array.from(groups.keys()).sort((a, b) => {
+      const aArr = groups.get(a);
+      const bArr = groups.get(b);
+      const aId = aArr && aArr.length > 0 ? getCategoryIdFromProduct(aArr[0] as Product) : "";
+      const bId = bArr && bArr.length > 0 ? getCategoryIdFromProduct(bArr[0] as Product) : "";
+
+      const ao =
+        (aId && orderById.has(aId) ? (orderById.get(aId) as number) : undefined) ??
+        orderByName.get(a.toLowerCase()) ??
+        1000;
+      const bo =
+        (bId && orderById.has(bId) ? (orderById.get(bId) as number) : undefined) ??
+        orderByName.get(b.toLowerCase()) ??
+        1000;
+
+      if (ao !== bo) return ao - bo;
+      return a.localeCompare(b, "es");
     });
 
-    let names = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, "es"));
+    return {
+      popularItems: popular,
+      categoryGroups: groups,
+      orderedCategoryNames: names,
+    };
+  }, [items, cats]);
 
-    // Si existe alguna categoría llamada "Populares" o "populares", la mueve al inicio
-    names = names.sort((a) =>
-      a.toLowerCase() === "populares" ? -1 : 1
-    );
-    return { popularItems: popular, categoryGroups: groups, orderedCategoryNames: names };
-  }, [items]);
-
-  // 🔄 Grid reutilizable y tipado
+  // Grid reutilizable
   const Grid = ({ products }: { products: Product[] }) => (
     <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       {products.map((p) => (
-        <ProductCard
-          key={p.id}
-          id={p.id}
-          name={p.name}
-          price={p.price}
-          imageUrl={p.imageUrl}
-          className="!p-0"
-        />
+        <ProductCard key={p.id} id={p.id} name={p.name} price={p.price} imageUrl={p.imageUrl} className="!p-0" />
       ))}
     </div>
   );
 
+  // Con filtros: ordenar por SKU asc también
+  const filteredSorted = useMemo<Product[]>(() => {
+    if (!(q || category)) return items;
+    return items
+      .slice()
+      .sort(
+        (a, b) =>
+          skuNumber((a as Product & { sku?: string }).sku) -
+          skuNumber((b as Product & { sku?: string }).sku)
+      );
+  }, [items, q, category]);
+
+  /* =========================
+     Render
+     ========================= */
   return (
     <Container>
       <h1 className="text-3xl font-bold text-white">Bienvenido a Vapitos Princys</h1>
@@ -137,19 +262,14 @@ export default function HomeView() {
       {loading ? (
         <div className="mt-6 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse"
-            />
+            <div key={i} className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse" />
           ))}
         </div>
       ) : items.length === 0 ? (
         <p className="mt-6 text-white/60">No encontramos productos con esos filtros.</p>
       ) : q || category ? (
-        // 🔍 Con filtros: grid plano
-        <Grid products={items} />
+        <Grid products={filteredSorted} />
       ) : (
-        // 🏠 Sin filtros: Populares primero y luego categorías
         <div className="mt-4 space-y-8">
           {popularItems.length > 0 && (
             <section>
@@ -158,7 +278,8 @@ export default function HomeView() {
             </section>
           )}
 
-          {orderedCategoryNames.map((cat) => {
+          {/* Cuando cats aún carga, no bloqueamos; solo afecta orden */}
+          {(catsLoading ? orderedCategoryNames : orderedCategoryNames).map((cat) => {
             const products = categoryGroups.get(cat);
             if (!products || products.length === 0) return null;
             return (
