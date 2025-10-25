@@ -201,36 +201,39 @@ r.post("/", upload.single("image"), async (req, res) => {
 // category: id, nombre, "" (limpiar) o undefined (no tocar)
 // Además: pluses? (string JSON o array)
 // =========================
-  r.patch("/:id", upload.single("image"), async (req, res) => {
+ r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
-    // ✅ 1) valida ObjectId
-    const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
+    // 👇 Saca explícitamente category y pluses para que NO queden en ...rest
+    const {
+      visible,
+      flavors,
+      price,
+      stock,
+      puffs,
+      sku,
+      name,
+      category,   // <- importante
+      pluses,     // <- importante
+      ...rest
+    } = req.body as Record<string, unknown>;
 
-    const { visible, flavors, price, stock, puffs, sku, name, ...rest } = req.body;
     const update: Record<string, any> = { ...rest };
 
-    // ✅ 2) normaliza y previene duplicado de SKU
+    // SKU
     if (sku !== undefined) {
       const next = String(sku).trim().toUpperCase();
       if (!next) return res.status(400).json({ error: "El SKU no puede quedar vacío" });
-
-      // pre-chequeo (evita E11000 → 500)
-      const exists = await Product.findOne({ sku: next, _id: { $ne: id } }).lean();
-      if (exists) return res.status(409).json({ error: "SKU duplicado" });
-
       update.sku = next;
     }
 
+    // Nombre
     if (name !== undefined) {
       const next = String(name).trim();
       if (!next) return res.status(400).json({ error: "El nombre no puede quedar vacío" });
       update.name = next;
     }
 
-    // números seguros
+    // Numéricos
     if (price !== undefined) {
       const n = Number(price);
       if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Precio inválido" });
@@ -247,20 +250,51 @@ r.post("/", upload.single("image"), async (req, res) => {
       update.puffs = Math.max(0, Math.round(n));
     }
 
-    // visible
-    if (typeof visible === "boolean") update.isActive = visible;
-    else if (typeof visible === "string") update.isActive = (visible === "true");
+    // Visible
+    if (typeof visible === "boolean") {
+      update.isActive = visible;
+    } else if (typeof visible === "string") {
+      update.isActive = visible === "true";
+    }
 
-    // flavors
+    // Flavors: array | CSV
     if (Array.isArray(flavors)) {
       update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
       update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    // ⚠️ si también procesas pluses/category aquí, vuelve a pegar tu lógica actual
+    // Pluses: JSON string | array | ""
+    if (Object.prototype.hasOwnProperty.call(req.body, "pluses")) {
+      try {
+        if (Array.isArray(pluses)) {
+          update.pluses = (pluses as unknown[]).map(s => String(s).trim()).filter(Boolean);
+        } else if (typeof pluses === "string") {
+          const parsed = JSON.parse(pluses);
+          if (Array.isArray(parsed)) {
+            update.pluses = parsed.map(s => String(s).trim()).filter(Boolean);
+          } else if (pluses.trim() === "") {
+            update.pluses = [];
+          }
+        }
+      } catch {
+        update.pluses = [];
+      }
+    }
 
-    // imagen
+    // Category: id | nombre | "" | undefined
+    if (Object.prototype.hasOwnProperty.call(req.body, "category")) {
+      const catId = await resolveCategoryId(category);
+      if (catId === null) {
+        // limpiar categoría
+        update.$unset = { ...(update.$unset as any), category: 1 };
+        delete update.category;
+      } else if (catId !== undefined) {
+        update.category = catId;
+      }
+    }
+
+    // Imagen (multipart)
     if (req.file) {
       const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
       // @ts-ignore
@@ -268,7 +302,7 @@ r.post("/", upload.single("image"), async (req, res) => {
     }
 
     const doc = await Product.findByIdAndUpdate(
-      id,
+      req.params.id,
       update,
       { new: true, runValidators: true, context: "query" }
     ).populate("category", "name");
@@ -276,20 +310,11 @@ r.post("/", upload.single("image"), async (req, res) => {
     if (!doc) return res.status(404).json({ error: "Not found" });
     return res.json(mapDoc(doc));
   } catch (e: any) {
-    // ✅ 3) catch más robusto: cualquier E11000 → 409
-    console.error("PATCH /products error:", {
-      message: e?.message,
-      code: e?.code,
-      keyPattern: e?.keyPattern,
-      keyValue: e?.keyValue,
-      name: e?.name,
-      errors: e?.errors,
-    });
-
+    console.error("PATCH /products error:", e?.message, e?.errors || e);
     if (e?.message === "CATEGORY_NOT_FOUND") {
       return res.status(400).json({ error: "La categoría no existe" });
     }
-    if (e?.code === 11000) {            // 👈 no dependas de keyPattern
+    if (e?.code === 11000 && e?.keyPattern?.sku) {
       return res.status(409).json({ error: "SKU duplicado" });
     }
     if (e?.name === "ValidationError") {
