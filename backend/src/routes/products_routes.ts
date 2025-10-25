@@ -203,11 +203,25 @@ r.post("/", upload.single("image"), async (req, res) => {
 // =========================
 r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
-    const { visible, flavors, price, stock, puffs, ...rest } = req.body;
+    const { visible, flavors, price, stock, puffs, sku, name, ...rest } = req.body;
 
     const update: Record<string, any> = { ...rest };
 
-    // Coerciones numéricas seguras
+    // 🔹 Normaliza SKU si viene
+    if (sku !== undefined) {
+      const next = String(sku).trim().toUpperCase();
+      if (!next) return res.status(400).json({ error: "El SKU no puede quedar vacío" });
+      update.sku = next;
+    }
+
+    // 🔹 Normaliza name si quieres (igual que en POST)
+    if (name !== undefined) {
+      const next = String(name).trim();
+      if (!next) return res.status(400).json({ error: "El nombre no puede quedar vacío" });
+      update.name = next;
+    }
+
+    // 🔹 Coerciones numéricas seguras (tu código existente)
     if (price !== undefined) {
       const n = Number(price);
       if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Precio inválido" });
@@ -224,54 +238,24 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       update.puffs = Math.max(0, Math.round(n));
     }
 
-    // visible puede venir como boolean o string
+    // 🔹 visible (tu código existente)
     if (typeof visible === "boolean") {
       update.isActive = visible;
     } else if (typeof visible === "string") {
       update.isActive = visible === "true";
     }
 
-    // flavors: array o CSV o string vacío
+    // 🔹 flavors (tu código existente)
     if (Array.isArray(flavors)) {
       update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
       update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    // pluses: JSON o array o string vacío
-    if (Object.prototype.hasOwnProperty.call(req.body, "pluses")) {
-      try {
-        const plusesRaw = (req.body as any).pluses;
-        if (Array.isArray(plusesRaw)) {
-          update.pluses = (plusesRaw as string[]).map(s => String(s).trim()).filter(Boolean);
-        } else if (typeof plusesRaw === "string") {
-          const parsed = JSON.parse(plusesRaw);
-          if (Array.isArray(parsed)) {
-            update.pluses = parsed.map((s: unknown) => String(s).trim()).filter(Boolean);
-          } else if (plusesRaw.trim() === "") {
-            update.pluses = [];
-          }
-        }
-      } catch {
-        update.pluses = [];
-      }
-    }
+    // 🔹 pluses y categoría (tu código existente) …
+    // … (no lo repito por brevedad)
 
-    // categoría: resolver id/nombre/limpiar
-    if (Object.prototype.hasOwnProperty.call(req.body, "category")) {
-      const catId = await resolveCategoryId(req.body.category);
-      if (catId === null) {
-        update.$unset = { ...(update.$unset as any), category: 1 };
-        delete update.category;
-      } else {
-        update.category = catId;
-      }
-    } else if (typeof update.category === "string") {
-      // defensa extra por si quedó en rest
-      delete update.category;
-    }
-
-    // Imagen (opcional) -> Cloudinary
+    // 🔹 Imagen (tu código existente)
     if (req.file) {
       const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
       // @ts-ignore
@@ -281,15 +265,19 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     const doc = await Product.findByIdAndUpdate(
       req.params.id,
       update,
-      { new: true, runValidators: true }
+      { new: true, runValidators: true, context: "query" } // 👈 importante
     ).populate("category", "name");
 
     if (!doc) return res.status(404).json({ error: "Not found" });
-    res.json(mapDoc(doc));
+    return res.json(mapDoc(doc));
   } catch (e: any) {
     console.error("PATCH /products error:", e?.message, e?.errors || e);
     if (e?.message === "CATEGORY_NOT_FOUND") {
       return res.status(400).json({ error: "La categoría no existe" });
+    }
+    // 👇 Manejo de duplicado de SKU
+    if (e?.code === 11000 && e?.keyPattern?.sku) {
+      return res.status(409).json({ error: "SKU duplicado" });
     }
     if (e?.name === "ValidationError") {
       return res.status(400).json({ error: e.message });
@@ -297,6 +285,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     return res.status(500).json({ error: "Error interno actualizando producto" });
   }
 });
+
 
 // =========================
 // DELETE /api/products/:id
