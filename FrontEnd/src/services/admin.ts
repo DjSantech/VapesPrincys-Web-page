@@ -72,9 +72,16 @@ export async function patchProduct(id: string, patch: PatchProductPayload): Prom
     },
     body: JSON.stringify(patch),
   });
-  if (!res.ok) throw new Error(`PATCH /products/${id} failed`);
+
+  // 👇 muestra el mensaje exacto del backend si hay error
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Error ${res.status} actualizando producto`);
+  }
+
   return res.json() as Promise<AdminProduct>;
 }
+
 
 export async function deleteProduct(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/products/${id}`, {
