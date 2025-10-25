@@ -15,7 +15,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "https://vapesprincys-web-page.onrender.com",
-    "https://vapes-princys.vercel.app",
+    "https://vapes-princys-web-page.vercel.app",
   ],
   credentials: false,
 }));
