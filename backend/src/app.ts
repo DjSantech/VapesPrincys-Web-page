@@ -7,6 +7,7 @@ import path from "path";
 
 import productsRouter from "./routes/products_routes";
 import plusesRouter from "./routes/pluses_routes";
+import CategoriesRouter from "./routes/categories_routes";
 
 const app = express();
 
@@ -23,6 +24,7 @@ app.use(express.json());
 app.use(express.static(path.join(process.cwd(), "public")));
 
 app.use("/api/products", productsRouter);
+app.use("/api/categories", CategoriesRouter);
 app.use("/api/pluses", plusesRouter);
 console.log("Pluses router mounted at /api/pluses");
 
