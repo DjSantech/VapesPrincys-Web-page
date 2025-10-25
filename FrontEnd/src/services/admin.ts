@@ -4,6 +4,7 @@
 const API_BASE = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:8080/api";
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("admin_token") ?? ""}` });
 
+console.info("[admin.ts] API_BASE =", API_BASE);
 // ===== Tipos =====
 export interface AdminProduct {
   id: string;
@@ -190,3 +191,6 @@ export async function deletePlusById(id: string): Promise<void> {
     throw new Error(`DELETE /pluses/${id} failed`);
   }
 }
+
+// Log temporal para ver a qué host pega el front
+

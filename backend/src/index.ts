@@ -1,34 +1,48 @@
+// src/server.ts
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
-import { connectDB } from "./config/db";
-import productRouter from "./routes/products_routes";
-import categoriesRouter from "./routes/categories_routes";
-import { startMongoKeepAlive } from "./scripts/KeepAlive";
- import categoryRouter from "./routes/categories_routes";
+import morgan from "morgan";
+import path from "path";
 
-console.log("URI:", process.env.MONGODB_URI?.slice(0, 30) + "...");
+import productsRouter from "./routes/products_routes";
+import plusesRouter from "./routes/pluses_routes"; // ✅ IMPORT ARRIBA
 
 const app = express();
-app.use(cors());
+
+// ✅ CORS: incluye tu dominio real del front en producción
+app.use(cors({
+  origin: [
+    "http://localhost:5173",                          // dev local
+    "https://vapesprincys-web-page.onrender.com",     // tu front en Render
+    "https://vapes-princys.vercel.app",               // (si también usas Vercel)
+  ],
+  credentials: false, // no usas cookies; si las usas, pon true
+}));
+
+app.use(morgan("dev"));
 app.use(express.json());
-app.use("/api/products", productRouter);
-app.use("/api/categories", categoriesRouter);
 
-const PORT = process.env.PORT ?? 8080;
+// ✅ Archivos estáticos públicos (si los usas)
+app.use(express.static(path.join(process.cwd(), "public")));
 
-app.use((req, _res, next) => { console.log("[REQ]", req.method, req.path); next(); });
-app.get("/health", (_req, res) => res.send("ok"));
+// ✅ Monta APIs ANTES de cualquier catch-all del front
+app.use("/api/products", productsRouter);
+app.use("/api/pluses", plusesRouter); // ✅ AHORA SÍ SE MONTA
 
-app.use("/api/categories", categoryRouter);
-(async () => {
-  try {
-    await connectDB(); // <-- espera conexión
-    startMongoKeepAlive(); // <--- INICIA EL PING PERIÓDICO AQUÍ
+// ✅ Healthcheck (útil para probar despliegue)
+app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
-    app.listen(PORT, () => console.log(`🚀 API running on http://localhost:${PORT}`));
-  } catch (err) {
-    console.error("❌ No se pudo conectar a Mongo:", err);
-    process.exit(1);
-  }
-})();
+// (Opcional) Si sirves el build del front desde el mismo servidor,
+// agrega el estático del front y un catch-all DESPUÉS de las APIs.
+// import path from "path";
+// app.use(express.static(path.join(process.cwd(), "dist")));
+// app.get("*", (_req, res) => {
+//   res.sendFile(path.join(process.cwd(), "dist", "index.html"));
+// });
+
+app.get("/", (_req, res) => {
+  res.send("Vapitos Princys API – usa /api/health o /api/products");
+});
+
+export default app;
