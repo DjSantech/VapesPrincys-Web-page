@@ -232,7 +232,7 @@ export default function HomeView() {
   const Grid = ({ products }: { products: Product[] }) => (
     <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       {products.map((p) => (
-        <ProductCard key={p.id} id={p.id} name={p.name} price={p.price} imageUrl={p.imageUrl} className="!p-0" />
+        <ProductCard key={p.id} id={p.id} name={p.name} price={p.price} imageUrl={p.imageUrl} pluses={p.pluses}  puffs={p.puffs} className="!p-0" />
       ))}
     </div>
   );

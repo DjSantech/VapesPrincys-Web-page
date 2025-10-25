@@ -4,9 +4,11 @@ import { Link } from "react-router-dom";
 export type ProductCardProps = {
   id: string;
   name: string;
-  price: number; // en centavos
+  price: number;       // en pesos (enteros)
   imageUrl?: string;
   className?: string;
+  pluses?: string[];   // <- NUEVO: lista de pluses (por nombre)
+  puffs?: number;      // <- NUEVO: cantidad de puffs
 };
 
 const formatPrice = (pesos: number) =>
@@ -22,9 +24,16 @@ export default function ProductCard({
   price,
   imageUrl,
   className = "",
+  pluses = [],
+  puffs,
 }: ProductCardProps) {
   const fallback = "https://picsum.photos/seed/vape/600/600";
   const img = imageUrl || fallback;
+
+  // Badge: usamos el primer plus si existe
+  const hasPlus = Array.isArray(pluses) && pluses.length > 0;
+  const mainPlus = hasPlus ? String(pluses[0] ?? "").toUpperCase() : "";
+  const extraPluses = hasPlus && pluses.length > 1 ? pluses.length - 1 : 0;
 
   return (
     <Link
@@ -52,9 +61,39 @@ export default function ProductCard({
         <h1 className="line-clamp-1 text-sm sm:text-base md:text-lg font-semibold text-zinc-100">
           {name}
         </h1>
-        <p className="mt-1 text-sm sm:text-base md:text-lg font-bold text-amber-400">
-          {formatPrice(price)}
-        </p>
+
+        {/* Precio + Plus badge */}
+        <div className="mt-1 flex items-center justify-between">
+          <p className="text-sm sm:text-base md:text-lg font-bold text-amber-400">
+            {formatPrice(price)}
+          </p>
+
+          {hasPlus && (
+            <span
+              title={pluses.join(", ")}
+              className="inline-flex items-center gap-1 rounded-lg
+                         border border-amber-400/30
+                         bg-gradient-to-br from-amber-500/20 via-fuchsia-500/20 to-sky-500/20
+                         px-2 py-0.5
+                         text-[10px] sm:text-xs font-extrabold tracking-wide text-amber-200
+                         shadow-[0_0_0_1px_rgba(251,191,36,0.12),0_0_12px_rgba(251,191,36,0.25)]
+                         ring-1 ring-amber-400/30
+                         backdrop-blur-[2px] select-none"
+            >
+              <span className="drop-shadow">{mainPlus}</span>
+              {extraPluses > 0 && (
+                <span className="opacity-90 font-semibold">+{extraPluses}</span>
+              )}
+            </span>
+          )}
+        </div>
+
+        {/* Puffs */}
+        {typeof puffs === "number" && puffs > 0 && (
+          <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
+            {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(puffs)} puffs
+          </p>
+        )}
       </div>
     </Link>
   );
