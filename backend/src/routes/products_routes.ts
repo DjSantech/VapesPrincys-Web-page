@@ -201,27 +201,36 @@ r.post("/", upload.single("image"), async (req, res) => {
 // category: id, nombre, "" (limpiar) o undefined (no tocar)
 // Además: pluses? (string JSON o array)
 // =========================
-r.patch("/:id", upload.single("image"), async (req, res) => {
+  r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
-    const { visible, flavors, price, stock, puffs, sku, name, ...rest } = req.body;
+    // ✅ 1) valida ObjectId
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
 
+    const { visible, flavors, price, stock, puffs, sku, name, ...rest } = req.body;
     const update: Record<string, any> = { ...rest };
 
-    // 🔹 Normaliza SKU si viene
+    // ✅ 2) normaliza y previene duplicado de SKU
     if (sku !== undefined) {
       const next = String(sku).trim().toUpperCase();
       if (!next) return res.status(400).json({ error: "El SKU no puede quedar vacío" });
+
+      // pre-chequeo (evita E11000 → 500)
+      const exists = await Product.findOne({ sku: next, _id: { $ne: id } }).lean();
+      if (exists) return res.status(409).json({ error: "SKU duplicado" });
+
       update.sku = next;
     }
 
-    // 🔹 Normaliza name si quieres (igual que en POST)
     if (name !== undefined) {
       const next = String(name).trim();
       if (!next) return res.status(400).json({ error: "El nombre no puede quedar vacío" });
       update.name = next;
     }
 
-    // 🔹 Coerciones numéricas seguras (tu código existente)
+    // números seguros
     if (price !== undefined) {
       const n = Number(price);
       if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Precio inválido" });
@@ -238,24 +247,20 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       update.puffs = Math.max(0, Math.round(n));
     }
 
-    // 🔹 visible (tu código existente)
-    if (typeof visible === "boolean") {
-      update.isActive = visible;
-    } else if (typeof visible === "string") {
-      update.isActive = visible === "true";
-    }
+    // visible
+    if (typeof visible === "boolean") update.isActive = visible;
+    else if (typeof visible === "string") update.isActive = (visible === "true");
 
-    // 🔹 flavors (tu código existente)
+    // flavors
     if (Array.isArray(flavors)) {
       update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
       update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-    // 🔹 pluses y categoría (tu código existente) …
-    // … (no lo repito por brevedad)
+    // ⚠️ si también procesas pluses/category aquí, vuelve a pegar tu lógica actual
 
-    // 🔹 Imagen (tu código existente)
+    // imagen
     if (req.file) {
       const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
       // @ts-ignore
@@ -263,20 +268,28 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     }
 
     const doc = await Product.findByIdAndUpdate(
-      req.params.id,
+      id,
       update,
-      { new: true, runValidators: true, context: "query" } // 👈 importante
+      { new: true, runValidators: true, context: "query" }
     ).populate("category", "name");
 
     if (!doc) return res.status(404).json({ error: "Not found" });
     return res.json(mapDoc(doc));
   } catch (e: any) {
-    console.error("PATCH /products error:", e?.message, e?.errors || e);
+    // ✅ 3) catch más robusto: cualquier E11000 → 409
+    console.error("PATCH /products error:", {
+      message: e?.message,
+      code: e?.code,
+      keyPattern: e?.keyPattern,
+      keyValue: e?.keyValue,
+      name: e?.name,
+      errors: e?.errors,
+    });
+
     if (e?.message === "CATEGORY_NOT_FOUND") {
       return res.status(400).json({ error: "La categoría no existe" });
     }
-    // 👇 Manejo de duplicado de SKU
-    if (e?.code === 11000 && e?.keyPattern?.sku) {
+    if (e?.code === 11000) {            // 👈 no dependas de keyPattern
       return res.status(409).json({ error: "SKU duplicado" });
     }
     if (e?.name === "ValidationError") {
@@ -285,7 +298,6 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     return res.status(500).json({ error: "Error interno actualizando producto" });
   }
 });
-
 
 // =========================
 // DELETE /api/products/:id
