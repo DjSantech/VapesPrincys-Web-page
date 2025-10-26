@@ -14,6 +14,7 @@ export interface AdminProduct {
   price: number;      // centavos
   stock: number;
   puffs: number;
+  ml: number;
   visible: boolean;
   imageUrl: string;
   category: string;   // nombre de categoría (texto)
@@ -27,6 +28,7 @@ export interface CreateProductPayload {
   price: number;      // centavos
   stock?: number;
   puffs: number;
+  ml: number;
   visible?: boolean;
   category?: string;  // nombre de la categoría
   image?: File | null;
@@ -37,7 +39,7 @@ export interface CreateProductPayload {
 export type PatchProductPayload = Partial<
   Pick<
     AdminProduct,
-    "sku" | "name" | "price" | "stock" | "puffs" | "visible" | "category" | "flavors" | "pluses"
+    "sku" | "name" | "price" | "stock" | "puffs" | "visible" | "category" | "flavors" | "pluses" | "ml"
   >
 >;
 
@@ -45,7 +47,7 @@ export type PatchProductPayload = Partial<
 export interface AdminCategory {
   id: string;
   name: string;
-  homeOrder?: number; // ⬅️ NUEVO: orden para el Home (menor = primero)
+  homeOrder?: number; // orden para el Home (menor = primero)
 }
 
 // ===== Pluses =====
@@ -82,7 +84,6 @@ export async function patchProduct(id: string, patch: PatchProductPayload): Prom
   return res.json() as Promise<AdminProduct>;
 }
 
-
 export async function deleteProduct(id: string): Promise<void> {
   const res = await fetch(`${API_BASE}/products/${id}`, {
     method: "DELETE",
@@ -115,6 +116,10 @@ export async function createProduct(payload: CreateProductPayload): Promise<Admi
   if (payload.visible != null) fd.append("visible", String(payload.visible));
   if (payload.category)        fd.append("category", payload.category);
   if (payload.image)           fd.append("image", payload.image);
+
+  // ⬇️ NUEVO/IMPORTANTE: enviar también puffs y ml
+  fd.append("puffs", String(payload.puffs));  // requerido según tu tipo
+  fd.append("ml", String(payload.ml));        // requerido según tu tipo
 
   // Enviar sabores:
   if (payload.flavors && payload.flavors.length > 0) {
@@ -155,8 +160,10 @@ export async function createCategory(name: string): Promise<AdminCategory> {
   return res.json() as Promise<AdminCategory>;
 }
 
-// ⬇️ NUEVO: actualizar orden (y/o nombre) de la categoría
-export async function patchCategory(id: string, patch: Partial<Pick<AdminCategory, "name" | "homeOrder">>): Promise<AdminCategory> {
+export async function patchCategory(
+  id: string,
+  patch: Partial<Pick<AdminCategory, "name" | "homeOrder">>
+): Promise<AdminCategory> {
   const res = await fetch(`${API_BASE}/categories/${id}`, {
     method: "PATCH",
     headers: {
@@ -211,4 +218,3 @@ export async function deletePlusById(id: string): Promise<void> {
   }
 }
 
-// Log temporal para ver a qué host pega el front

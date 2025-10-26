@@ -12,7 +12,7 @@ import {
   getCategories,
   createCategory,
   deleteCategoryById,
-  patchCategory,          // ⬅️ NUEVO
+  patchCategory,
   type AdminCategory,
   // ===== PLUS =====
   getPluses,
@@ -33,7 +33,8 @@ type Drafts = Record<
   string,
   Partial<AdminProduct> & {
     flavorsCSV?: string;
-    pluses?: string[];               // NUEVO: pluses (nombres)
+    pluses?: string[];
+    ml?: number; // NUEVO: ml
   }
 >;
 
@@ -73,6 +74,7 @@ export default function AdminDashboard() {
     price: number;          // centavos
     stock: number;
     puffs: number;
+    ml: number;             // NUEVO: ml
     visible: boolean;
     category: string;       // nombre de categoría
     flavorsCSV: string;     // texto → se parsea al enviar
@@ -84,6 +86,7 @@ export default function AdminDashboard() {
     price: 0,
     stock: 0,
     puffs: 0,
+    ml: 0,
     visible: true,
     category: "",
     flavorsCSV: "",
@@ -108,6 +111,7 @@ export default function AdminDashboard() {
       price: 0,
       stock: 0,
       puffs: 0,
+      ml: 0, // NUEVO
       visible: true,
       category: "",
       flavorsCSV: "",
@@ -189,6 +193,7 @@ export default function AdminDashboard() {
       price: Math.max(0, Math.round(merged.price ?? 0)),
       stock: Math.max(0, Math.round(merged.stock ?? 0)),
       puffs: Math.max(0, Math.round(merged.puffs ?? 0)),
+      ml: Math.max(0, Math.round(merged.ml ?? 0)), // NUEVO: ml
       visible: merged.visible,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
       flavors: draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []),
@@ -232,6 +237,7 @@ export default function AdminDashboard() {
     if (form.price < 0)    { toast.error("El precio no puede ser negativo"); return; }
     if (form.stock < 0)    { toast.error("El stock no puede ser negativo"); return; }
     if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; }
+    if (form.ml < 0)       { toast.error("Los ml no pueden ser negativos"); return; } // NUEVO
 
     try {
       const created = await createProduct({
@@ -240,6 +246,7 @@ export default function AdminDashboard() {
         price: Math.round(form.price),
         stock: Math.max(0, Math.round(form.stock)),
         puffs: Math.max(0, Math.round(form.puffs)),
+        ml: Math.max(0, Math.round(form.ml)), // NUEVO: ml
         visible: form.visible,
         category: form.category.trim(),
         image: form.image,
@@ -373,6 +380,7 @@ export default function AdminDashboard() {
             const price = Math.round(d.price ?? p.price ?? 0);
             const stock = Math.round(d.stock ?? p.stock ?? 0);
             const puffs = Math.round(d.puffs ?? p.puffs ?? 0);
+            const ml = Math.round(d.ml ?? p.ml ?? 0); // NUEVO: ml (p.ml opcional)
             const category = (d.category ?? p.category) ?? "";
             const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
             const visible = (d.visible ?? p.visible) ?? true;
@@ -473,6 +481,18 @@ export default function AdminDashboard() {
                       value={puffs}
                       onChange={e => setDraft(p.id, { puffs: Math.max(0, Number(e.target.value)) })}
                       placeholder="5000"
+                    />
+                  </div>
+
+                  {/* NUEVO: Mililitros */}
+                  <div>
+                    <label className="text-xs text-zinc-400">Mililitros (ml)</label>
+                    <input
+                      type="number"
+                      className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                      value={ml}
+                      onChange={e => setDraft(p.id, { ml: Math.max(0, Number(e.target.value)) })}
+                      placeholder="10"
                     />
                   </div>
 
@@ -624,6 +644,18 @@ export default function AdminDashboard() {
                   value={form.puffs}
                   onChange={e => setForm(f => ({ ...f, puffs: Math.max(0, Number(e.target.value)) }))}
                   placeholder="5000"
+                />
+              </div>
+
+              {/* NUEVO: ml */}
+              <div>
+                <label className="text-xs text-zinc-400">Mililitros (ml)</label>
+                <input
+                  type="number"
+                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                  value={form.ml}
+                  onChange={e => setForm(f => ({ ...f, ml: Math.max(0, Number(e.target.value)) }))}
+                  placeholder="10"
                 />
               </div>
 

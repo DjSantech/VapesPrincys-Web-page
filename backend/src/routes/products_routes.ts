@@ -34,12 +34,13 @@ const mapDoc = (p: any) => {
     price: p.price,
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
+    ml: p.ml ?? 0,                 // ✅ NUEVO: incluir ml al DTO
     visible: p.isActive ?? true,
     imageUrl: p.imageUrl ?? "",
-    category: catName,        // compat: sigue siendo texto para tu UI actual
-    categoryId: catId,        // nuevo: id real por si lo quieres usar en el <select>
+    category: catName,             // compat: sigue siendo texto para tu UI actual
+    categoryId: catId,             // por si luego usas el id real en selects
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
-    pluses: Array.isArray(p.pluses) ? p.pluses : [], // ✅ incluir pluses
+    pluses: Array.isArray(p.pluses) ? p.pluses : [],
   };
 };
 
@@ -52,8 +53,7 @@ r.get("/:id", async (req, res) => {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "ID inválido" });
     }
-    const doc = await Product.findById(id)
-      .populate("category", "name").lean();
+    const doc = await Product.findById(id).populate("category", "name").lean();
     if (!doc) return res.status(404).json({ error: "Not found" });
     return res.json(mapDoc(doc));
   } catch (e) {
@@ -64,10 +64,6 @@ r.get("/:id", async (req, res) => {
 
 // =========================
 /** GET /api/products  (lista, con filtros ?q= y ?category= ó ?categoryId= ) */
-// Acepta:
-//   - ?q= (búsqueda por nombre)
-//   - ?category= (id ObjectId o nombre de categoría)
-//   - ?categoryId= (id ObjectId)  ← compat para tu ProductDetailPage actual
 // =========================
 r.get("/", async (req, res) => {
   try {
@@ -106,12 +102,12 @@ r.get("/", async (req, res) => {
 
 // =========================
 // POST /api/products  (multipart/form-data)
-// Campos: sku, name, price, stock?, visible?, category (id o nombre), flavors? (array o CSV), puffs?, image? (File)
-// Además: pluses? (string JSON o array)
+// Campos: sku, name, price, stock?, visible?, category (id o nombre),
+//         flavors? (array o CSV), puffs?, ml?, image?, pluses? (string JSON o array)
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { sku, name, price, stock, category, visible, flavors, puffs } = req.body;
+    const { sku, name, price, stock, category, visible, flavors, puffs, ml } = req.body;
 
     if (!sku)  return res.status(400).json({ error: "El SKU es obligatorio" });
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
@@ -129,6 +125,11 @@ r.post("/", upload.single("image"), async (req, res) => {
     const puffsNum = puffs != null ? Number(puffs) : 0;
     if (!Number.isFinite(puffsNum) || puffsNum < 0) {
       return res.status(400).json({ error: "Puffs inválido" });
+    }
+
+    const mlNum = ml != null ? Number(ml) : 0;             // ✅ parse ml
+    if (!Number.isFinite(mlNum) || mlNum < 0) {
+      return res.status(400).json({ error: "Mililitros inválido" });
     }
 
     // flavors: array o CSV
@@ -171,11 +172,12 @@ r.post("/", upload.single("image"), async (req, res) => {
       price: priceNum,
       stock: stockNum,
       puffs: puffsNum,
+      ml: mlNum,                                      // ✅ guardar ml
       imageUrl,
       ...(catId === null ? {} : { category: catId }),
       isActive: visible !== undefined ? String(visible) === "true" : true,
       flavors: flavorsArr,
-      pluses: plusesArr, // ✅ guardar pluses
+      pluses: plusesArr,
     });
 
     const saved = await Product.findById(created._id).populate("category", "name").lean();
@@ -199,9 +201,9 @@ r.post("/", upload.single("image"), async (req, res) => {
 // PATCH /api/products/:id  (JSON o multipart)
 // Acepta cambios parciales y/o imagen (campo 'image')
 // category: id, nombre, "" (limpiar) o undefined (no tocar)
-// Además: pluses? (string JSON o array)
+// pluses: string JSON | array | ""
 // =========================
- r.patch("/:id", upload.single("image"), async (req, res) => {
+r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
     // 👇 Saca explícitamente category y pluses para que NO queden en ...rest
     const {
@@ -210,10 +212,11 @@ r.post("/", upload.single("image"), async (req, res) => {
       price,
       stock,
       puffs,
+      ml,           // ✅ NUEVO: ml desde body
       sku,
       name,
-      category,   // <- importante
-      pluses,     // <- importante
+      category,     // <- importante
+      pluses,       // <- importante
       ...rest
     } = req.body as Record<string, unknown>;
 
@@ -249,6 +252,11 @@ r.post("/", upload.single("image"), async (req, res) => {
       if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Puffs inválido" });
       update.puffs = Math.max(0, Math.round(n));
     }
+    if (ml !== undefined) {                             // ✅ validar y setear ml
+      const n = Number(ml);
+      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Mililitros inválido" });
+      update.ml = Math.max(0, Math.round(n));
+    }
 
     // Visible
     if (typeof visible === "boolean") {
@@ -261,7 +269,7 @@ r.post("/", upload.single("image"), async (req, res) => {
     if (Array.isArray(flavors)) {
       update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
-      update.flavors = flavors.split(",").map(s => s.trim()).filter(Boolean);
+      update.flavors = (flavors as string).split(",").map(s => s.trim()).filter(Boolean);
     }
 
     // Pluses: JSON string | array | ""
