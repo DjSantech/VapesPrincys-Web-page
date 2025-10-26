@@ -9,6 +9,9 @@ export type CartItem = {
   qty: number;
   flavor?: string;
   imageUrl?: string;
+  ml?: number;      // nuevo campo
+  puffs?: number;   // nuevo campo
+  pluses?: string[];
   // add-ons
   charger?: CartAddOnCharger | null;
   extraVape?: CartAddOnExtraVape | null;

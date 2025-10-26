@@ -4,11 +4,12 @@ import { Link } from "react-router-dom";
 export type ProductCardProps = {
   id: string;
   name: string;
-  price: number;       // en pesos (enteros)
+  price: number;
   imageUrl?: string;
   className?: string;
-  pluses?: string[];   // <- NUEVO: lista de pluses (por nombre)
-  puffs?: number;      // <- NUEVO: cantidad de puffs
+  pluses?: string[];
+  puffs?: number;
+  ml?: number; // ✅ nuevo campo
 };
 
 const formatPrice = (pesos: number) =>
@@ -26,11 +27,11 @@ export default function ProductCard({
   className = "",
   pluses = [],
   puffs,
+  ml,
 }: ProductCardProps) {
   const fallback = "https://picsum.photos/seed/vape/600/600";
   const img = imageUrl || fallback;
 
-  // Badge: usamos el primer plus si existe
   const hasPlus = Array.isArray(pluses) && pluses.length > 0;
   const mainPlus = hasPlus ? String(pluses[0] ?? "").toUpperCase() : "";
   const extraPluses = hasPlus && pluses.length > 1 ? pluses.length - 1 : 0;
@@ -43,7 +44,7 @@ export default function ProductCard({
                   focus:outline-none focus:ring-2 focus:ring-amber-400 ${className}`}
       aria-label={`Ver ${name}`}
     >
-      {/* Imagen del producto */}
+      {/* Imagen */}
       <div className="relative overflow-hidden bg-black/20">
         <img
           src={img}
@@ -56,13 +57,12 @@ export default function ProductCard({
         />
       </div>
 
-      {/* Detalle del producto */}
+      {/* Detalles */}
       <div className="p-3 sm:p-4 bg-[#111315] group-hover:bg-[#181b1d] transition-colors duration-300">
         <h1 className="line-clamp-1 text-sm sm:text-base md:text-lg font-semibold text-zinc-100">
           {name}
         </h1>
 
-        {/* Precio + Plus badge */}
         <div className="mt-1 flex items-center justify-between">
           <p className="text-sm sm:text-base md:text-lg font-bold text-amber-400">
             {formatPrice(price)}
@@ -88,12 +88,16 @@ export default function ProductCard({
           )}
         </div>
 
-        {/* Puffs */}
-        {typeof puffs === "number" && puffs > 0 && (
+        {/* Mostrar puffs o ml */}
+        {typeof puffs === "number" && puffs > 0 ? (
           <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
             {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(puffs)} puffs
           </p>
-        )}
+        ) : typeof ml === "number" && ml > 0 ? (
+          <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
+            {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(ml)} ml
+          </p>
+        ) : null}
       </div>
     </Link>
   );

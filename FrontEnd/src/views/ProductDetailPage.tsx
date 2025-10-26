@@ -7,20 +7,32 @@ import type { Product } from "../types/Product";
 import { useCart } from "../store/cart_info";
 import type { CartItem } from "../types/Cart";
 
-// Helpers
+// ===== Helpers
 const formatCOP = (pesos: number) =>
   new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
     .format(pesos || 0);
 
 type LocationState = { product?: Product };
 
-// Tipos locales
-
+// Gift model
 type GiftVapeModel = { name: string; basePrice: number };
 
-// Nuevos tipos: categorías y producto con _id opcional
+// Categorías y producto con _id opcional (para listas por categoría)
 type Category = { id: string; name: string; slug?: string };
 type ProductWithMongoId = Product & { _id?: string };
+
+// Estados locales tipados
+type ExtraVapeState = {
+  model?: string;
+  flavor?: string;
+  qty?: number;
+  price?: number;
+};
+
+type GiftVapeState = {
+  model?: string;
+  flavor?: string;
+};
 
 function StepNotice({ children }: { children: React.ReactNode }) {
   return (
@@ -44,24 +56,22 @@ export default function ProductDetailPage() {
   const [qty, setQty] = useState<number>(1);
   const [flavor, setFlavor] = useState<string>("");
 
-  // add-ons (solo “otro vape” y “regalo”)
+  // add-ons
   const [open2, setOpen2] = useState<boolean>(false);
   const [open3, setOpen3] = useState<boolean>(false);
 
-  const [extraVape, setExtraVape] = useState<{ model?: string; flavor?: string; qty?: number; price?: number }>({});
-  const [giftVape, setGiftVape] = useState<{ model?: string; flavor?: string }>({});
+  const [extraVape, setExtraVape] = useState<ExtraVapeState>({});
+  const [giftVape, setGiftVape] = useState<GiftVapeState>({});
 
   const productId = useMemo(() => id ?? "", [id]);
 
   // Datos estáticos
   const DEFAULT_FLAVORS: string[] = ["Mango", "Ice Mint", "Sandía", "Uva"];
 
-  const giftVapeModels: GiftVapeModel[] = [
-    { name: "Vape Classic 1000 (Regalo)", basePrice: 0 },
-  ];
+  const giftVapeModels: GiftVapeModel[] = [{ name: "Vape Classic 1000 (Regalo)", basePrice: 0 }];
 
-  // === NUEVO: estado para categorías y modelos por categoría ===
-  const baseURL = import.meta.env.VITE_API_URL || "/api";
+  // === Categorías y modelos
+  const baseURL: string = (import.meta.env.VITE_API_URL as string) || "/api";
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [catLoading, setCatLoading] = useState<boolean>(false);
@@ -72,11 +82,12 @@ export default function ProductDetailPage() {
   const [modelsLoading, setModelsLoading] = useState<boolean>(false);
   const [modelsError, setModelsError] = useState<string>("");
 
-  const [selectedModelId, setSelectedModelId] = useState<string>(""); // id del vape elegido (Product.id o _id)
-  const [selectedModelFlavors, setSelectedModelFlavors] = useState<string[]>([]); // sabores del vape elegido
+  const [selectedModelId, setSelectedModelId] = useState<string>("");
+  const [selectedModelFlavors, setSelectedModelFlavors] = useState<string[]>([]);
 
-  const getProductKey = (p: ProductWithMongoId): string => p.id ?? p._id ?? "";
+  const getProductKey = (p: ProductWithMongoId): string => p.id || p._id || "";
 
+  // Cargar producto si no viene por state
   useEffect(() => {
     if (!productId || product) return;
 
@@ -106,10 +117,12 @@ export default function ProductDetailPage() {
       }
     })();
 
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [productId, product]);
 
-  // Cargar categorías cuando se abre el acordeón la primera vez
+  // Cargar categorías al abrir por primera vez
   useEffect(() => {
     if (!open2 || categories.length > 0) return;
     let active = true;
@@ -117,7 +130,6 @@ export default function ProductDetailPage() {
       try {
         setCatLoading(true);
         setCatError("");
-        // Ajusta la URL si tu endpoint es distinto (p.ej. /categories o /category)
         const { data } = await axios.get<Category[]>(`${baseURL}/categories`);
         if (!active) return;
         setCategories(Array.isArray(data) ? data : []);
@@ -128,10 +140,12 @@ export default function ProductDetailPage() {
         if (active) setCatLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [open2, categories.length, baseURL]);
 
-  // Cargar modelos (vapes) cuando se elige una categoría
+  // Cargar modelos cuando se elige categoría
   useEffect(() => {
     if (!selectedCategoryId) return;
     let active = true;
@@ -142,10 +156,17 @@ export default function ProductDetailPage() {
         setModelsByCategory([]);
         setSelectedModelId("");
         setSelectedModelFlavors([]);
-        setExtraVape((prev) => ({ ...prev, model: undefined, price: undefined, flavor: undefined, qty: prev.qty ?? 1 }));
+        setExtraVape((prev) => ({
+          ...prev,
+          model: undefined,
+          price: undefined,
+          flavor: undefined,
+          qty: prev.qty ?? 1,
+        }));
 
-        // Ajusta el nombre del query si tu backend usa otro (p.ej. categoryId, categorySlug, categoryName)
-        const { data } = await axios.get<ProductWithMongoId[]>(`${baseURL}/products`, { params: { categoryId: selectedCategoryId } });
+        const { data } = await axios.get<ProductWithMongoId[]>(`${baseURL}/products`, {
+          params: { categoryId: selectedCategoryId },
+        });
         if (!active) return;
         setModelsByCategory(Array.isArray(data) ? data : []);
       } catch (e: unknown) {
@@ -155,10 +176,12 @@ export default function ProductDetailPage() {
         if (active) setModelsLoading(false);
       }
     })();
-    return () => { active = false; };
+    return () => {
+      active = false;
+    };
   }, [selectedCategoryId, baseURL]);
 
-  // Cuando se elige un modelo, setear sabores y precio del extra
+  // Cuando se elige modelo, setear sabores y precio del extra
   useEffect(() => {
     if (!selectedModelId) return;
     const chosen = modelsByCategory.find((p) => getProductKey(p) === selectedModelId);
@@ -186,16 +209,16 @@ export default function ProductDetailPage() {
   const availableFlavors: string[] =
     Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS;
 
-  const img = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
-  const inStock = product.stock ?? 0;
+  const img: string = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
+  const inStock: number = product.stock ?? 0;
 
-  const addOnTotal = extraVape.price ?? 0;
-  const mainTotal = product.price * qty;
-  const grandTotal = mainTotal + addOnTotal;
+  const addOnTotal: number = extraVape.price ?? 0;
+  const mainTotal: number = product.price * qty;
+  const grandTotal: number = mainTotal + addOnTotal;
 
-  const canOpen3 = open2 && !!extraVape.model;
+  const canOpen3: boolean = open2 && !!extraVape.model;
 
-  const addToCart = () => {
+  const addToCart = (): void => {
     const item: CartItem = {
       id: product.id,
       name: product.name,
@@ -218,10 +241,16 @@ export default function ProductDetailPage() {
     alert("Producto agregado al carrito ✅");
   };
 
+  // ===== Mostrar puffs o ml (puffs > ml > nada), sin any
+  const hasPuffs: boolean = typeof product.puffs === "number" && product.puffs > 0;
+  const hasMl: boolean = typeof (product as Product & { ml?: number }).ml === "number" && (product as Product & { ml?: number }).ml! > 0;
+
   return (
     <div className="p-6 text-zinc-100">
       <div className="mb-4">
-        <Link to="/" className="text-sm text-amber-400 hover:underline">← Volver</Link>
+        <Link to="/" className="text-sm text-amber-400 hover:underline">
+          ← Volver
+        </Link>
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -235,11 +264,21 @@ export default function ProductDetailPage() {
           <div>
             <h1 className="text-3xl font-bold text-zinc-100">{product.name}</h1>
             <div className="mt-2 text-2xl font-bold text-amber-400">{formatCOP(product.price)}</div>
-            {typeof product.puffs === "number" && product.puffs > 0 && (
-            <div className="mt-1 text-sm text-zinc-400">
-              {product.puffs.toLocaleString("es-CO")} puffs
-            </div>
-            )}
+
+            {/* Puffs o ml */}
+            {hasPuffs ? (
+              <div className="mt-1 text-sm text-zinc-400">
+                {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(product.puffs!)} puffs
+              </div>
+            ) : hasMl ? (
+              <div className="mt-1 text-sm text-zinc-400">
+                {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(
+                  (product as Product & { ml?: number }).ml!
+                )}{" "}
+                ml
+              </div>
+            ) : null}
+
             <p className="mt-2 text-zinc-300">{product.description ?? "—"}</p>
             <div className="mt-2 text-sm text-zinc-400">
               Stock disponible: <span className="font-semibold text-zinc-200">{inStock}</span> unidades
@@ -268,13 +307,15 @@ export default function ProductDetailPage() {
                 className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
               >
                 {availableFlavors.map((f) => (
-                  <option key={f} value={f}>{f}</option>
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
                 ))}
               </select>
             </div>
           </div>
 
-          {/* ADD-ON 2: Agregar otro vape (CATEGORÍA → MODELO → SABOR) */}
+          {/* ADD-ON 2: Agregar otro vape */}
           <div className="rounded-2xl border border-stone-700 overflow-hidden">
             <button
               type="button"
@@ -298,13 +339,17 @@ export default function ProductDetailPage() {
                     <option value="">Selecciona…</option>
                     {catLoading && <option value="" disabled>Cargando categorías…</option>}
                     {catError && <option value="" disabled>{catError}</option>}
-                    {!catLoading && !catError && categories.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
+                    {!catLoading &&
+                      !catError &&
+                      categories.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
-                {/* Modelo (vapes de la categoría) */}
+                {/* Modelo */}
                 <div className="flex items-center gap-3 opacity-100">
                   <label className="text-sm w-24 text-zinc-300">Modelo</label>
                   <select
@@ -341,13 +386,12 @@ export default function ProductDetailPage() {
                     title={!selectedModelId ? "Elige un modelo primero" : undefined}
                   >
                     {!selectedModelId && <option value="">Selecciona modelo primero…</option>}
-                    {selectedModelId && (
-                      <>
-                        {selectedModelFlavors.map((f) => (
-                          <option key={f} value={f}>{f}</option>
-                        ))}
-                      </>
-                    )}
+                    {selectedModelId &&
+                      selectedModelFlavors.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
                   </select>
                 </div>
 
@@ -359,7 +403,9 @@ export default function ProductDetailPage() {
                     min={1}
                     max={99}
                     value={extraVape.qty ?? 1}
-                    onChange={(e) => setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))}
+                    onChange={(e) =>
+                      setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))
+                    }
                     className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     disabled={!selectedModelId}
                     title={!selectedModelId ? "Elige un modelo primero" : undefined}
@@ -369,7 +415,7 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* ADD-ON 3: Regalo (igual que antes) */}
+          {/* ADD-ON 3: Regalo */}
           <div
             className={`rounded-2xl border overflow-hidden ${
               canOpen3 ? "border-stone-700" : "border-stone-800 opacity-60 pointer-events-none"
@@ -399,9 +445,13 @@ export default function ProductDetailPage() {
                     value={giftVape.model ?? ""}
                     onChange={(e) => setGiftVape((prev) => ({ ...prev, model: e.target.value }))}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {giftVapeModels.map((m) => (
-                      <option key={m.name} value={m.name}>{m.name}</option>
+                      <option key={m.name} value={m.name}>
+                        {m.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -413,9 +463,13 @@ export default function ProductDetailPage() {
                     value={giftVape.flavor ?? ""}
                     onChange={(e) => setGiftVape((prev) => ({ ...prev, flavor: e.target.value }))}
                   >
-                    <option value="" disabled>Selecciona…</option>
+                    <option value="" disabled>
+                      Selecciona…
+                    </option>
                     {availableFlavors.map((f) => (
-                      <option key={f} value={f}>{f}</option>
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -428,8 +482,12 @@ export default function ProductDetailPage() {
           {/* RESUMEN + CTA */}
           <div className="flex items-center justify-between rounded-2xl border border-stone-700 bg-[#1a1d1f] px-4 py-3">
             <div className="text-sm text-zinc-300">
-              <div>Total producto: <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span></div>
-              <div>Extras: <span className="font-semibold text-zinc-100">{formatCOP(addOnTotal)}</span></div>
+              <div>
+                Total producto: <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span>
+              </div>
+              <div>
+                Extras: <span className="font-semibold text-zinc-100">{formatCOP(addOnTotal)}</span>
+              </div>
             </div>
             <div className="text-right">
               <div className="text-lg font-bold text-amber-400">Total: {formatCOP(grandTotal)}</div>
@@ -441,7 +499,6 @@ export default function ProductDetailPage() {
               </button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
