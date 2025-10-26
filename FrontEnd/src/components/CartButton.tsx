@@ -5,7 +5,6 @@ import { ShoppingCart } from "lucide-react";
 import { useCart } from "../store/cart_info";
 import { buildWhatsAppUrl, formatCOP } from "../lib/format";
 import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
-import type { CartItem } from "../types/Cart";
 
 type FormErrors = {
   name?: string;
@@ -27,6 +26,7 @@ const FEE_BY_ZONE: Record<DeliveryZone, number> = {
 
 // ———————————————————————————————————————
 // Listas de Colombia (departamentos y ciudades frecuentes)
+// (Si quieres TODAS las ciudades, luego cambiamos este objeto por un JSON completo.)
 // ———————————————————————————————————————
 const CO_DEPARTMENTS = [
   "Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare",
@@ -35,40 +35,40 @@ const CO_DEPARTMENTS = [
   "Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"
 ] as const;
 
-const CITIES_BY_DEPT: Record<(typeof CO_DEPARTMENTS)[number], string[]> = {
-  Amazonas: ["Leticia"],
-  Antioquia: ["Medellín","Bello","Envigado","Itagüí","Rionegro","Sabaneta"],
-  Arauca: ["Arauca","Saravena"],
-  Atlántico: ["Barranquilla","Soledad","Malambo","Puerto Colombia"],
+const CITIES_BY_DEPT: Record<typeof CO_DEPARTMENTS[number], string[]> = {
+  "Amazonas": ["Leticia"],
+  "Antioquia": ["Medellín","Bello","Envigado","Itagüí","Rionegro","Sabaneta"],
+  "Arauca": ["Arauca","Saravena"],
+  "Atlántico": ["Barranquilla","Soledad","Malambo","Puerto Colombia"],
   "Bogotá D.C.": ["Bogotá"],
-  Bolívar: ["Cartagena","Magangué","Turbaco"],
-  Boyacá: ["Tunja","Duitama","Sogamoso","Chiquinquirá"],
-  Caldas: ["Manizales","Chinchiná","Villamaría"],
-  Caquetá: ["Florencia"],
-  Casanare: ["Yopal","Aguazul","Villanueva"],
-  Cauca: ["Popayán","Santander de Quilichao"],
-  Cesar: ["Valledupar","Aguachica"],
-  Chocó: ["Quibdó","Istmina"],
-  Córdoba: ["Montería","Lorica","Sahagún"],
-  Cundinamarca: ["Soacha","Chía","Zipaquirá","Facatativá","Girardot","Fusagasugá"],
-  Guainía: ["Inírida"],
-  Guaviare: ["San José del Guaviare"],
-  Huila: ["Neiva","Pitalito","Garzón"],
+  "Bolívar": ["Cartagena","Magangué","Turbaco"],
+  "Boyacá": ["Tunja","Duitama","Sogamoso","Chiquinquirá"],
+  "Caldas": ["Manizales","Chinchiná","Villamaría"],
+  "Caquetá": ["Florencia"],
+  "Casanare": ["Yopal","Aguazul","Villanueva"],
+  "Cauca": ["Popayán","Santander de Quilichao"],
+  "Cesar": ["Valledupar","Aguachica"],
+  "Chocó": ["Quibdó","Istmina"],
+  "Córdoba": ["Montería","Lorica","Sahagún"],
+  "Cundinamarca": ["Soacha","Chía","Zipaquirá","Facatativá","Girardot","Fusagasugá"],
+  "Guainía": ["Inírida"],
+  "Guaviare": ["San José del Guaviare"],
+  "Huila": ["Neiva","Pitalito","Garzón"],
   "La Guajira": ["Riohacha","Maicao","Uribia"],
-  Magdalena: ["Santa Marta","Ciénaga"],
-  Meta: ["Villavicencio","Acacías","Restrepo"],
-  Nariño: ["Pasto","Ipiales","Tumaco"],
+  "Magdalena": ["Santa Marta","Ciénaga"],
+  "Meta": ["Villavicencio","Acacías","Restrepo"],
+  "Nariño": ["Pasto","Ipiales","Tumaco"],
   "Norte de Santander": ["Cúcuta","Ocaña","Pamplona","Los Patios"],
-  Putumayo: ["Mocoa","Puerto Asís"],
-  Quindío: ["Armenia","Montenegro","La Tebaida","Quimbaya"],
-  Risaralda: ["Pereira","Dosquebradas","La Virginia","Santa Rosa de Cabal"],
+  "Putumayo": ["Mocoa","Puerto Asís"],
+  "Quindío": ["Armenia","Montenegro","La Tebaida","Quimbaya"],
+  "Risaralda": ["Pereira","Dosquebradas","La Virginia","Santa Rosa de Cabal"],
   "San Andrés y Providencia": ["San Andrés"],
-  Santander: ["Bucaramanga","Floridablanca","Giron","Piedecuesta","Barrancabermeja"],
-  Sucre: ["Sincelejo","Corozal","Sampués"],
-  Tolima: ["Ibagué","Espinal","Melgar"],
+  "Santander": ["Bucaramanga","Floridablanca","Giron","Piedecuesta","Barrancabermeja"],
+  "Sucre": ["Sincelejo","Corozal","Sampués"],
+  "Tolima": ["Ibagué","Espinal","Melgar"],
   "Valle del Cauca": ["Cali","Palmira","Yumbo","Buga","Tuluá","Cartago"],
-  Vaupés: ["Mitú"],
-  Vichada: ["Puerto Carreño"],
+  "Vaupés": ["Mitú"],
+  "Vichada": ["Puerto Carreño"]
 };
 
 // ———————————————————————————————————————
@@ -89,12 +89,6 @@ const validateForm = (f: DeliveryInfo): FormErrors => {
     if (!f.city?.trim()) e.city = "Ciudad/Municipio obligatorio para envío nacional.";
   }
   return e;
-};
-
-// Extensión opcional del tipo de ítem con métricas
-type CartItemWithMetrics = CartItem & {
-  puffs?: number;
-  ml?: number;
 };
 
 export default function CartButton() {
@@ -220,95 +214,66 @@ export default function CartButton() {
           {/* List */}
           {items.length > 0 && (
             <section ref={listRef} className="space-y-3">
-              {items.map((raw) => {
-                const i = raw as CartItemWithMetrics;
+              {items.map((i) => (
+                <article
+                  key={`${i.id}-${i.flavor}-${i.charger?.id ?? "nochg"}-${i.extraVape?.model ?? "nomodel"}`}
+                  className="flex gap-3 rounded-xl border border-stone-700 bg-[#1a1d1f] p-3"
+                >
+                  <img
+                    src={i.imageUrl || "https://picsum.photos/seed/vape/120"}
+                    alt={i.name}
+                    className="h-20 w-20 rounded-lg object-cover"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="font-semibold text-sm line-clamp-1">{i.name}</div>
+                        {i.flavor && <div className="text-xs text-zinc-400">Sabor: {i.flavor}</div>}
+                        {i.charger && (
+                          <div className="text-xs text-zinc-400">
+                            Cargador: {i.charger.name} ({formatCOP(i.charger.price)})
+                          </div>
+                        )}
+                        {i.extraVape && (
+                          <div className="text-xs text-zinc-400">
+                            Extra: {i.extraVape.model} x{i.extraVape.qty} ({formatCOP(i.extraVape.price)})
+                          </div>
+                        )}
+                        {i.giftVape && (
+                          <div className="text-xs text-amber-400">🎁 Regalo: {i.giftVape.model}</div>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => removeItem(i.id)}
+                        className="text-xs text-red-300 hover:underline shrink-0"
+                      >
+                        Quitar
+                      </button>
+                    </div>
 
-                const hasPuffs = typeof i.puffs === "number" && i.puffs > 0;
-                const hasMl = typeof i.ml === "number" && i.ml > 0;
-                const metricText =
-                  hasPuffs
-                    ? `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(i.puffs!)} puffs`
-                    : hasMl
-                      ? `${new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(i.ml!)} ml`
-                      : "";
-
-                return (
-                  <article
-                    key={`${i.id}-${i.flavor}-${i.charger?.id ?? "nochg"}-${i.extraVape?.model ?? "nomodel"}`}
-                    className="flex gap-3 rounded-xl border border-stone-700 bg-[#1a1d1f] p-3"
-                  >
-                    <img
-                      src={i.imageUrl || "https://picsum.photos/seed/vape/120"}
-                      alt={i.name}
-                      className="h-20 w-20 rounded-lg object-cover"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-semibold text-sm line-clamp-1">{i.name}</div>
-
-                          {/* Sabor */}
-                          {i.flavor && (
-                            <div className="text-xs text-zinc-400">Sabor: {i.flavor}</div>
-                          )}
-
-                          {/* Métrica puffs/ml (puffs > ml > nada) */}
-                          {metricText && (
-                            <div className="text-xs text-zinc-400">{metricText}</div>
-                          )}
-
-                          {/* Cargador */}
-                          {i.charger && (
-                            <div className="text-xs text-zinc-400">
-                              Cargador: {i.charger.name} ({formatCOP(i.charger.price)})
-                            </div>
-                          )}
-
-                          {/* Extra vape */}
-                          {i.extraVape && (
-                            <div className="text-xs text-zinc-400">
-                              Extra: {i.extraVape.model} x{i.extraVape.qty} ({formatCOP(i.extraVape.price)})
-                            </div>
-                          )}
-
-                          {/* Regalo */}
-                          {i.giftVape && (
-                            <div className="text-xs text-amber-400">🎁 Regalo: {i.giftVape.model}</div>
-                          )}
-                        </div>
-
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="font-semibold text-amber-400">{formatCOP(i.price)}</div>
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => removeItem(i.id)}
-                          className="text-xs text-red-300 hover:underline shrink-0"
+                          className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+                          onClick={() => updateQty(i.id, Math.max(1, i.qty - 1))}
+                          aria-label="Disminuir cantidad"
                         >
-                          Quitar
+                          −
+                        </button>
+                        <span className="w-6 text-center">{i.qty}</span>
+                        <button
+                          className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
+                          onClick={() => updateQty(i.id, i.qty + 1)}
+                          aria-label="Aumentar cantidad"
+                        >
+                          +
                         </button>
                       </div>
-
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="font-semibold text-amber-400">{formatCOP(i.price)}</div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
-                            onClick={() => updateQty(i.id, Math.max(1, i.qty - 1))}
-                            aria-label="Disminuir cantidad"
-                          >
-                            −
-                          </button>
-                          <span className="w-6 text-center">{i.qty}</span>
-                          <button
-                            className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
-                            onClick={() => updateQty(i.id, i.qty + 1)}
-                            aria-label="Aumentar cantidad"
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
                     </div>
-                  </article>
-                );
-              })}
+                  </div>
+                </article>
+              ))}
             </section>
           )}
 
@@ -351,8 +316,8 @@ export default function CartButton() {
             {/* Zona */}
             <div className="flex items-center gap-3">
               <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
-              <select
-                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
+              <select 
+                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm { color-scheme: dark; }"
                 value={form.zone}
                 onChange={(e) => {
                   const newZone = e.target.value as DeliveryZone;
@@ -397,6 +362,7 @@ export default function CartButton() {
                     value={form.department ?? ""}
                     onChange={(e) => {
                       handleChange("department", e.target.value);
+                      // Reinicia ciudad al cambiar de depto
                       handleChange("city", "");
                     }}
                     onBlur={() => setErrors((p) => ({ ...p, department: form.department?.trim() ? undefined : "Departamento obligatorio para envío nacional." }))}
@@ -409,7 +375,7 @@ export default function CartButton() {
                 </div>
                 {errors.department && <p className="text-xs text-red-400 -mt-2">{errors.department}</p>}
 
-                {/* Ciudad/Municipio */}
+                {/* Ciudad/Municipio (select dependiente) */}
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-36 text-zinc-300">Ciudad/Mpio</label>
                   <select

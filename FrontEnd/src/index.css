@@ -1,3 +1,9 @@
 @tailwind base;
 @tailwiind components;
 @tailwind utilities;
+/* src/index.css o global.css */
+html { color-scheme: dark; }          /* aplica a inputs, selects, etc. */
+select, option {
+  background-color: #111315;          /* tu gris oscuro */
+  color: #e5e7eb;                     /* texto gris claro */
+}
