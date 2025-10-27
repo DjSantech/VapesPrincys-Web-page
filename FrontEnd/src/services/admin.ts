@@ -11,35 +11,47 @@ export interface AdminProduct {
   id: string;
   sku: string;
   name: string;
-  price: number;      // centavos
+  description?: string;   // 👈 NUEVO
+  price: number;          // centavos
   stock: number;
   puffs: number;
   ml: number;
   visible: boolean;
   imageUrl: string;
-  category: string;   // nombre de categoría (texto)
+  category: string;       // nombre de categoría (texto)
   flavors: string[];
-  pluses?: string[];  // nombres de plus asignados
+  pluses?: string[];      // nombres de plus asignados
 }
 
 export interface CreateProductPayload {
   sku: string;
   name: string;
-  price: number;      // centavos
+  description?: string;   // 👈 NUEVO
+  price: number;          // centavos
   stock?: number;
   puffs: number;
   ml: number;
   visible?: boolean;
-  category?: string;  // nombre de la categoría
+  category?: string;      // nombre de la categoría
   image?: File | null;
   flavors?: string[];
-  pluses?: string[];  // nombres de plus
+  pluses?: string[];      // nombres de plus
 }
 
 export type PatchProductPayload = Partial<
   Pick<
     AdminProduct,
-    "sku" | "name" | "price" | "stock" | "puffs" | "visible" | "category" | "flavors" | "pluses" | "ml"
+    | "sku"
+    | "name"
+    | "description"  // 👈 NUEVO
+    | "price"
+    | "stock"
+    | "puffs"
+    | "visible"
+    | "category"
+    | "flavors"
+    | "pluses"
+    | "ml"
   >
 >;
 
@@ -111,15 +123,16 @@ export async function createProduct(payload: CreateProductPayload): Promise<Admi
   const fd = new FormData();
   fd.append("sku", payload.sku);
   fd.append("name", payload.name);
+  if (payload.description != null) fd.append("description", payload.description); // 👈 NUEVO
   fd.append("price", String(payload.price));
   if (payload.stock != null)   fd.append("stock", String(payload.stock));
   if (payload.visible != null) fd.append("visible", String(payload.visible));
   if (payload.category)        fd.append("category", payload.category);
   if (payload.image)           fd.append("image", payload.image);
 
-  // ⬇️ NUEVO/IMPORTANTE: enviar también puffs y ml
-  fd.append("puffs", String(payload.puffs));  // requerido según tu tipo
-  fd.append("ml", String(payload.ml));        // requerido según tu tipo
+  // ⬇️ puffs y ml (requeridos según tu tipo)
+  fd.append("puffs", String(payload.puffs));
+  fd.append("ml", String(payload.ml));
 
   // Enviar sabores:
   if (payload.flavors && payload.flavors.length > 0) {
@@ -217,4 +230,3 @@ export async function deletePlusById(id: string): Promise<void> {
     throw new Error(`DELETE /pluses/${id} failed`);
   }
 }
-

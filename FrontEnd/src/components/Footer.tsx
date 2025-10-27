@@ -61,15 +61,6 @@ export default function Footer() {
                 <Clock className="h-4 w-4" />
                 24 HORAS
               </li>
-              <li className="flex items-center justify-center sm:justify-start gap-2">
-                <MapPin className="h-6 w-6" />
-                PEREIRA 10AM - 8PM 
-                Cra. 7 #10-36, Pereira, Risaralda
-              </li>
-              <li className="flex items-center justify-center sm:justify-start gap-2">
-                <Clock className="h-4 w-4" />
-                Lun–Sáb 10:00am–8:00pm
-              </li>
             </ul>
             <div className="mt-4 flex items-center justify-center sm:justify-start gap-3">
               <a

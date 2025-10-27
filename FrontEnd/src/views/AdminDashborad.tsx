@@ -34,7 +34,6 @@ type Drafts = Record<
   Partial<AdminProduct> & {
     flavorsCSV?: string;
     pluses?: string[];
-    ml?: number; // NUEVO: ml
   }
 >;
 
@@ -71,10 +70,11 @@ export default function AdminDashboard() {
   const [form, setForm] = useState<{
     sku: string;
     name: string;
+    description: string;
     price: number;          // centavos
     stock: number;
     puffs: number;
-    ml: number;             // NUEVO: ml
+    ml: number;
     visible: boolean;
     category: string;       // nombre de categoría
     flavorsCSV: string;     // texto → se parsea al enviar
@@ -83,6 +83,7 @@ export default function AdminDashboard() {
   }>({
     sku: "",
     name: "",
+    description: "",
     price: 0,
     stock: 0,
     puffs: 0,
@@ -108,10 +109,11 @@ export default function AdminDashboard() {
     setForm({
       sku: "",
       name: "",
+      description: "",
       price: 0,
       stock: 0,
       puffs: 0,
-      ml: 0, // NUEVO
+      ml: 0,
       visible: true,
       category: "",
       flavorsCSV: "",
@@ -190,14 +192,15 @@ export default function AdminDashboard() {
     const patch: Partial<AdminProduct> & { imageUrl?: undefined } = {
       sku: merged.sku,
       name: merged.name,
+      description: merged.description ?? "",
       price: Math.max(0, Math.round(merged.price ?? 0)),
       stock: Math.max(0, Math.round(merged.stock ?? 0)),
       puffs: Math.max(0, Math.round(merged.puffs ?? 0)),
-      ml: Math.max(0, Math.round(merged.ml ?? 0)), // NUEVO: ml
+      ml: Math.max(0, Math.round(merged.ml ?? 0)),
       visible: merged.visible,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
       flavors: draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []),
-      pluses: nextPluses, // ← guardar pluses por nombre
+      pluses: nextPluses,
       imageUrl: undefined,
     };
 
@@ -205,7 +208,8 @@ export default function AdminDashboard() {
       await patchProduct(id, patch);
       toast.success("Producto actualizado");
       await loadProducts();
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast.error("Error actualizando producto");
     }
   };
@@ -237,21 +241,22 @@ export default function AdminDashboard() {
     if (form.price < 0)    { toast.error("El precio no puede ser negativo"); return; }
     if (form.stock < 0)    { toast.error("El stock no puede ser negativo"); return; }
     if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; }
-    if (form.ml < 0)       { toast.error("Los ml no pueden ser negativos"); return; } // NUEVO
+    if (form.ml < 0)       { toast.error("Los ml no pueden ser negativos"); return; }
 
     try {
       const created = await createProduct({
         sku: form.sku.trim().toUpperCase(),
         name: form.name.trim(),
+        description: form.description.trim(),
         price: Math.round(form.price),
         stock: Math.max(0, Math.round(form.stock)),
         puffs: Math.max(0, Math.round(form.puffs)),
-        ml: Math.max(0, Math.round(form.ml)), // NUEVO: ml
+        ml: Math.max(0, Math.round(form.ml)),
         visible: form.visible,
         category: form.category.trim(),
         image: form.image,
         flavors: toArray(form.flavorsCSV),
-        pluses: form.pluses, // ← pluses seleccionados
+        pluses: form.pluses,
       });
       setItems(prev => [created, ...prev]);
       toast.success("Producto creado");
@@ -380,12 +385,13 @@ export default function AdminDashboard() {
             const price = Math.round(d.price ?? p.price ?? 0);
             const stock = Math.round(d.stock ?? p.stock ?? 0);
             const puffs = Math.round(d.puffs ?? p.puffs ?? 0);
-            const ml = Math.round(d.ml ?? p.ml ?? 0); // NUEVO: ml (p.ml opcional)
+            const ml = Math.round(d.ml ?? p.ml ?? 0);
             const category = (d.category ?? p.category) ?? "";
             const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
             const visible = (d.visible ?? p.visible) ?? true;
+            const description = d.description ?? p.description ?? "";
 
-            // pluses por nombre (con fallback a [])
+            // pluses por nombre
             const assignedPluses: string[] = d.pluses ?? p.pluses ?? [];
 
             return (
@@ -440,6 +446,18 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Descripción (edición) */}
+                <div className="mt-3">
+                  <label className="text-xs text-zinc-400">Descripción</label>
+                  <textarea
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-none"
+                    rows={2}
+                    value={description}
+                    onChange={e => setDraft(p.id, { description: e.target.value })}
+                    placeholder="Descripción del producto"
+                  />
+                </div>
+
                 {/* Campos editables */}
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                   <div>
@@ -484,7 +502,7 @@ export default function AdminDashboard() {
                     />
                   </div>
 
-                  {/* NUEVO: Mililitros */}
+                  {/* Mililitros */}
                   <div>
                     <label className="text-xs text-zinc-400">Mililitros (ml)</label>
                     <input
@@ -590,176 +608,199 @@ export default function AdminDashboard() {
         Edita los campos y presiona <span className="text-amber-400 font-medium">“Actualizar producto”</span> en cada tarjeta para guardar los cambios. La imagen se guarda al seleccionarla.
       </p>
 
-      {/* Modal crear producto */}
+      {/* Modal crear producto (responsive con scroll y header/footer sticky) */}
       {showCreate && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
-          <div className="w-full max-w-lg rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
-            <div className="flex items-center justify-between mb-3">
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch justify-center p-0 sm:items-center sm:p-3">
+          <div className="w-full h-full sm:h-auto sm:max-w-lg bg-[#1a1d1f] border border-stone-800 sm:rounded-2xl flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-stone-800 sticky top-0 bg-[#1a1d1f]">
               <h2 className="text-lg font-semibold text-zinc-100">Nuevo producto</h2>
               <button
                 className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
                 onClick={() => { setShowCreate(false); resetForm(); }}
+                aria-label="Cerrar modal crear producto"
               >
                 ✕
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="sm:col-span-2">
-                <label className="text-xs text-zinc-400">Nombre</label>
-                <input
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="Vape Desechable XYZ"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-zinc-400">Precio (centavos)</label>
-                <input
-                  type="number"
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.price}
-                  onChange={e => setForm(f => ({ ...f, price: Math.max(0, Number(e.target.value)) }))}
-                />
-                <div className="text-[11px] text-zinc-500 mt-0.5">{fmt(form.price)}</div>
-              </div>
-
-              <div>
-                <label className="text-xs text-zinc-400">Stock</label>
-                <input
-                  type="number"
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.stock}
-                  onChange={e => setForm(f => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))}
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-zinc-400">Puffs</label>
-                <input
-                  type="number"
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.puffs}
-                  onChange={e => setForm(f => ({ ...f, puffs: Math.max(0, Number(e.target.value)) }))}
-                  placeholder="5000"
-                />
-              </div>
-
-              {/* NUEVO: ml */}
-              <div>
-                <label className="text-xs text-zinc-400">Mililitros (ml)</label>
-                <input
-                  type="number"
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.ml}
-                  onChange={e => setForm(f => ({ ...f, ml: Math.max(0, Number(e.target.value)) }))}
-                  placeholder="10"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-zinc-400">SKU</label>
-                <input
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 uppercase"
-                  value={form.sku}
-                  onChange={e => setForm(f => ({ ...f, sku: e.target.value.toUpperCase() }))}
-                  placeholder="VAPE-UV-5000"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-zinc-400">Categoría</label>
-                <select
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.category}
-                  onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
-                >
-                  <option value="">— Selecciona —</option>
-                  {cats.map(c => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-                <div className="text-[11px] text-zinc-500 mt-0.5">
-                  Administra categorías en el botón “Categorías”.
+            {/* Body con scroll */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 max-h-[90vh] sm:max-h-[70vh]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-zinc-400">Nombre</label>
+                  <input
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.name}
+                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                    placeholder="Vape Desechable XYZ"
+                  />
                 </div>
-              </div>
 
-              <div className="sm:col-span-2">
-                <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
-                <input
-                  className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                  value={form.flavorsCSV}
-                  onChange={e => setForm(f => ({ ...f, flavorsCSV: e.target.value }))}
-                  placeholder="Uva, Menta, Sandía"
-                />
-              </div>
+                {/* Descripción */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-zinc-400">Descripción</label>
+                  <textarea
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-y"
+                    rows={3}
+                    value={form.description}
+                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                    placeholder="Describe el producto brevemente..."
+                  />
+                </div>
 
-              {/* PLUS: selección para nuevo producto */}
-              <div className="sm:col-span-2">
-                <label className="text-xs text-zinc-400">Pluses</label>
-                <div className="mt-1 flex flex-wrap gap-2">
-                  {pluses.map(pl => {
-                    const checked = form.pluses.includes(pl.name);
-                    return (
-                      <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
-                        <input
-                          type="checkbox"
-                          className="accent-sky-400"
-                          checked={checked}
-                          onChange={() =>
-                            setForm(f => ({ ...f, pluses: toggleString(f.pluses, pl.name) }))
-                          }
-                        />
-                        {pl.name}
-                      </label>
-                    );
-                  })}
-                  {pluses.length === 0 && (
-                    <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
+                <div>
+                  <label className="text-xs text-zinc-400">Precio (centavos)</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.price}
+                    onChange={e => setForm(f => ({ ...f, price: Math.max(0, Number(e.target.value)) }))}
+                  />
+                  <div className="text-[11px] text-zinc-500 mt-0.5">{fmt(form.price)}</div>
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400">Stock</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.stock}
+                    onChange={e => setForm(f => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))}
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400">Puffs</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.puffs}
+                    onChange={e => setForm(f => ({ ...f, puffs: Math.max(0, Number(e.target.value)) }))}
+                    placeholder="5000"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400">Mililitros (ml)</label>
+                  <input
+                    type="number"
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.ml}
+                    onChange={e => setForm(f => ({ ...f, ml: Math.max(0, Number(e.target.value)) }))}
+                    placeholder="10"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400">SKU</label>
+                  <input
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 uppercase"
+                    value={form.sku}
+                    onChange={e => setForm(f => ({ ...f, sku: e.target.value.toUpperCase() }))}
+                    placeholder="VAPE-UV-5000"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs text-zinc-400">Categoría</label>
+                  <select
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.category}
+                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                  >
+                    <option value="">— Selecciona —</option>
+                    {cats.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">
+                    Administra categorías en el botón “Categorías”.
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                  <input
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                    value={form.flavorsCSV}
+                    onChange={e => setForm(f => ({ ...f, flavorsCSV: e.target.value }))}
+                    placeholder="Uva, Menta, Sandía"
+                  />
+                </div>
+
+                {/* Pluses */}
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-zinc-400">Pluses</label>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {pluses.map(pl => {
+                      const checked = form.pluses.includes(pl.name);
+                      return (
+                        <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
+                          <input
+                            type="checkbox"
+                            className="accent-sky-400"
+                            checked={checked}
+                            onChange={() =>
+                              setForm(f => ({ ...f, pluses: toggleString(f.pluses, pl.name) }))
+                            }
+                          />
+                          {pl.name}
+                        </label>
+                      );
+                    })}
+                    {pluses.length === 0 && (
+                      <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    id="visible"
+                    type="checkbox"
+                    className="accent-emerald-400"
+                    checked={form.visible}
+                    onChange={e => setForm(f => ({ ...f, visible: e.target.checked }))}
+                  />
+                  <label htmlFor="visible" className="text-xs text-zinc-400">Visible</label>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-xs text-zinc-400">Imagen</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={e => setForm(f => ({ ...f, image: e.target.files?.[0] || null }))}
+                    className="w-full text-xs text-zinc-300"
+                  />
+                  {imagePreview && (
+                    <img
+                      src={imagePreview}
+                      alt="preview"
+                      className="mt-2 h-24 w-24 object-cover rounded-lg ring-1 ring-stone-800"
+                    />
                   )}
                 </div>
               </div>
-
-              <div className="flex items-center gap-2 mt-1">
-                <input
-                  id="visible"
-                  type="checkbox"
-                  className="accent-emerald-400"
-                  checked={form.visible}
-                  onChange={e => setForm(f => ({ ...f, visible: e.target.checked }))}
-                />
-                <label htmlFor="visible" className="text-xs text-zinc-400">Visible</label>
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="text-xs text-zinc-400">Imagen</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={e => setForm(f => ({ ...f, image: e.target.files?.[0] || null }))}
-                  className="w-full text-xs text-zinc-300"
-                />
-                {imagePreview && (
-                  <img src={imagePreview} alt="preview" className="mt-2 h-24 w-24 object-cover rounded-lg ring-1 ring-stone-800" />
-                )}
-              </div>
             </div>
 
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-[#323230]"
-                onClick={() => { setShowCreate(false); resetForm(); }}
-              >
-                Cancelar
-              </button>
-              <button
-                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
-                onClick={onCreate}
-              >
-                Crear
-              </button>
+            {/* Footer fijo */}
+            <div className="px-4 py-3 border-t border-stone-800 sticky bottom-0 bg-[#1a1d1f]">
+              <div className="flex justify-end gap-2">
+                <button
+                  className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-[#323230]"
+                  onClick={() => { setShowCreate(false); resetForm(); }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
+                  onClick={onCreate}
+                >
+                  Crear
+                </button>
+              </div>
             </div>
           </div>
         </div>

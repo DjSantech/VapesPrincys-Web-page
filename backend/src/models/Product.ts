@@ -11,6 +11,7 @@ const productSchema = new Schema({
   imageUrl: { type: String, default: "" },
   category: { type: Schema.Types.ObjectId, ref: "Category", default: null },
   isActive: { type: Boolean, default: true },
+  description: { type: String, default: "", trim: true },
 
   // Sabores (lista de strings, sin duplicados)
   flavors: {
