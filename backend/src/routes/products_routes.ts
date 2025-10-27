@@ -41,6 +41,7 @@ const mapDoc = (p: any) => {
     categoryId: catId,             // por si luego usas el id real en selects
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
     pluses: Array.isArray(p.pluses) ? p.pluses : [],
+    description: p.description ?? "",  
   };
 };
 
@@ -107,7 +108,7 @@ r.get("/", async (req, res) => {
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { sku, name, price, stock, category, visible, flavors, puffs, ml } = req.body;
+    const { sku, name, price, stock, category, visible, flavors, puffs, ml, description } = req.body;
 
     if (!sku)  return res.status(400).json({ error: "El SKU es obligatorio" });
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
@@ -169,6 +170,7 @@ r.post("/", upload.single("image"), async (req, res) => {
     const created = await Product.create({
       sku: String(sku).trim().toUpperCase(),
       name: String(name).trim(),
+      description: typeof description === "string" ? description.trim() : "",
       price: priceNum,
       stock: stockNum,
       puffs: puffsNum,
@@ -217,6 +219,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       name,
       category,     // <- importante
       pluses,       // <- importante
+      description,
       ...rest
     } = req.body as Record<string, unknown>;
 
@@ -234,6 +237,13 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       const next = String(name).trim();
       if (!next) return res.status(400).json({ error: "El nombre no puede quedar vacío" });
       update.name = next;
+    }
+
+    if (description !== undefined) {
+      if (typeof description !== "string") {
+        return res.status(400).json({ error: "Descripción inválida" });
+      }
+      update.description = description.trim();
     }
 
     // Numéricos
