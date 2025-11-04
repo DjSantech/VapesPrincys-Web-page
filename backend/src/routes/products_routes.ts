@@ -42,6 +42,7 @@ const mapDoc = (p: any) => {
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
     pluses: Array.isArray(p.pluses) ? p.pluses : [],
     description: p.description ?? "",  
+    hasFlavors: Array.isArray(p.flavors) ? p.flavors.length > 0 : false,
   };
 };
 
@@ -108,7 +109,7 @@ r.get("/", async (req, res) => {
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { sku, name, price, stock, category, visible, flavors, puffs, ml, description } = req.body;
+    const { sku, name, price, stock, category, visible, flavors, puffs, ml, description, hasFlavors } = req.body;
 
     if (!sku)  return res.status(400).json({ error: "El SKU es obligatorio" });
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
@@ -140,6 +141,16 @@ r.post("/", upload.single("image"), async (req, res) => {
     } else if (typeof flavors === "string") {
       flavorsArr = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
+
+      const hasFlavorsBool =
+    typeof hasFlavors === "boolean"
+      ? hasFlavors
+      : typeof hasFlavors === "string"
+        ? hasFlavors === "true"
+        : (flavorsArr.length > 0); // fallback compatible
+
+  // Invariante: si está deshabilitado, vaciar sabores
+  if (!hasFlavorsBool) flavorsArr = [];
 
     // pluses: JSON (string) o array
     let plusesArr: string[] = [];
@@ -178,6 +189,7 @@ r.post("/", upload.single("image"), async (req, res) => {
       imageUrl,
       ...(catId === null ? {} : { category: catId }),
       isActive: visible !== undefined ? String(visible) === "true" : true,
+      hasFlavors: hasFlavorsBool,
       flavors: flavorsArr,
       pluses: plusesArr,
     });
@@ -220,6 +232,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       category,     // <- importante
       pluses,       // <- importante
       description,
+      hasFlavors,
       ...rest
     } = req.body as Record<string, unknown>;
 
@@ -299,6 +312,41 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
         update.pluses = [];
       }
     }
+
+   // === Flavors ===
+    let flavorsFromBody: string[] | undefined = undefined;
+    if (Array.isArray(flavors)) {
+      flavorsFromBody = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
+    } else if (typeof flavors === "string") {
+      flavorsFromBody = (flavors as string).split(",").map(s => s.trim()).filter(Boolean);
+    }
+    if (flavorsFromBody !== undefined) {
+      update.flavors = flavorsFromBody;
+    }
+
+  // hasFlavors: puede venir como string/boolean
+  let hasFlavorsFromBody: boolean | undefined = undefined;
+  if (typeof hasFlavors === "boolean") {
+    hasFlavorsFromBody = hasFlavors;
+  } else if (typeof hasFlavors === "string") {
+    hasFlavorsFromBody = hasFlavors === "true";
+  }
+
+  // Reglas de invariante:
+  // 1) Si el cliente manda hasFlavors=false ⇒ flavors=[]
+  if (hasFlavorsFromBody === false) {
+    update.hasFlavors = false;
+    update.flavors = []; // fuerza limpiar
+  }
+  // 2) Si el cliente manda sabores pero no manda hasFlavors ⇒ deduce
+  if (hasFlavorsFromBody === undefined && flavorsFromBody !== undefined) {
+    update.hasFlavors = (flavorsFromBody.length > 0);
+  }
+  // 3) Si manda hasFlavors=true y no mandó sabores, deja sabores como están (no tocar).
+  if (hasFlavorsFromBody === true) {
+    update.hasFlavors = true;
+    // si además mandó sabores, ya quedaron en update.flavors
+  }
 
     // Category: id | nombre | "" | undefined
     if (Object.prototype.hasOwnProperty.call(req.body, "category")) {

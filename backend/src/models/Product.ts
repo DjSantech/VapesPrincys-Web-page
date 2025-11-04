@@ -12,7 +12,7 @@ const productSchema = new Schema({
   category: { type: Schema.Types.ObjectId, ref: "Category", default: null },
   isActive: { type: Boolean, default: true },
   description: { type: String, default: "", trim: true },
-
+  hasFlavors: { type: Boolean, default: false },
   // Sabores (lista de strings, sin duplicados)
   flavors: {
     type: [String],
@@ -25,6 +25,7 @@ const productSchema = new Schema({
       message: "Los sabores no pueden repetirse"
     }
   },
+  
 
   // NUEVO: Pluses (lista de nombres de plus, sin duplicados)
   pluses: {
