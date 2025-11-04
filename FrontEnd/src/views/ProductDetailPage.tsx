@@ -9,8 +9,7 @@ import type { CartItem } from "../types/Cart";
 
 // ===== Helpers
 const formatCOP = (pesos: number) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
-    .format(pesos || 0);
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(pesos || 0);
 
 type LocationState = { product?: Product };
 
@@ -67,7 +66,6 @@ export default function ProductDetailPage() {
 
   // Datos estáticos
   const DEFAULT_FLAVORS: string[] = ["Mango", "Ice Mint", "Sandía", "Uva"];
-
   const giftVapeModels: GiftVapeModel[] = [{ name: "Vape Classic 1000 (Regalo)", basePrice: 0 }];
 
   // === Categorías y modelos
@@ -98,14 +96,18 @@ export default function ProductDetailPage() {
         setLoading(true);
         const p = await getProductById(productId);
         if (!active) return;
+
+        // Fallback robusto para el toggle de sabores
+        const usesFlavors = (p.hasFlavors ?? ((p.flavors?.length ?? 0) > 0));
+
         setProduct(p);
 
-        // Solo seleccionar sabor por defecto si el producto maneja sabores
-        if (p.hasFlavors) {
-          const initialFlavors: string[] = Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
-          setFlavor((prev) => prev || initialFlavors[0]);
+        if (usesFlavors) {
+          const initialFlavors: string[] =
+            Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
+          setFlavor(prev => prev || initialFlavors[0]);
         } else {
-          setFlavor(""); // sin sabores
+          setFlavor("");
         }
       } catch (e: unknown) {
         if (axios.isAxiosError(e)) {
@@ -162,7 +164,7 @@ export default function ProductDetailPage() {
         setSelectedModelId("");
         setSelectedModelFlavors([]);
         setSelectedModelHasFlavors(false);
-        setExtraVape((prev) => ({
+        setExtraVape(prev => ({
           ...prev,
           model: undefined,
           price: undefined,
@@ -187,18 +189,17 @@ export default function ProductDetailPage() {
     };
   }, [selectedCategoryId, baseURL]);
 
-  // Cuando se elige modelo, setear sabores y precio del extra
+  // Cuando se elige modelo, setear sabores y precio del extra (con fallback)
   useEffect(() => {
     if (!selectedModelId) return;
-    const chosen = modelsByCategory.find((p) => getProductKey(p) === selectedModelId);
+    const chosen = modelsByCategory.find(p => getProductKey(p) === selectedModelId);
 
-    const modelHasFlavors = Boolean(chosen?.hasFlavors);
+    const modelHasFlavors: boolean = (chosen?.hasFlavors ?? ((chosen?.flavors?.length ?? 0) > 0));
     setSelectedModelHasFlavors(modelHasFlavors);
 
-    const flavors =
-      modelHasFlavors
-        ? (chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS)
-        : [];
+    const flavors: string[] = modelHasFlavors
+      ? (chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS)
+      : [];
 
     setSelectedModelFlavors(flavors);
 
@@ -221,15 +222,16 @@ export default function ProductDetailPage() {
     );
   }
 
-  // Sabores del producto principal: solo si hasFlavors === true
-  const availableFlavors: string[] =
-    product.hasFlavors
-      ? (Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS)
-      : [];
+  // Fallback robusto para el producto principal
+  const usesFlavors: boolean = (product.hasFlavors ?? ((product.flavors?.length ?? 0) > 0));
 
-  const showMainFlavors: boolean = product.hasFlavors && availableFlavors.length > 0;
+  const availableFlavors: string[] = usesFlavors
+    ? (Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS)
+    : [];
 
-  const img: string = product.imageUrl || (product as any).images?.[0] || "https://picsum.photos/900";
+  const showMainFlavors: boolean = usesFlavors && availableFlavors.length > 0;
+
+  const img: string = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
   const inStock: number = product.stock ?? 0;
 
   const addOnTotal: number = extraVape.price ?? 0;
@@ -244,9 +246,8 @@ export default function ProductDetailPage() {
       name: product.name,
       price: product.price,
       qty,
-      // Enviar sabor solo si aplica
       flavor: showMainFlavors ? flavor : "",
-      imageUrl: product.imageUrl || (product as any).images?.[0],
+      imageUrl: product.imageUrl || product.images?.[0],
       charger: null,
       extraVape: extraVape.model
         ? {
@@ -269,7 +270,9 @@ export default function ProductDetailPage() {
 
   // ===== Mostrar puffs o ml (puffs > ml > nada), sin any
   const hasPuffs: boolean = typeof product.puffs === "number" && product.puffs > 0;
-  const hasMl: boolean = typeof (product as Product & { ml?: number }).ml === "number" && (product as Product & { ml?: number }).ml! > 0;
+  const hasMl: boolean =
+    typeof (product as Product & { ml?: number }).ml === "number" &&
+    (product as Product & { ml?: number }).ml! > 0;
 
   return (
     <div className="p-6 text-zinc-100">
@@ -433,9 +436,7 @@ export default function ProductDetailPage() {
                     min={1}
                     max={99}
                     value={extraVape.qty ?? 1}
-                    onChange={(e) =>
-                      setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))
-                    }
+                    onChange={(e) => setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))}
                     className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     disabled={!selectedModelId}
                     title={!selectedModelId ? "Elige un modelo primero" : undefined}
