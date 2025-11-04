@@ -20,6 +20,7 @@ export interface AdminProduct {
   imageUrl: string;
   category: string;       // nombre de categoría (texto)
   flavors: string[];
+  hasFlavors: boolean;    // 👈 NUEVO
   pluses?: string[];      // nombres de plus asignados
 }
 
@@ -35,6 +36,7 @@ export interface CreateProductPayload {
   category?: string;      // nombre de la categoría
   image?: File | null;
   flavors?: string[];
+  hasFlavors: boolean;    // 👈 NUEVO
   pluses?: string[];      // nombres de plus
 }
 
@@ -52,6 +54,7 @@ export type PatchProductPayload = Partial<
     | "flavors"
     | "pluses"
     | "ml"
+    | "hasFlavors"   // 👈 NUEVO: permitir parchar el toggle
   >
 >;
 
@@ -134,10 +137,12 @@ export async function createProduct(payload: CreateProductPayload): Promise<Admi
   fd.append("puffs", String(payload.puffs));
   fd.append("ml", String(payload.ml));
 
-  // Enviar sabores:
-  if (payload.flavors && payload.flavors.length > 0) {
+  // 👇 NUEVO: toggle de sabores
+  fd.append("hasFlavors", String(Boolean(payload.hasFlavors)));
+  if (payload.hasFlavors && payload.flavors && payload.flavors.length > 0) {
     for (const f of payload.flavors) fd.append("flavors", f);
   }
+  // Si hasFlavors === false, no enviamos "flavors" (el backend debe forzar []).
 
   // Enviar pluses como JSON (recomendado para multipart)
   fd.append("pluses", JSON.stringify(payload.pluses ?? []));

@@ -84,6 +84,7 @@ export default function ProductDetailPage() {
 
   const [selectedModelId, setSelectedModelId] = useState<string>("");
   const [selectedModelFlavors, setSelectedModelFlavors] = useState<string[]>([]);
+  const [selectedModelHasFlavors, setSelectedModelHasFlavors] = useState<boolean>(false);
 
   const getProductKey = (p: ProductWithMongoId): string => p.id || p._id || "";
 
@@ -99,9 +100,13 @@ export default function ProductDetailPage() {
         if (!active) return;
         setProduct(p);
 
-        const initialFlavors: string[] =
-          Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
-        setFlavor((prev) => prev || initialFlavors[0]);
+        // Solo seleccionar sabor por defecto si el producto maneja sabores
+        if (p.hasFlavors) {
+          const initialFlavors: string[] = Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
+          setFlavor((prev) => prev || initialFlavors[0]);
+        } else {
+          setFlavor(""); // sin sabores
+        }
       } catch (e: unknown) {
         if (axios.isAxiosError(e)) {
           const status = e.response?.status;
@@ -156,6 +161,7 @@ export default function ProductDetailPage() {
         setModelsByCategory([]);
         setSelectedModelId("");
         setSelectedModelFlavors([]);
+        setSelectedModelHasFlavors(false);
         setExtraVape((prev) => ({
           ...prev,
           model: undefined,
@@ -185,11 +191,20 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!selectedModelId) return;
     const chosen = modelsByCategory.find((p) => getProductKey(p) === selectedModelId);
-    const flavors = chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS;
+
+    const modelHasFlavors = Boolean(chosen?.hasFlavors);
+    setSelectedModelHasFlavors(modelHasFlavors);
+
+    const flavors =
+      modelHasFlavors
+        ? (chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS)
+        : [];
+
     setSelectedModelFlavors(flavors);
+
     setExtraVape({
       model: chosen?.name,
-      flavor: flavors[0],
+      flavor: modelHasFlavors ? flavors[0] : undefined,
       qty: 1,
       price: chosen?.price ?? 0,
     });
@@ -206,10 +221,15 @@ export default function ProductDetailPage() {
     );
   }
 
+  // Sabores del producto principal: solo si hasFlavors === true
   const availableFlavors: string[] =
-    Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS;
+    product.hasFlavors
+      ? (Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS)
+      : [];
 
-  const img: string = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
+  const showMainFlavors: boolean = product.hasFlavors && availableFlavors.length > 0;
+
+  const img: string = product.imageUrl || (product as any).images?.[0] || "https://picsum.photos/900";
   const inStock: number = product.stock ?? 0;
 
   const addOnTotal: number = extraVape.price ?? 0;
@@ -224,18 +244,24 @@ export default function ProductDetailPage() {
       name: product.name,
       price: product.price,
       qty,
-      flavor,
-      imageUrl: product.imageUrl || product.images?.[0],
+      // Enviar sabor solo si aplica
+      flavor: showMainFlavors ? flavor : "",
+      imageUrl: product.imageUrl || (product as any).images?.[0],
       charger: null,
       extraVape: extraVape.model
         ? {
             model: extraVape.model,
-            flavor: extraVape.flavor,
+            flavor: selectedModelHasFlavors ? extraVape.flavor : undefined,
             qty: extraVape.qty ?? 1,
             price: extraVape.price ?? 0,
           }
         : null,
-      giftVape: giftVape.model ? { model: giftVape.model, flavor: giftVape.flavor } : null,
+      giftVape: giftVape.model
+        ? {
+            model: giftVape.model,
+            flavor: showMainFlavors ? giftVape.flavor : undefined,
+          }
+        : null,
     };
     addItem(item);
     alert("Producto agregado al carrito ✅");
@@ -285,7 +311,7 @@ export default function ProductDetailPage() {
             </div>
           </div>
 
-          {/* Cantidad + Sabor */}
+          {/* Cantidad + (opcional) Sabor */}
           <div className="rounded-2xl border border-stone-700 bg-[#111315] p-4 space-y-4">
             <div className="flex items-center gap-3">
               <label className="text-sm w-24 text-zinc-300">Cantidad</label>
@@ -299,20 +325,22 @@ export default function ProductDetailPage() {
               />
             </div>
 
-            <div className="flex items-center gap-3">
-              <label className="text-sm w-24 text-zinc-300">Sabor</label>
-              <select
-                value={flavor}
-                onChange={(e) => setFlavor(e.target.value)}
-                className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              >
-                {availableFlavors.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {showMainFlavors && (
+              <div className="flex items-center gap-3">
+                <label className="text-sm w-24 text-zinc-300">Sabor</label>
+                <select
+                  value={flavor}
+                  onChange={(e) => setFlavor(e.target.value)}
+                  className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  {availableFlavors.map((f) => (
+                    <option key={f} value={f}>
+                      {f}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           {/* ADD-ON 2: Agregar otro vape */}
@@ -375,25 +403,27 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
 
-                {/* Sabor del vape elegido */}
-                <div className="flex items-center gap-3">
-                  <label className="text-sm w-24 text-zinc-300">Sabor</label>
-                  <select
-                    className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    value={extraVape.flavor ?? ""}
-                    onChange={(e) => setExtraVape((prev) => ({ ...prev, flavor: e.target.value }))}
-                    disabled={!selectedModelId}
-                    title={!selectedModelId ? "Elige un modelo primero" : undefined}
-                  >
-                    {!selectedModelId && <option value="">Selecciona modelo primero…</option>}
-                    {selectedModelId &&
-                      selectedModelFlavors.map((f) => (
-                        <option key={f} value={f}>
-                          {f}
-                        </option>
-                      ))}
-                  </select>
-                </div>
+                {/* Sabor del vape elegido — visible SOLO si el modelo tiene sabores */}
+                {selectedModelHasFlavors && (
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm w-24 text-zinc-300">Sabor</label>
+                    <select
+                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      value={extraVape.flavor ?? ""}
+                      onChange={(e) => setExtraVape((prev) => ({ ...prev, flavor: e.target.value }))}
+                      disabled={!selectedModelId}
+                      title={!selectedModelId ? "Elige un modelo primero" : undefined}
+                    >
+                      {!selectedModelId && <option value="">Selecciona modelo primero…</option>}
+                      {selectedModelId &&
+                        selectedModelFlavors.map((f) => (
+                          <option key={f} value={f}>
+                            {f}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
 
                 {/* Cantidad */}
                 <div className="flex items-center gap-3">
@@ -456,23 +486,26 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <label className="text-sm w-24 text-zinc-300">Sabor</label>
-                  <select
-                    className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    value={giftVape.flavor ?? ""}
-                    onChange={(e) => setGiftVape((prev) => ({ ...prev, flavor: e.target.value }))}
-                  >
-                    <option value="" disabled>
-                      Selecciona…
-                    </option>
-                    {availableFlavors.map((f) => (
-                      <option key={f} value={f}>
-                        {f}
+                {/* Sabor del regalo — visible solo si el producto principal maneja sabores */}
+                {showMainFlavors && (
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm w-24 text-zinc-300">Sabor</label>
+                    <select
+                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                      value={giftVape.flavor ?? ""}
+                      onChange={(e) => setGiftVape((prev) => ({ ...prev, flavor: e.target.value }))}
+                    >
+                      <option value="" disabled>
+                        Selecciona…
                       </option>
-                    ))}
-                  </select>
-                </div>
+                      {availableFlavors.map((f) => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <p className="text-sm text-amber-400">Este ítem es gratis como promoción.</p>
               </div>

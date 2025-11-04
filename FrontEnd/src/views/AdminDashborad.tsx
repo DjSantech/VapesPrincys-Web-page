@@ -34,6 +34,7 @@ type Drafts = Record<
   Partial<AdminProduct> & {
     flavorsCSV?: string;
     pluses?: string[];
+    hasFlavors?: boolean;
   }
 >;
 
@@ -77,6 +78,7 @@ export default function AdminDashboard() {
     ml: number;
     visible: boolean;
     category: string;       // nombre de categoría
+    hasFlavors: boolean;    // NUEVO
     flavorsCSV: string;     // texto → se parsea al enviar
     pluses: string[];       // nombres de plus seleccionados
     image: File | null;
@@ -90,6 +92,7 @@ export default function AdminDashboard() {
     ml: 0,
     visible: true,
     category: "",
+    hasFlavors: true,
     flavorsCSV: "",
     pluses: [],
     image: null,
@@ -116,6 +119,7 @@ export default function AdminDashboard() {
       ml: 0,
       visible: true,
       category: "",
+      hasFlavors: true,
       flavorsCSV: "",
       pluses: [],
       image: null,
@@ -184,12 +188,24 @@ export default function AdminDashboard() {
     if (!current) return;
 
     const draft = drafts[id] ?? {};
-    const merged: AdminProduct = { ...current, ...draft };
+    const merged: AdminProduct & { hasFlavors?: boolean; flavors?: string[] } = { ...current, ...draft };
 
     const categoryTrim = (merged.category ?? "").trim();
     const nextPluses = draft.pluses ?? merged.pluses ?? [];
 
-    const patch: Partial<AdminProduct> & { imageUrl?: undefined } = {
+    const hasFlavors: boolean =
+      draft.hasFlavors ??
+      (typeof merged.hasFlavors === "boolean" ? merged.hasFlavors : (merged.flavors?.length ?? 0) > 0);
+
+    const nextFlavors = hasFlavors
+      ? (draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []))
+      : [];
+
+    const patch: Partial<AdminProduct> & {
+      imageUrl?: undefined;
+      hasFlavors?: boolean;
+      flavors?: string[];
+    } = {
       sku: merged.sku,
       name: merged.name,
       description: merged.description ?? "",
@@ -198,8 +214,9 @@ export default function AdminDashboard() {
       puffs: Math.max(0, Math.round(merged.puffs ?? 0)),
       ml: Math.max(0, Math.round(merged.ml ?? 0)),
       visible: merged.visible,
+      hasFlavors,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
-      flavors: draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []),
+      flavors: nextFlavors,
       pluses: nextPluses,
       imageUrl: undefined,
     };
@@ -255,7 +272,8 @@ export default function AdminDashboard() {
         visible: form.visible,
         category: form.category.trim(),
         image: form.image,
-        flavors: toArray(form.flavorsCSV),
+        hasFlavors: form.hasFlavors,
+        flavors: form.hasFlavors ? toArray(form.flavorsCSV) : [],
         pluses: form.pluses,
       });
       setItems(prev => [created, ...prev]);
@@ -387,9 +405,14 @@ export default function AdminDashboard() {
             const puffs = Math.round(d.puffs ?? p.puffs ?? 0);
             const ml = Math.round(d.ml ?? p.ml ?? 0);
             const category = (d.category ?? p.category) ?? "";
-            const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
-            const visible = (d.visible ?? p.visible) ?? true;
             const description = d.description ?? p.description ?? "";
+
+            // sabores
+            const inferredHasFlavors = p.hasFlavors as boolean | undefined;
+            const hasFlavors = d.hasFlavors ?? (typeof inferredHasFlavors === "boolean"
+              ? inferredHasFlavors
+              : ((p.flavors?.length ?? 0) > 0));
+            const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
 
             // pluses por nombre
             const assignedPluses: string[] = d.pluses ?? p.pluses ?? [];
@@ -532,25 +555,48 @@ export default function AdminDashboard() {
                     </div>
                   </div>
 
-                  <div className="lg:col-span-2">
-                    <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                  {/* NUEVO: Toggle de sabores */}
+                  <div className="flex items-center gap-2">
                     <input
-                      className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                      value={flavorsCSV}
-                      onChange={e => setDraft(p.id, { flavorsCSV: e.target.value })}
-                      placeholder="Uva, Menta, Sandía"
+                      id={`hasFlavors-${p.id}`}
+                      type="checkbox"
+                      className="accent-sky-400"
+                      checked={!!hasFlavors}
+                      onChange={e => {
+                        const checked = e.target.checked;
+                        setDraft(p.id, {
+                          hasFlavors: checked,
+                          ...(checked ? {} : { flavorsCSV: "" })
+                        });
+                      }}
                     />
-                    <div className="text-[11px] text-zinc-500 mt-0.5">
-                      Se guardan al presionar “Actualizar producto”
-                    </div>
+                    <label htmlFor={`hasFlavors-${p.id}`} className="text-xs text-zinc-400">
+                      Producto con sabores
+                    </label>
                   </div>
+
+                  {/* Sabores (solo si hasFlavors) */}
+                  {hasFlavors && (
+                    <div className="lg:col-span-2">
+                      <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                      <input
+                        className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                        value={flavorsCSV}
+                        onChange={e => setDraft(p.id, { flavorsCSV: e.target.value })}
+                        placeholder="Uva, Menta, Sandía"
+                      />
+                      <div className="text-[11px] text-zinc-500 mt-0.5">
+                        Se guardan al presionar “Actualizar producto”
+                      </div>
+                    </div>
+                  )}
 
                   <div className="flex items-center gap-2">
                     <input
                       id={`visible-${p.id}`}
                       type="checkbox"
                       className="accent-emerald-400"
-                      checked={visible}
+                      checked={(d.visible ?? p.visible) ?? true}
                       onChange={e => setDraft(p.id, { visible: e.target.checked })}
                     />
                     <label htmlFor={`visible-${p.id}`} className="text-xs text-zinc-400">Visible</label>
@@ -608,7 +654,7 @@ export default function AdminDashboard() {
         Edita los campos y presiona <span className="text-amber-400 font-medium">“Actualizar producto”</span> en cada tarjeta para guardar los cambios. La imagen se guarda al seleccionarla.
       </p>
 
-      {/* Modal crear producto (responsive con scroll y header/footer sticky) */}
+      {/* Modal crear producto */}
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch justify-center p-0 sm:items-center sm:p-3">
           <div className="w-full h-full sm:h-auto sm:max-w-lg bg-[#1a1d1f] border border-stone-800 sm:rounded-2xl flex flex-col">
@@ -624,7 +670,7 @@ export default function AdminDashboard() {
               </button>
             </div>
 
-            {/* Body con scroll */}
+            {/* Body */}
             <div className="flex-1 overflow-y-auto px-4 py-4 max-h-[90vh] sm:max-h-[70vh]">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="sm:col-span-2">
@@ -719,15 +765,33 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                {/* NUEVO: Toggle de sabores (crear) */}
+                <div className="flex items-center gap-2">
                   <input
-                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
-                    value={form.flavorsCSV}
-                    onChange={e => setForm(f => ({ ...f, flavorsCSV: e.target.value }))}
-                    placeholder="Uva, Menta, Sandía"
+                    id="hasFlavors"
+                    type="checkbox"
+                    className="accent-sky-400"
+                    checked={form.hasFlavors}
+                    onChange={e => setForm(f => ({
+                      ...f,
+                      hasFlavors: e.target.checked,
+                      ...(e.target.checked ? {} : { flavorsCSV: "" })
+                    }))}
                   />
+                  <label htmlFor="hasFlavors" className="text-xs text-zinc-400">Producto con sabores</label>
                 </div>
+
+                {form.hasFlavors && (
+                  <div className="sm:col-span-2">
+                    <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                    <input
+                      className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                      value={form.flavorsCSV}
+                      onChange={e => setForm(f => ({ ...f, flavorsCSV: e.target.value }))}
+                      placeholder="Uva, Menta, Sandía"
+                    />
+                  </div>
+                )}
 
                 {/* Pluses */}
                 <div className="sm:col-span-2">
