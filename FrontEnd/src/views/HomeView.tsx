@@ -1,8 +1,8 @@
 // src/views/HomeView.tsx
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { getProducts } from "../services/products_service";
-import type { Product } from "../types/Product";
+import type { Product } from "../types/Product"; 
 import ProductCard from "../components/ProductCard";
 import Container from "../components/Container";
 
@@ -19,14 +19,6 @@ function hasBooleanKey<T extends object, K extends PropertyKey>(
   key: K
 ): obj is T & Record<K, boolean> {
   return isRecord(obj) && typeof (obj as Record<PropertyKey, unknown>)[key] === "boolean";
-}
-
-function hasStringArrayKey<T extends object, K extends PropertyKey>(
-  obj: T,
-  key: K
-): obj is T & Record<K, string[]> {
-  const v = isRecord(obj) ? (obj as Record<PropertyKey, unknown>)[key] : undefined;
-  return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
 
 function hasStringKey<T extends object, K extends PropertyKey>(
@@ -52,7 +44,6 @@ function getCategoryNameFromProduct(p: Product): string {
     if (isRecord(cat) && hasStringKey(cat, "name")) return cat.name;
   }
 
-  // Aquí cambiamos la línea problemática
   if (isRecord(p) && typeof (p as Record<string, unknown>)["categoryName"] === "string") {
     return (p as Record<string, unknown>)["categoryName"] as string;
   }
@@ -60,11 +51,10 @@ function getCategoryNameFromProduct(p: Product): string {
   return "Otros";
 }
 
-
 /** Lee el id de categoría si el backend lo envía; si no, cadena vacía. */
 function getCategoryIdFromProduct(p: Product): string {
-  if (hasStringKey(p as object, "categoryId")) {
-    return (p as Record<"categoryId", string>)["categoryId"];
+  if (p.categoryId) {
+    return p.categoryId;
   }
   return "";
 }
@@ -74,17 +64,6 @@ function isVisibleProduct(p: Product): boolean {
   if (hasBooleanKey(p, "visible")) return p["visible"];
   if (hasBooleanKey(p, "isActive")) return p["isActive"];
   return true;
-}
-
-/** Populares: múltiples banderas o tags/badges. */
-function isPopularProduct(p: Product): boolean {
-  if (hasBooleanKey(p, "isPopular")) return p["isPopular"];
-  if (hasBooleanKey(p, "populares")) return p["populares"];
-  if (hasBooleanKey(p, "featured")) return p["featured"];
-  if (hasBooleanKey(p, "destacado")) return p["destacado"];
-  if (hasStringArrayKey(p, "tags")) return p["tags"].includes("popular");
-  if (hasStringArrayKey(p, "badges")) return p["badges"].includes("popular");
-  return false;
 }
 
 /* =========================
@@ -102,7 +81,8 @@ type PublicCategory = {
    ========================= */
 
 async function fetchPublicCategories(): Promise<PublicCategory[]> {
-  const base = (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8080/api";
+  const base =
+    (import.meta.env.VITE_API_URL as string | undefined) ?? "http://localhost:8080/api";
   const res = await fetch(`${base}/categories`);
   if (!res.ok) return [];
   return (await res.json()) as PublicCategory[];
@@ -120,6 +100,8 @@ export default function HomeView() {
   const [catsLoading, setCatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
 
+  // Ya no usamos HOME_CATEGORY_ID fijo
+
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
 
@@ -130,7 +112,14 @@ export default function HomeView() {
       try {
         setError("");
         setLoading(true);
-        const data = await getProducts(q || category ? { q, category } : undefined);
+        const filters = { q: q, category: category };
+        const cleanedFilters = (q || category) 
+            ? Object.fromEntries(
+                Object.entries(filters).filter(([, value]) => value !== undefined)
+              )
+            : undefined;
+        
+        const data = await getProducts(cleanedFilters);
         const visibles = data.filter(isVisibleProduct);
         if (alive) setItems(visibles);
       } catch (e) {
@@ -145,7 +134,7 @@ export default function HomeView() {
     };
   }, [q, category]);
 
-  // Cargar categorías (para homeOrder)
+  // Cargar categorías
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -153,6 +142,8 @@ export default function HomeView() {
         setCatsLoading(true);
         const data = await fetchPublicCategories();
         if (alive) setCats(data);
+      } catch (e) {
+        console.error("Error al obtener categorías:", e);
       } finally {
         if (alive) setCatsLoading(false);
       }
@@ -162,133 +153,161 @@ export default function HomeView() {
     };
   }, []);
 
-  /* =========================
-     Agrupación y orden global
-     ========================= */
-  const { popularItems, categoryGroups, orderedCategoryNames } = useMemo(() => {
-    // Índices para priorizar por id y por nombre
-    const orderById = new Map<string, number>(cats.map((c) => [c.id, c.homeOrder ?? 1000]));
-    const orderByName = new Map<string, number>(
-      cats.map((c) => [c.name.toLowerCase(), c.homeOrder ?? 1000])
-    );
-
-    // Populares (ordenados por número de SKU)
-    const popular = items
-      .filter(isPopularProduct)
-      .slice()
-      .sort((a, b) => skuNumber((a as Product & { sku?: string }).sku) - skuNumber((b as Product & { sku?: string }).sku));
-
-    // Agrupar resto por categoría
-    const groups = new Map<string, Product[]>();
-    for (const p of items) {
-      if (isPopularProduct(p)) continue;
-      const catName = getCategoryNameFromProduct(p);
-      const list = groups.get(catName);
-      if (list) {
-        list.push(p);
-      } else {
-        groups.set(catName, [p]);
-      }
-    }
-
-    // Ordenar productos dentro de cada grupo por número de SKU
-    for (const [name, arr] of groups.entries()) {
-      const sorted = arr.slice().sort(
-        (a, b) =>
-          skuNumber((a as Product & { sku?: string }).sku) -
-          skuNumber((b as Product & { sku?: string }).sku)
-      );
-      groups.set(name, sorted);
-    }
-
-    // Ordenar nombres de categorías por homeOrder; empate por nombre
-    const names = Array.from(groups.keys()).sort((a, b) => {
-      const aArr = groups.get(a);
-      const bArr = groups.get(b);
-      const aId = aArr && aArr.length > 0 ? getCategoryIdFromProduct(aArr[0] as Product) : "";
-      const bId = bArr && bArr.length > 0 ? getCategoryIdFromProduct(bArr[0] as Product) : "";
-
-      const ao =
-        (aId && orderById.has(aId) ? (orderById.get(aId) as number) : undefined) ??
-        orderByName.get(a.toLowerCase()) ??
-        1000;
-      const bo =
-        (bId && orderById.has(bId) ? (orderById.get(bId) as number) : undefined) ??
-        orderByName.get(b.toLowerCase()) ??
-        1000;
-
-      if (ao !== bo) return ao - bo;
-      return a.localeCompare(b, "es");
-    });
-
-    return {
-      popularItems: popular,
-      categoryGroups: groups,
-      orderedCategoryNames: names,
-    };
-  }, [items, cats]);
-
   // Grid reutilizable
   const Grid = ({ products }: { products: Product[] }) => (
     <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
       {products.map((p) => (
-        <ProductCard key={p.id} id={p.id} name={p.name} price={p.price} imageUrl={p.imageUrl} pluses={p.pluses}  puffs={p.puffs} ml={p.ml} className="!p-0" />
+        <ProductCard
+          key={p.id}
+          id={p.id}
+          name={p.name}
+          price={p.price}
+          imageUrl={p.imageUrl ?? (p.images && p.images.length > 0 ? p.images[0] : undefined)}
+          // 🚨 CORRECCIÓN LINTER: Se añade la descripción para la regla @ts-expect-error
+          // La propiedad 'brand' no existe en la interfaz 'Product', se asume que existe para ProductCard.
+          // @ts-expect-error Propiedad 'brand' no existe en la interfaz 'Product', se asume que existe para ProductCard.
+          brand={p.brand} 
+          categoryName={getCategoryNameFromProduct(p)}
+          pluses={p.pluses}
+          puffs={p.puffs}
+          ml={p.ml}
+          className="!p-0"
+        />
       ))}
     </div>
   );
 
-  // Con filtros: ordenar por SKU asc también
+  // Lista filtrada cuando hay búsqueda o query param de categoría (sin cambios)
   const filteredSorted = useMemo<Product[]>(() => {
     if (!(q || category)) return items;
+    const base = items.slice();
+    const filtered = base.filter((p) => {
+      if (category && getCategoryIdFromProduct(p) !== category) return false;
+      if (!q) return true;
+      const qLower = q.toLowerCase();
+      const name = p.name?.toString().toLowerCase() ?? "";
+      const brand = (p as Product & { brand?: string }).brand?.toString().toLowerCase() ?? ""; 
+      const sku = (p as Product & { sku?: string }).sku?.toString().toLowerCase() ?? "";
+      return name.includes(qLower) || brand.includes(qLower) || sku.includes(qLower);
+    });
+    return filtered.sort(
+      (a, b) =>
+        skuNumber((a as Product & { sku?: string }).sku) -
+        skuNumber((b as Product & { sku?: string }).sku)
+    );
+  }, [items, q, category]);
+
+
+  // 🚨 LÓGICA PARA HOMEORDER: 1 
+  
+  // 1. Identificar la categoría principal por su homeOrder = 1
+  const mainCategory = useMemo(() => {
+    return cats.find((c) => c.homeOrder === 1);
+  }, [cats]);
+
+
+  // 2. Productos que se mostrarán en el home (solo categoría principal)
+  const homeCategoryProducts = useMemo(() => {
+    if (!mainCategory) return [];
+
     return items
-      .slice()
+      .filter((p) => getCategoryIdFromProduct(p) === mainCategory.id) // Filtra por el ID de la categoría con homeOrder: 1
       .sort(
         (a, b) =>
           skuNumber((a as Product & { sku?: string }).sku) -
           skuNumber((b as Product & { sku?: string }).sku)
       );
-  }, [items, q, category]);
+  }, [items, mainCategory]);
+
+  // 3. Nombre "bonito" para esa categoría 
+  const homeCategoryName = mainCategory?.name ?? "Destacados";
+
+  // 4. Tarjetas para el resto de categorías (EXCLUYENDO la principal)
+  const categoryCards = useMemo(() => {
+    return cats
+      .filter((c) => c.id !== mainCategory?.id) 
+      .sort((a, b) => (a.homeOrder ?? 1000) - (b.homeOrder ?? 1000));
+  }, [cats, mainCategory]);
+  
 
   /* =========================
-     Render
-     ========================= */
+   Render
+   ========================= */
   return (
     <Container>
-      <h1 className="text-3xl font-bold text-white">Bienvenido a Vapitos Princys</h1>
-      <p className="mt-2 text-white/70">Explora nuestros productos o usa el buscador.</p>
+      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
+        Vapitos Princys
+      </h1>
+      <p className="mt-2 text-white/70">
+        Explora nuestros productos o elige una categoría.
+      </p>
 
       {error && <p className="mt-4 text-red-400">{error}</p>}
 
       {loading ? (
         <div className="mt-6 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse" />
+            <div
+              key={i}
+              className="h-32 sm:h-40 md:h-48 rounded-xl bg-white/5 border border-white/10 animate-pulse"
+            />
           ))}
         </div>
-      ) : items.length === 0 ? (
-        <p className="mt-6 text-white/60">No encontramos productos con esos filtros.</p>
-      ) : q || category ? (
-        <Grid products={filteredSorted} />
+      ) : items.length === 0 && (q || category) ? (
+        <p className="mt-6 text-white/60">
+          No encontramos productos con esos filtros.
+        </p>
+      ) : (q || category) ? (
+        // Vista cuando hay búsqueda o se pasa ?category=...
+        <>
+            <h2 className="text-2xl font-semibold text-white mt-4">
+                {q ? `Resultados para "${q}"` : `Productos en Categoría ${cats.find(c => c.id === category)?.name ?? category}`}
+            </h2>
+            <Grid products={filteredSorted} />
+        </>
       ) : (
+        // Vista principal del home
         <div className="mt-4 space-y-8">
-          {popularItems.length > 0 && (
+          {/* Sección principal: Muestra solo los productos de la categoría con homeOrder: 1 */}
+          {homeCategoryProducts.length > 0 && (
             <section>
-              <h2 className="text-2xl font-semibold text-white">Populares</h2>
-              <Grid products={popularItems} />
+              <h2 className="text-2xl font-semibold text-white">
+                {homeCategoryName}
+              </h2>
+              <Grid products={homeCategoryProducts} />
             </section>
           )}
 
-          {/* Cuando cats aún carga, no bloqueamos; solo afecta orden */}
-          {(catsLoading ? orderedCategoryNames : orderedCategoryNames).map((cat) => {
-            const products = categoryGroups.get(cat);
-            if (!products || products.length === 0) return null;
-            return (
-              <section key={cat}>
-                <h2 className="text-2xl font-semibold text-white">{cat}</h2>
-                <Grid products={products} />
-              </section>
-            );
-          })}
+          {/* Tarjetas de las demás categorías (Excluyendo la principal) */}
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold text-white">
+              Explora por categoría
+            </h2>
+
+            {catsLoading && (
+              <p className="text-sm text-white/60">Cargando categorías…</p>
+            )}
+
+            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+              {categoryCards.map((cat) => (
+                <Link
+                  key={cat.id}
+                  to={`/?category=${encodeURIComponent(cat.id)}`}
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/50 px-4 py-6 transition hover:scale-[1.02] hover:border-white/40"
+                >
+                  <p className="text-xs uppercase tracking-[0.25em] text-white/70">
+                    Categoría
+                  </p>
+                  <p className="mt-1 text-lg sm:text-xl font-semibold text-white">
+                    {cat.name}
+                  </p>
+                  <p className="mt-2 text-xs text-white/60">
+                    Ver todos los vapes de esta categoría
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
         </div>
       )}
     </Container>
