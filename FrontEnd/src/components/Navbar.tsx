@@ -27,7 +27,7 @@ export default function Navbar() {
   const [catsLoading, setCatsLoading] = useState<boolean>(false);
   const [catsError, setCatsError] = useState<string>("");
 
-  // categoría seleccionada (string: nombre de categoría o "")
+  // categoría seleccionada (string: id de categoría o "")
   const initialCat = params.get("category") ?? "";
   const [cat, setCat] = useState<string>(initialCat);
 
@@ -72,7 +72,8 @@ export default function Navbar() {
   // opciones del select (incluye “Todas” primero)
   const categoryOptions = useMemo(() => {
     const base: Array<{ value: string; label: string }> = [{ value: "", label: "Todas" }];
-    const fromApi = cats.map(c => ({ value: c.name, label: c.name }));
+    // 🚨 CORRECCIÓN CLAVE: Usamos c.id como 'value' y c.name como 'label'.
+    const fromApi = cats.map(c => ({ value: c.id, label: c.name })); 
     return base.concat(fromApi);
   }, [cats]);
 
