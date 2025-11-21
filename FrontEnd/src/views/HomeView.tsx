@@ -1,6 +1,6 @@
 // src/views/HomeView.tsx
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { getProducts } from "../services/products_service";
 import type { Product } from "../types/Product"; 
 import ProductCard from "../components/ProductCard";
@@ -76,6 +76,11 @@ type PublicCategory = {
   homeOrder?: number;
 };
 
+// Nuevo tipo para el resultado agrupado
+type GroupedCategory = PublicCategory & {
+    products: Product[];
+};
+
 /* =========================
    API pública de categorías
    ========================= */
@@ -99,8 +104,6 @@ export default function HomeView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [catsLoading, setCatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-
-  // Ya no usamos HOME_CATEGORY_ID fijo
 
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
@@ -198,36 +201,59 @@ export default function HomeView() {
   }, [items, q, category]);
 
 
-  // 🚨 LÓGICA PARA HOMEORDER: 1 
-  
-  // 1. Identificar la categoría principal por su homeOrder = 1
-  const mainCategory = useMemo(() => {
-    return cats.find((c) => c.homeOrder === 1);
-  }, [cats]);
+  // 🚨 LÓGICA MODIFICADA: Agrupar productos por categoría y separarlas en principal y secundarias
+  const { mainCategoryGroup, secondaryCategoriesGroup } = useMemo(() => {
+    // 1. Agrupar productos por categoryId
+    const productsByCatId = items.reduce(
+        (acc, p) => {
+            const catId = getCategoryIdFromProduct(p) || "otros";
+            acc[catId] = acc[catId] || [];
+            acc[catId].push(p);
+            return acc;
+        },
+        {} as Record<string, Product[]>
+    );
 
+    // 2. Ordenar todas las categorías por homeOrder (asc)
+    const orderedCats = cats.slice().sort((a, b) => {
+        const orderA = a.homeOrder ?? 1000;
+        const orderB = b.homeOrder ?? 1000;
+        return orderA - orderB;
+    });
 
-  // 2. Productos que se mostrarán en el home (solo categoría principal)
-  const homeCategoryProducts = useMemo(() => {
-    if (!mainCategory) return [];
+    let mainCategoryGroup: GroupedCategory | undefined;
+    const secondaryCategoriesGroup: GroupedCategory[] = [];
 
-    return items
-      .filter((p) => getCategoryIdFromProduct(p) === mainCategory.id) // Filtra por el ID de la categoría con homeOrder: 1
-      .sort(
-        (a, b) =>
-          skuNumber((a as Product & { sku?: string }).sku) -
-          skuNumber((b as Product & { sku?: string }).sku)
-      );
-  }, [items, mainCategory]);
+    // 3. Mapear y separar en principal (homeOrder: 1) y secundarias (homeOrder > 1)
+    orderedCats
+        .map((cat) => ({
+            ...cat,
+            products: (productsByCatId[cat.id] || []).sort(
+                // Aplicar orden por SKU a los productos de cada grupo
+                (a, b) =>
+                    skuNumber((a as Product & { sku?: string }).sku) -
+                    skuNumber((b as Product & { sku?: string }).sku)
+            ),
+        }))
+        .filter((c) => c.products.length > 0) // Solo categorías con productos
+        .forEach((catGroup) => {
+            if (catGroup.homeOrder === 1 && !mainCategoryGroup) {
+                mainCategoryGroup = catGroup;
+            } else {
+                secondaryCategoriesGroup.push(catGroup);
+            }
+        });
 
-  // 3. Nombre "bonito" para esa categoría 
-  const homeCategoryName = mainCategory?.name ?? "Destacados";
+    return { mainCategoryGroup, secondaryCategoriesGroup };
+  }, [items, cats]);
 
-  // 4. Tarjetas para el resto de categorías (EXCLUYENDO la principal)
-  const categoryCards = useMemo(() => {
-    return cats
-      .filter((c) => c.id !== mainCategory?.id) 
-      .sort((a, b) => (a.homeOrder ?? 1000) - (b.homeOrder ?? 1000));
-  }, [cats, mainCategory]);
+  // Creamos una lista única de categorías para las tarjetas de navegación
+  const allCategoriesForCards = useMemo(() => {
+      return [
+          ...(mainCategoryGroup ? [mainCategoryGroup] : []),
+          ...secondaryCategoriesGroup
+      ];
+  }, [mainCategoryGroup, secondaryCategoriesGroup]);
   
 
   /* =========================
@@ -266,19 +292,20 @@ export default function HomeView() {
             <Grid products={filteredSorted} />
         </>
       ) : (
-        // Vista principal del home
+        // Vista principal del home (con la categoría principal, luego las tarjetas y luego las secundarias)
         <div className="mt-4 space-y-8">
-          {/* Sección principal: Muestra solo los productos de la categoría con homeOrder: 1 */}
-          {homeCategoryProducts.length > 0 && (
-            <section>
+          
+          {/* 1. SECCIÓN PRINCIPAL (homeOrder: 1) */}
+          {mainCategoryGroup && mainCategoryGroup.products.length > 0 && (
+            <section key={mainCategoryGroup.id} id={`cat-${mainCategoryGroup.id}`}> 
               <h2 className="text-2xl font-semibold text-white">
-                {homeCategoryName}
+                {mainCategoryGroup.name}
               </h2>
-              <Grid products={homeCategoryProducts} />
+              <Grid products={mainCategoryGroup.products} />
             </section>
           )}
 
-          {/* Tarjetas de las demás categorías (Excluyendo la principal) */}
+          {/* 2. TARJETAS DE NAVEGACIÓN A LAS CATEGORÍAS */}
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold text-white">
               Explora por categoría
@@ -289,11 +316,20 @@ export default function HomeView() {
             )}
 
             <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
-              {categoryCards.map((cat) => (
-                <Link
+              {allCategoriesForCards.map((cat) => (
+                <a
                   key={cat.id}
-                  to={`/?category=${encodeURIComponent(cat.id)}`}
+                  href={`#cat-${cat.id}`} // Navega al ID de la sección
                   className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/50 px-4 py-6 transition hover:scale-[1.02] hover:border-white/40"
+                  onClick={(e) => {
+                    // Previene el comportamiento por defecto del ancla
+                    e.preventDefault(); 
+                    // Scroll suave hacia la sección
+                    document.getElementById(`cat-${cat.id}`)?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "start",
+                    });
+                  }}
                 >
                   <p className="text-xs uppercase tracking-[0.25em] text-white/70">
                     Categoría
@@ -304,10 +340,20 @@ export default function HomeView() {
                   <p className="mt-2 text-xs text-white/60">
                     Ver todos los vapes de esta categoría
                   </p>
-                </Link>
+                </a>
               ))}
             </div>
           </section>
+
+          {/* 3. SECCIONES SECUNDARIAS (homeOrder > 1) - Ordenadas por homeOrder */}
+          {secondaryCategoriesGroup.map((cat) => (
+            <section key={cat.id} id={`cat-${cat.id}`}> 
+              <h2 className="text-2xl font-semibold text-white">
+                {cat.name}
+              </h2>
+              <Grid products={cat.products} />
+            </section>
+          ))}
         </div>
       )}
     </Container>
