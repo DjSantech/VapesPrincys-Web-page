@@ -5,6 +5,7 @@ import { getProducts } from "../services/products_service";
 import type { Product } from "../types/Product"; 
 import ProductCard from "../components/ProductCard";
 import Container from "../components/Container";
+import DailyPromotion from "../components/DailyPromotion";
 
 /* =========================
    Helpers de tipado seguro
@@ -108,6 +109,13 @@ export default function HomeView() {
 
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
+
+  const mockPromotion = useMemo(() => ({
+    productId: "60fbb61ad74a0829ce534d79", // ID de un producto de ejemplo
+    productName: "Vapeador Pro Max Edición Limitada",
+    imageUrl: "https://placehold.co/1600x500/A0457A/FFFFFF?text=Promocion+Exclusiva+del+Dia", 
+  }), []);
+
 
   // Cargar productos
   useEffect(() => {
@@ -262,6 +270,13 @@ export default function HomeView() {
    ========================= */
   return (
     <Container>
+      <div className="mb-10">
+          <DailyPromotion 
+              productId={mockPromotion.productId}
+              imageUrl={mockPromotion.imageUrl}
+              productName={mockPromotion.productName}
+          />
+      </div>
       <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
         Vapitos Princys
       </h1>
