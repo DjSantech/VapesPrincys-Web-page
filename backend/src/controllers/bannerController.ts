@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Banner, IBanner, IBannerDay,BannerDays } from "../models/banner";
+import { Banner, IBanner, IBannerDay,BannerDays } from "../models/Banner";
 
 // GET /api/banner
 export const getBanner = async (req: Request, res: Response) => {
