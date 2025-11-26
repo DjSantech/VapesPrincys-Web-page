@@ -74,6 +74,7 @@ type PublicCategory = {
   id: string;
   name: string;
   homeOrder?: number;
+  imageUrl?: string;
 };
 
 // Nuevo tipo para el resultado agrupado
@@ -294,6 +295,47 @@ export default function HomeView() {
       ) : (
         // Vista principal del home (con la categoría principal, luego las tarjetas y luego las secundarias)
         <div className="mt-4 space-y-8">
+
+
+            {/* 1. TARJETAS DE NAVEGACIÓN A LAS CATEGORÍAS (MOVIDAS ARRIBA) */}
+        <section className="mb-8 space-y-4"> {/* 🚀 CAMBIO: Agregado margin-bottom para separarlo del contenido de abajo */}
+          <h2 className="text-2xl font-semibold text-white">
+            Explora por categoría
+          </h2>
+
+          {catsLoading && (
+            <p className="text-sm text-white/60">Cargando categorías…</p>
+          )}
+
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
+            {allCategoriesForCards.map((cat) => (
+              <a
+                key={cat.id}
+                href={`#cat-${cat.id}`} 
+                // ... el resto de la clase permanece igual
+                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/90 p-0 transition hover:scale-[1.02] hover:border-white/40"                onClick={(e) => {
+                  e.preventDefault(); 
+                  document.getElementById(`cat-${cat.id}`)?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+              >
+                
+                {/* 🚀 AÑADIR: La imagen como fondo semi-transparente */}
+                {cat.imageUrl && (
+                  <img
+                  src={cat.imageUrl}
+                  alt={cat.name} // Importante para accesibilidad
+                  // Estilos: Ocupa el 100%, mantiene la relación rectangular (4/3)
+                  className="w-full h-full object-cover transition duration-300 group-hover:scale-105 rounded-2xl" 
+                  style={{ aspectRatio: '4/3' }} 
+                />
+                )}
+              </a>
+            ))}
+          </div>
+        </section>
           
           {/* 1. SECCIÓN PRINCIPAL (homeOrder: 1) */}
           {mainCategoryGroup && mainCategoryGroup.products.length > 0 && (
@@ -305,46 +347,7 @@ export default function HomeView() {
             </section>
           )}
 
-          {/* 2. TARJETAS DE NAVEGACIÓN A LAS CATEGORÍAS */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold text-white">
-              Explora por categoría
-            </h2>
-
-            {catsLoading && (
-              <p className="text-sm text-white/60">Cargando categorías…</p>
-            )}
-
-            <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 md:grid-cols-4">
-              {allCategoriesForCards.map((cat) => (
-                <a
-                  key={cat.id}
-                  href={`#cat-${cat.id}`} // Navega al ID de la sección
-                  className="group relative overflow-hidden rounded-2xl border border-white/10 bg-black/50 px-4 py-6 transition hover:scale-[1.02] hover:border-white/40"
-                  onClick={(e) => {
-                    // Previene el comportamiento por defecto del ancla
-                    e.preventDefault(); 
-                    // Scroll suave hacia la sección
-                    document.getElementById(`cat-${cat.id}`)?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
-                  }}
-                >
-                  <p className="text-xs uppercase tracking-[0.25em] text-white/70">
-                    Categoría
-                  </p>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold text-white">
-                    {cat.name}
-                  </p>
-                  <p className="mt-2 text-xs text-white/60">
-                    Ver todos los vapes de esta categoría
-                  </p>
-                </a>
-              ))}
-            </div>
-          </section>
-
+         
           {/* 3. SECCIONES SECUNDARIAS (homeOrder > 1) - Ordenadas por homeOrder */}
           {secondaryCategoriesGroup.map((cat) => (
             <section key={cat.id} id={`cat-${cat.id}`}> 
