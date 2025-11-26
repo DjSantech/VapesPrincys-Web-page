@@ -13,7 +13,8 @@ import {
   createCategory,
   deleteCategoryById,
   patchCategory,
-  type AdminCategory,
+  patchCategoryImage, // <--- CAMBIO 1: Importar la nueva función de servicio
+  type AdminCategory, // ⚠️ Asumimos que AdminCategory ahora tiene 'imageUrl?: string'
   // ===== PLUS =====
   getPluses,
   createPlus,
@@ -51,6 +52,13 @@ export default function AdminDashboard() {
   const [catsLoading, setCatsLoading] = useState<boolean>(false);
   const [showCats, setShowCats] = useState<boolean>(false);
   const [newCat, setNewCat] = useState<string>("");
+
+  // CAMBIO 2: Estado para borradores de imagen de categoría
+  type CategoryDrafts = Record<string, { imageFile?: File | null }>;
+  const [catDrafts, setCatDrafts] = useState<CategoryDrafts>({});
+  const setCatDraft = (id: string, patch: CategoryDrafts[string]) =>
+      setCatDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
+
 
   // ordenadas por homeOrder (menor primero), luego nombre
   const catsOrdered = useMemo(
@@ -142,8 +150,10 @@ export default function AdminDashboard() {
   const loadCategories = async () => {
     try {
       setCatsLoading(true);
-      const data = await getCategories();
+      // ⚠️ getCategories debe devolver objetos AdminCategory con la propiedad imageUrl
+      const data = await getCategories(); 
       setCats(data);
+      setCatDrafts({}); // Limpiar borradores al recargar
     } catch {
       toast.error("No se pudieron cargar las categorías");
     } finally {
@@ -181,7 +191,7 @@ export default function AdminDashboard() {
       void loadProducts();
     }
   };
-
+  
   // ---- guardar cambios de una fila ----
   const onSaveRow = async (id: string) => {
     const current = items.find(p => p.id === id);
@@ -192,7 +202,6 @@ export default function AdminDashboard() {
 
     const categoryTrim = (merged.category ?? "").trim();
     const nextPluses = draft.pluses ?? merged.pluses ?? [];
-
     const hasFlavors: boolean =
       draft.hasFlavors ??
       (typeof merged.hasFlavors === "boolean" ? merged.hasFlavors : (merged.flavors?.length ?? 0) > 0);
@@ -908,9 +917,40 @@ export default function AdminDashboard() {
                 {catsLoading ? "Cargando categorías…" : `Total: ${cats.length}`}
               </div>
               <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
-                {catsOrdered.map((c) => (
-                  <li key={c.id} className="flex items-center justify-between gap-2 px-3 py-2">
-                    <div className="flex items-center gap-2">
+                {catsOrdered.map((c) => {
+                  const draftFile = catDrafts[c.id]?.imageFile; // Obtener el archivo en borrador
+                  
+                  return (
+                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
+                    {/* Información, Imagen y Home Order */}
+                    <div className="flex items-center gap-3 min-w-0">
+                      
+                      {/* 🚨 CAMBIO 3: Imagen y selector de archivo (guarda en borrador) */}
+                      <label className="relative" title="Cambiar imagen de categoría">
+                        <img
+                            // Usar el archivo en borrador para la previsualización, sino la URL existente
+                            src={draftFile ? URL.createObjectURL(draftFile) : c.imageUrl || `https://picsum.photos/seed/${c.id}/40`} 
+                            className="h-10 w-10 object-cover rounded-md ring-1 ring-stone-800 cursor-pointer"
+                            alt={c.name}
+                        />
+                        {/* Selector de archivo OCULTO para la imagen */}
+                        <input
+                            type="file"
+                            accept="image/*"
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+
+                                // Guarda el archivo en el estado de borrador (catDrafts)
+                                setCatDraft(c.id, { imageFile: file });
+                                
+                                // Resetear el input para permitir subir el mismo archivo si se cancela
+                                e.target.value = ''; 
+                            }}
+                        />
+                      </label>
+
                       <input
                         type="number"
                         className="w-16 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100"
@@ -921,22 +961,53 @@ export default function AdminDashboard() {
                         }}
                         title="Orden en Home (menor sale primero)"
                       />
-                      <span className="text-sm text-zinc-100">{c.name}</span>
+                      <span className="text-sm text-zinc-100 truncate">{c.name}</span>
                     </div>
+                    
+                    {/* Botones de acción */}
                     <div className="flex items-center gap-2">
                       <button
                         className="rounded-md bg-amber-600 hover:bg-amber-700 px-2 py-1 text-xs text-white"
+                        // 🚨 CAMBIO 4: Lógica para guardar orden E imagen al hacer clic
                         onClick={async () => {
+                          const draftFile = catDrafts[c.id]?.imageFile;
+                          
                           try {
-                            const updated = await patchCategory(c.id, { homeOrder: c.homeOrder ?? 1000 });
-                            setCats(prev => prev.map(x => x.id === c.id ? updated : x));
-                            toast.success("Orden actualizado");
-                          } catch {
-                            toast.error("No se pudo actualizar el orden");
+                            // 1. GUARDAR ORDEN
+                            const updatedOrder = await patchCategory(c.id, { homeOrder: c.homeOrder ?? 1000 });
+
+                            // 2. GUARDAR IMAGEN SI HAY BORRADOR
+                            let finalCategory = updatedOrder;
+                            if (draftFile) {
+                                toast.info("Subiendo imagen de categoría...");
+                                // ⚠️ Llamada a la nueva función de servicio (patchCategoryImage)
+                                finalCategory = await patchCategoryImage(c.id, draftFile);
+                            }
+
+                            // 3. ACTUALIZAR ESTADO LOCAL Y LIMPIAR BORRADOR
+                            setCats(prev => prev.map(x => x.id === c.id ? finalCategory : x));
+                            setCatDrafts(prev => {
+                                const next = { ...prev };
+                                delete next[c.id]; // Limpiar borrador de imagen
+                                return next;
+                            });
+
+                            // 4. CAMBIO: Mensaje de éxito
+                            toast.success("Cambios guardados");
+                          } catch (error) {
+                            console.error(error);
+                            // 5. CAMBIO: Mensaje de error
+                            toast.error("No se pudieron guardar los cambios");
+                            
+                            // Si falla, recargar para revertir la imagen temporal si existía
+                            if (draftFile) {
+                                void loadCategories(); 
+                            }
                           }
                         }}
                       >
-                        Guardar
+                        {/* 6. CAMBIO: Texto del botón */}
+                        Guardar Cambios 
                       </button>
                       <button
                         className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
@@ -946,7 +1017,8 @@ export default function AdminDashboard() {
                       </button>
                     </div>
                   </li>
-                ))}
+                );
+                })}
                 {cats.length === 0 && !catsLoading && (
                   <li className="px-3 py-3 text-sm text-zinc-400">No hay categorías</li>
                 )}

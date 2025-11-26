@@ -2,16 +2,35 @@
 import { Router } from "express";
 import mongoose from "mongoose";
 import Category from "../models/Category";
+import multer from "multer"; 
+// 🚨 Importar la función que utilizas para productos
+import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary"; 
 
-const r = Router();
+// Inicialización del Router y Multer
+const r = Router(); 
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 5 * 1024 * 1024, // Límite de 5MB
+  }
+});
 
-const mapCat = (c: { _id: unknown; name: string; homeOrder?: number }) => ({
+// Helpers de categoría
+const mapCat = (c: { 
+  _id: unknown; 
+  name: string; 
+  homeOrder?: number;
+  imageUrl?: string; // Incluido para compatibilidad con el front
+}) => ({
   id: String(c._id),
   name: c.name,
   homeOrder: typeof c.homeOrder === "number" ? c.homeOrder : undefined,
+  imageUrl: c.imageUrl,
 });
 
+// =========================
 // GET /api/categories
+// =========================
 r.get("/", async (_req, res) => {
   try {
     const rows = await Category.find({}).sort({ name: 1 }).lean();
@@ -22,7 +41,9 @@ r.get("/", async (_req, res) => {
   }
 });
 
+// =========================
 // POST /api/categories {name}
+// =========================
 r.post("/", async (req, res) => {
   try {
     const name = String(req.body?.name ?? "").trim();
@@ -38,7 +59,9 @@ r.post("/", async (req, res) => {
   }
 });
 
-// 👇 NUEVO: PATCH /api/categories/:id  (name?, homeOrder?)
+// =========================
+// PATCH /api/categories/:id (name?, homeOrder?)
+// =========================
 r.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -75,15 +98,64 @@ r.patch("/:id", async (req, res) => {
   }
 });
 
+// =========================
+// 🚨 RUTA DE IMAGEN: PATCH /api/categories/:id/image
+// =========================
+r.patch("/:id/image", upload.single("image"), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "ID inválido" });
+    }
+
+    if (!req.file || !req.file.buffer) {
+      return res.status(400).json({ error: "No se encontró el archivo de imagen ('image')" });
+    }
+    
+    // 1. Llamar a la función de subida del archivo de librería
+    // Usamos una carpeta diferente: "vapes/categories"
+    const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/categories");
+    
+    // 2. Obtener la URL de forma segura (igual que en products_routes)
+    // @ts-ignore se usa para ignorar el error de tipado de 'secure_url'
+    const finalImageUrl = up.secure_url as string; 
+
+    // 3. Actualiza el campo imageUrl en la base de datos
+    const updated = await Category.findByIdAndUpdate(
+      id,
+      { imageUrl: finalImageUrl }, 
+      { new: true, runValidators: true }
+    ).lean();
+
+    if (!updated) {
+        // En un entorno productivo, aquí deberías eliminar la imagen de Cloudinary
+        return res.status(404).json({ error: "Not found" });
+    }
+
+    // 4. Retorna la categoría actualizada con la nueva URL
+    return res.json(mapCat(updated));
+  } catch (e) {
+    console.error("PATCH /categories/:id/image error:", e);
+    res.status(500).json({ error: "Error interno subiendo imagen a Cloudinary" });
+  }
+});
+
+
+// =========================
 // DELETE /api/categories/:id
+// =========================
 r.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "ID inválido" });
     }
+    
     const doc = await Category.findByIdAndDelete(id);
     if (!doc) return res.status(404).json({ error: "Not found" });
+    
+    // ⚠️ Recomendación: Lógica para eliminar la imagen de Cloudinary aquí
+
     return res.status(204).send();
   } catch (e) {
     console.error("DELETE /categories/:id error:", e);
