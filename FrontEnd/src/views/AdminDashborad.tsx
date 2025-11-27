@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
+  getBanner,
   getProducts,
   patchProduct,
   createProduct,
@@ -134,6 +135,31 @@ export default function AdminDashboard() {
     });
   };
 
+
+  const loadBanner = async () => {
+  try {
+    const data = await getBanner();
+
+    if (data) {
+      const catsObj: Record<string, string> = {};
+      const vapeObj: Record<string, string> = {};
+
+      Object.keys(data).forEach(day => {
+        if (data[day]) {
+          catsObj[day] = data[day].category ?? "";
+          vapeObj[day] = data[day].vapeId ?? "";
+        }
+      });
+
+      setBannerCategory(catsObj);
+      setBannerVape(vapeObj);
+    }
+  } catch (err) {
+    console.error("Error cargando banner:", err);
+  }
+};
+
+
   const loadProducts = async () => {
     try {
       setLoading(true);
@@ -176,6 +202,7 @@ export default function AdminDashboard() {
   useEffect(() => { void loadProducts(); }, []);
   useEffect(() => { void loadCategories(); }, []);
   useEffect(() => { void loadPluses(); }, []);
+  useEffect(() => {void loadBanner();}, []);
 
   // ---- update solo imagen (multipart) ----
   const updateImage = async (id: string, file: File) => {
@@ -366,11 +393,38 @@ export default function AdminDashboard() {
     }
   };
 
+  // ---- Banner ----
+  const [showBanner, setShowBanner] = useState(false);
+
+  const weekDays = [
+    "Lunes",
+    "Martes",
+    "Miércoles",
+    "Jueves",
+    "Viernes",
+    "Sábado",
+    "Domingo",
+  ];
+
+  // Estado: para cada día, la categoría seleccionada
+  const [bannerCategory, setBannerCategory] = useState<Record<string, string>>({});
+
+  // Estado: para cada día, el vape seleccionado
+  const [bannerVape, setBannerVape] = useState<Record<string, string>>({});
+
+
   return (
     <div className="px-3 sm:px-4 md:px-6 py-6">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Panel de administración</h1>
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            className="rounded-lg bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-sm text-white"
+            onClick={() => setShowBanner(true)}
+          >
+            Banner
+          </button>
+
           <button
             className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-sm text-white"
             onClick={() => setShowCats(true)}
@@ -878,6 +932,165 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+
+            {showBanner && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
+          <div className="w-full max-w-2xl rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
+
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-zinc-100">Banner de la semana</h2>
+              <button
+                className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
+                onClick={() => setShowBanner(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+
+              {weekDays.map((day) => {
+                const selectedCat = bannerCategory[day] ?? "";
+                const filteredProducts = items.filter(p => p.category === selectedCat);
+
+                return (
+                  <div key={day} className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]">
+                    <h3 className="text-sm text-zinc-200 font-semibold mb-2">{day}</h3>
+
+                    {/* Select Categoría */}
+                    <div className="mb-2">
+                      <label className="text-xs text-zinc-400">Categoría</label>
+                      <select
+                        className="w-full rounded-lg bg-[#1a1d1f] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                        value={selectedCat}
+                        onChange={(e) =>
+                          setBannerCategory(prev => ({ ...prev, [day]: e.target.value }))
+                        }
+                      >
+                        <option value="">— Selecciona categoría —</option>
+                        {cats.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Select Producto filtrado por categoría */}
+                    <div>
+                      <label className="text-xs text-zinc-400">Vape del día</label>
+                      <select
+                        className="w-full rounded-lg bg-[#1a1d1f] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                        value={bannerVape[day] ?? ""}
+                        onChange={(e) =>
+                          setBannerVape(prev => ({ ...prev, [day]: e.target.value }))
+                        }
+                        disabled={!selectedCat}
+                      >
+                        <option value="">— Selecciona vape —</option>
+
+                        {filteredProducts.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} ({p.sku})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                );
+              })}
+
+            </div>
+
+            {/* Botón Guardar */}
+            <div className="mt-4 flex justify-end">
+              <button
+                className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm text-white"
+                onClick={async () => {
+                  try {
+                    const base = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
+
+                    // Construimos el cuerpo como lo espera el backend
+                    const body = {
+                      Lunes: bannerCategory["Lunes"]
+                        ? {
+                            category: bannerCategory["Lunes"],
+                            vapeId: bannerVape["Lunes"],
+                          }
+                        : null,
+
+                      Martes: bannerCategory["Martes"]
+                        ? {
+                            category: bannerCategory["Martes"],
+                            vapeId: bannerVape["Martes"],
+                          }
+                        : null,
+
+                      Miércoles: bannerCategory["Miércoles"]
+                        ? {
+                            category: bannerCategory["Miércoles"],
+                            vapeId: bannerVape["Miércoles"],
+                          }
+                        : null,
+
+                      Jueves: bannerCategory["Jueves"]
+                        ? {
+                            category: bannerCategory["Jueves"],
+                            vapeId: bannerVape["Jueves"],
+                          }
+                        : null,
+
+                      Viernes: bannerCategory["Viernes"]
+                        ? {
+                            category: bannerCategory["Viernes"],
+                            vapeId: bannerVape["Viernes"],
+                          }
+                        : null,
+
+                      Sábado: bannerCategory["Sábado"]
+                        ? {
+                            category: bannerCategory["Sábado"],
+                            // vapeId: bannerVape["Sábado"],
+                          }
+                        : null,
+
+                      Domingo: bannerCategory["Domingo"]
+                        ? {
+                            category: bannerCategory["Domingo"],
+                            vapeId: bannerVape["Domingo"],
+                          }
+                        : null,
+                    };
+
+                    console.log("ENVIANDO AL BACKEND =>", body);
+
+                    const res = await fetch(`${base}/banner`, {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                      },
+                      body: JSON.stringify(body),
+                    });
+
+                    if (!res.ok) {
+                      toast.error("Error de servidor al guardar el banner");
+                      return;
+                    }
+                    alert("voy a enviar");
+                    toast.success("Banner guardado correctamente");
+                    setShowBanner(false);
+                  } catch (err) {
+                    console.error(err);
+                    toast.error("No se pudo guardar el banner");
+                  }
+                }}
+              >
+                Guardar banner
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
 
       {/* Modal categorías */}
       {showCats && (

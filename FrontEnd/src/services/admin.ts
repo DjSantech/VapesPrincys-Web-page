@@ -60,6 +60,22 @@ export type PatchProductPayload = Partial<
 
 // ------------------------------------------------------------------
 
+export async function getBanner() {
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
+
+  const res = await fetch(`${base}/banner`, {
+    method: "GET",
+  });
+
+  if (!res.ok) {
+    throw new Error("Error al obtener banner");
+  }
+
+  return res.json();
+}
+
+
+
 // ===== Categorías =====
 export interface AdminCategory {
     id: string;
