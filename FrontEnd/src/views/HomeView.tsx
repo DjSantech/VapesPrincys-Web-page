@@ -6,6 +6,11 @@ import type { Product } from "../types/Product";
 import ProductCard from "../components/ProductCard";
 import Container from "../components/Container";
 import DailyPromotion from "../components/DailyPromotion";
+import { getBanner } from "../services/admin";
+import {
+  type BannerWeek,
+  type BannerDay
+} from "../services/banner_services";
 
 /* =========================
    Helpers de tipado seguro
@@ -106,16 +111,23 @@ export default function HomeView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [catsLoading, setCatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-
+  const [banner, setBanner] = useState(null);
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
 
-  const mockPromotion = useMemo(() => ({
-    productId: "60fbb61ad74a0829ce534d79", // ID de un producto de ejemplo
-    productName: "Vapeador Pro Max Edición Limitada",
-    imageUrl: "https://placehold.co/1600x500/A0457A/FFFFFF?text=Promocion+Exclusiva+del+Dia", 
-  }), []);
+  
 
+  // Cargar banner
+    useEffect(() => {
+    (async () => {
+      try {
+        const data = await getBanner();
+        setBanner(data);
+      } catch (e) {
+        console.error("Error cargando banner", e);
+      }
+    })();
+  }, []);
 
   // Cargar productos
   useEffect(() => {
@@ -164,6 +176,26 @@ export default function HomeView() {
       alive = false;
     };
   }, []);
+
+ // 1. Tipo para los días del banner
+type BannerDays = keyof BannerWeek;
+
+// 2. Obtener el día actual ("Lunes", "Martes", etc.)
+const todayCapitalized = new Date()
+  .toLocaleDateString("es-CO", { weekday: "long" })
+  .replace(/^\w/, c => c.toUpperCase()) as BannerDays;
+
+// 3. Forzar a TS a entender el tipo correcto
+const todayBanner: BannerDay | null =
+  banner?.[todayCapitalized] ?? null;
+
+// 4. Producto del día con validación segura
+const promoProduct = useMemo(() => {
+  if (!todayBanner || !todayBanner.vapeId) return null;
+
+  return items.find(p => p.id === todayBanner.vapeId) ?? null;
+}, [todayBanner, items]);
+
 
   // Grid reutilizable
   const Grid = ({ products }: { products: Product[] }) => (
@@ -270,19 +302,23 @@ export default function HomeView() {
    ========================= */
   return (
     <Container>
-      <div className="mb-10">
-          <DailyPromotion 
-              productId={mockPromotion.productId}
-              imageUrl={mockPromotion.imageUrl}
-              productName={mockPromotion.productName}
+        <div className="mb-10">
+        {promoProduct ? (
+          <DailyPromotion
+            productId={promoProduct.id}
+            productName={promoProduct.name}
+            imageUrl={
+              promoProduct.imageUrl ??
+              promoProduct.images?.[0] ??
+              "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen"
+            }
           />
+        ) : (
+          // Opcional: un mensaje mientras carga o si no hay promo
+          <p className="text-white/60">No hay promoción para hoy.</p>
+        )}
       </div>
-      <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-        Vapitos Princys
-      </h1>
-      <p className="mt-2 text-white/70">
-        Explora nuestros productos o elige una categoría.
-      </p>
+
 
       {error && <p className="mt-4 text-red-400">{error}</p>}
 

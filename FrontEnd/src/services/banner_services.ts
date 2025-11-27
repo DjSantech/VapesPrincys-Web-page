@@ -15,10 +15,10 @@ export interface BannerWeek {
 
 export async function getBanner(): Promise<BannerWeek | null> {
   const base =
-    (import.meta.env.VITE_API_URL as string | undefined) ??
-    "http://localhost:8080/api";
+    import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
 
   const res = await fetch(`${base}/banner`);
   if (!res.ok) return null;
-  return await res.json();
+
+  return res.json();
 }

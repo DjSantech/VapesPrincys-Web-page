@@ -1074,7 +1074,6 @@ export default function AdminDashboard() {
                       toast.error("Error de servidor al guardar el banner");
                       return;
                     }
-                    alert("voy a enviar");
                     toast.success("Banner guardado correctamente");
                     setShowBanner(false);
                   } catch (err) {
