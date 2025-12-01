@@ -135,7 +135,7 @@ export default function AdminDashboard() {
     });
   };
 
-  const [bannerImages, setBannerImages] = useState<Record<string, File | null>>({}); 
+  const [bannerImages, setBannerImages] = useState<File | null>(null);
   const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null); // URL actual del banner
 
   const loadBanner = async () => {
@@ -278,17 +278,23 @@ export default function AdminDashboard() {
 
   // 2. EFFECT HOOK PARA CREAR Y REVOCAR LA URL
   useEffect(() => {
-    if (!bannerImages) {
+    // 1. Encontrar el primer archivo (File) válido en el objeto bannerImages
+    const firstFile = Object.values(bannerImages).find(
+        (file): file is File => file instanceof File
+    );
+    
+    // Si no hay archivo o el objeto está vacío, limpiar y salir.
+    if (!firstFile) {
       setBannerPreviewUrl(null);
       return;
     }
 
-    const objectUrl = URL.createObjectURL(bannerImages);
+    // 2. Usar el archivo individual para crear la URL (¡CORRECCIÓN!)
+    const objectUrl = URL.createObjectURL(firstFile); // ✅ Solución: Pasamos un File/Blob
     setBannerPreviewUrl(objectUrl);
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [bannerImages]);
-
   // ---- eliminar producto ----
   const onDeleteRow = async (id: string) => {
     const p = items.find(x => x.id === id);
@@ -978,11 +984,11 @@ export default function AdminDashboard() {
                   <div className="flex items-center gap-3">
                       {/* Previsualización de Imagen */}
                       <img
-                          // Si hay un archivo en borrador, úsalo. Si no, usa la URL actual del servidor.
-                          src={bannerImages ? URL.createObjectURL(bannerImages) : bannerImageUrl || "https://picsum.photos/seed/banner/80"} 
-                          className="h-20 w-32 object-cover rounded-lg ring-1 ring-stone-800"
-                          alt="Banner Preview"
-                      />
+                        // Usamos bannerPreviewUrl que proviene del useEffect
+                        src={bannerPreviewUrl || bannerImageUrl || "https://picsum.photos/seed/banner/80"} 
+                        className="h-20 w-32 object-cover rounded-lg ring-1 ring-stone-800"
+                        alt="Banner Preview"
+                       />
                       
                       <label className="flex-1">
                           <span className="text-xs text-zinc-400 block mb-1">Seleccionar Archivo</span>

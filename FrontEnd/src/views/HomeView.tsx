@@ -111,7 +111,8 @@ export default function HomeView() {
   const [loading, setLoading] = useState<boolean>(true);
   const [catsLoading, setCatsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
-  const [banner, setBanner] = useState(null);
+  // Indica que puede ser BannerWeek O null
+  const [banner, setBanner] = useState<BannerWeek | null>(null);
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
 
@@ -193,7 +194,8 @@ const todayBanner: BannerDay | null =
 const promoProduct = useMemo(() => {
   if (!todayBanner || !todayBanner.vapeId) return null;
 
-  return items.find(p => p.id === todayBanner.vapeId) ?? null;
+  return items.find(p => p.id === todayBanner.vapeId
+  ) ?? null;
 }, [todayBanner, items]);
 
 
