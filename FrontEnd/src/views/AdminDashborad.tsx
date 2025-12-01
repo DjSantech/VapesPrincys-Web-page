@@ -23,6 +23,7 @@ import {
   type AdminPlus,
 } from "../services/admin";
 
+import { uploadBannerImage,patchBannerData } from "../services/banner_services";
 // helpers CSV
 const toArray = (v: string): string[] => v.split(",").map(s => s.trim()).filter(Boolean);
 const fromArray = (arr?: string[]): string => (arr ?? []).join(", ");
@@ -39,6 +40,10 @@ type Drafts = Record<
     hasFlavors?: boolean;
   }
 >;
+
+// Añade esta definición del tipo de días
+type BannerDays = 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo';
+const daysOfWeek: BannerDays[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 function toggleString(arr: readonly string[], value: string): string[] {
   return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
@@ -135,8 +140,17 @@ export default function AdminDashboard() {
     });
   };
 
-  const [bannerImages, setBannerImages] = useState<File | null>(null);
-  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null); // URL actual del banner
+  // ---- Banner ----
+  // LÍNEA ~136: Restablece el tipo a Record, que es el que soporta la imagen por día
+  const [bannerImages, setBannerImages] = useState<Record<string, File | null>>({}); 
+
+  // LÍNEA ~137: Mantén el preview URL (esto soluciona el error de variable no usada, siempre y cuando se use en el JSX)
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
+
+  // LÍNEA ~138: Nuevo estado para saber qué día se está configurando
+  const [selectedDay, setSelectedDay] = useState<BannerDays>('Lunes');
+
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
 
   const loadBanner = async () => {
     try {
@@ -274,27 +288,26 @@ export default function AdminDashboard() {
     }
   };
 
-  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null); 
 
   // 2. EFFECT HOOK PARA CREAR Y REVOCAR LA URL
-  useEffect(() => {
-    // 1. Encontrar el primer archivo (File) válido en el objeto bannerImages
-    const firstFile = Object.values(bannerImages).find(
-        (file): file is File => file instanceof File
-    );
-    
-    // Si no hay archivo o el objeto está vacío, limpiar y salir.
-    if (!firstFile) {
-      setBannerPreviewUrl(null);
-      return;
-    }
+    useEffect(() => {
+      // 1. Obtener el archivo del día seleccionado. Esto resuelve el error TS2769 y TS2345.
+      const fileToPreview = bannerImages[selectedDay];
 
-    // 2. Usar el archivo individual para crear la URL (¡CORRECCIÓN!)
-    const objectUrl = URL.createObjectURL(firstFile); // ✅ Solución: Pasamos un File/Blob
-    setBannerPreviewUrl(objectUrl);
+      // Si el archivo no existe o es null, limpiamos la URL
+      if (!fileToPreview) {
+        setBannerPreviewUrl(null);
+        return;
+      }
 
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [bannerImages]);
+      // 2. Usar el archivo individual (File/Blob) para crear la URL
+      const objectUrl = URL.createObjectURL(fileToPreview);
+      setBannerPreviewUrl(objectUrl);
+
+      // Revocar la URL cuando el componente se desmonte o el archivo/día cambie.
+      return () => URL.revokeObjectURL(objectUrl);
+    }, [bannerImages, selectedDay]); // 🚨 IMPORTANTE: Depende tanto de 'bannerImages' como de 'selectedDay'
+
   // ---- eliminar producto ----
   const onDeleteRow = async (id: string) => {
     const p = items.find(x => x.id === id);
@@ -421,6 +434,71 @@ export default function AdminDashboard() {
     }
   };
 
+  // En la sección donde defines tus handlers (e.g., cerca de onDeletePlus)
+// Dentro de la función AdminDashboard()
+// Dentro de la función AdminDashboard()
+
+const onSaveBanner = async () => {
+    const toastId = toast.loading("Guardando configuración del banner...");
+    
+    try {
+        // ==============================================
+        // 1. SUBIR IMÁGENES (PATCH) - El paso de archivos
+        // ==============================================
+        const uploadPromises = Object.entries(bannerImages)
+            .filter(([, file]) => file instanceof File) 
+            .map(async ([day, file]) => {
+                // Llama al servicio que envía el FormData y la autorización
+                await uploadBannerImage(day, file!); 
+            });
+
+        // Esperamos a que TODAS las imágenes suban
+        await Promise.all(uploadPromises);
+        
+        // Limpiamos el estado de archivos locales después de la subida exitosa
+        setBannerImages({}); 
+
+        // ==============================================
+        // 2. ACTUALIZAR DATA (POST/PATCH) - El paso de JSON
+        // ==============================================
+
+        // 🚨 RECREACIÓN EXACTA DEL CUERPO JSON DE TU onClick
+        const body = {
+            Lunes: bannerCategory["Lunes"]
+                ? { category: bannerCategory["Lunes"], vapeId: bannerVape["Lunes"] } : null,
+            Martes: bannerCategory["Martes"]
+                ? { category: bannerCategory["Martes"], vapeId: bannerVape["Martes"] } : null,
+            Miércoles: bannerCategory["Miércoles"]
+                ? { category: bannerCategory["Miércoles"], vapeId: bannerVape["Miércoles"] } : null,
+            Jueves: bannerCategory["Jueves"]
+                ? { category: bannerCategory["Jueves"], vapeId: bannerVape["Jueves"] } : null,
+            Viernes: bannerCategory["Viernes"]
+                ? { category: bannerCategory["Viernes"], vapeId: bannerVape["Viernes"] } : null,
+            Sábado: bannerCategory["Sábado"]
+                ? { category: bannerCategory["Sábado"], vapeId: bannerVape["Sábado"] } : null,
+            Domingo: bannerCategory["Domingo"]
+                ? { category: bannerCategory["Domingo"], vapeId: bannerVape["Domingo"] } : null,
+        };
+
+        // Llama al nuevo servicio que envía el JSON al backend
+        await patchBannerData(body);
+        
+        // ==============================================
+        // 3. ACCIONES DE ÉXITO FINAL
+        // ==============================================
+        
+        // 🚀 Si tienes una función para recargar la data del banner, llámala aquí:
+        // await loadBannerData(); 
+        
+        toast.success("Banner (imágenes y datos) actualizado correctamente.", { id: toastId });
+        // Asegúrate que 'setShowBanner' esté definido en tu componente si lo usas
+        // setShowBanner(false); 
+
+    } catch (err) {
+        console.error(err);
+        toast.error(`No se pudo guardar el banner. Error: ${(err as Error).message || "Desconocido"}`, { id: toastId });
+    }
+};
   // ---- Banner ----
   const [showBanner, setShowBanner] = useState(false);
 
@@ -979,31 +1057,58 @@ export default function AdminDashboard() {
               
               {/* 🚨 CAMBIO NUEVO: Sección de Imagen del Banner */}
               <div className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]">
-                  <h3 className="text-sm text-zinc-200 font-semibold mb-2">Imagen de Fondo del Banner</h3>
-
-                  <div className="flex items-center gap-3">
-                      {/* Previsualización de Imagen */}
-                      <img
-                        // Usamos bannerPreviewUrl que proviene del useEffect
+                 {/* 🚀 AÑADIR SELECTOR DE DÍA */}
+                <div className="mb-4">
+                    <label htmlFor="banner-day-select" className="block text-xs text-zinc-400 mb-1">
+                        Seleccionar Día a Configurar
+                    </label>
+                    <select
+                        id="banner-day-select"
+                        value={selectedDay}
+                        onChange={(e) => setSelectedDay(e.target.value as BannerDays)}
+                        className="w-full rounded-md bg-stone-900 border border-stone-700 text-sm text-zinc-100 p-2"
+                    >
+                        {daysOfWeek.map(day => (
+                            <option key={day} value={day}>{day}</option>
+                        ))}
+                    </select>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                    {/* 🚨 CORRECCIÓN: USAR bannerPreviewUrl (Resuelve el error de variable no usada) */}
+                    <img
                         src={bannerPreviewUrl || bannerImageUrl || "https://picsum.photos/seed/banner/80"} 
                         className="h-20 w-32 object-cover rounded-lg ring-1 ring-stone-800"
-                        alt="Banner Preview"
-                       />
-                      
-                      <label className="flex-1">
-                          <span className="text-xs text-zinc-400 block mb-1">Seleccionar Archivo</span>
-                          <input
-                              type="file"
-                              accept="image/*"
-                              onChange={e => setBannerImages(e.target.files?.[0] || null)}
-                              className="w-full text-xs text-zinc-300"
-                          />
-                          <div className="text-[11px] text-zinc-500 mt-1">
-                              {bannerImages ? "Nuevo archivo listo para subir." : (bannerImageUrl ? "Imagen actual cargada." : "No hay imagen seleccionada.")}
-                          </div>
-                      </label>
-                  </div>
-              </div>
+                        alt={`Banner para ${selectedDay}`}
+                    />
+                    
+                    <label className="flex-1">
+                        <span className="text-xs text-zinc-400 block mb-1">
+                            Seleccionar Archivo para {selectedDay}
+                        </span>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            // 🛑 CORRECCIÓN CLAVE: Actualiza el estado como un Record para el día seleccionado
+                            onChange={e => {
+                                const newFile = e.target.files?.[0] || null;
+                                setBannerImages(prev => ({
+                                    ...prev, // Mantén los archivos de otros días
+                                    [selectedDay]: newFile, // Actualiza solo el día actual
+                                }));
+                            }}
+                            className="w-full text-xs text-zinc-300"
+                        />
+                        <div className="text-[11px] text-zinc-500 mt-1">
+                            {/* Mostrar estado del archivo del día seleccionado */}
+                            {bannerImages[selectedDay] ? 
+                                `Archivo listo para ${selectedDay}: ${bannerImages[selectedDay]?.name}` : 
+                                "No hay imagen nueva seleccionada para este día."
+                            }
+                        </div>
+                    </label>
+                </div>
+            </div>
               
               {/* --- Separador de días (opcional) --- */}
               <div className="border-t border-stone-800 pt-4">
@@ -1067,83 +1172,7 @@ export default function AdminDashboard() {
 
                 
                 className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm text-white"
-                onClick={async () => {
-                  try {
-                    const base = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
-
-                    // Construimos el cuerpo como lo espera el backend
-                    const body = {
-                      Lunes: bannerCategory["Lunes"]
-                        ? {
-                            category: bannerCategory["Lunes"],
-                            vapeId: bannerVape["Lunes"],
-                          }
-                        : null,
-
-                      Martes: bannerCategory["Martes"]
-                        ? {
-                            category: bannerCategory["Martes"],
-                            vapeId: bannerVape["Martes"],
-                          }
-                        : null,
-
-                      Miércoles: bannerCategory["Miércoles"]
-                        ? {
-                            category: bannerCategory["Miércoles"],
-                            vapeId: bannerVape["Miércoles"],
-                          }
-                        : null,
-
-                      Jueves: bannerCategory["Jueves"]
-                        ? {
-                            category: bannerCategory["Jueves"],
-                            vapeId: bannerVape["Jueves"],
-                          }
-                        : null,
-
-                      Viernes: bannerCategory["Viernes"]
-                        ? {
-                            category: bannerCategory["Viernes"],
-                            vapeId: bannerVape["Viernes"],
-                          }
-                        : null,
-
-                      Sábado: bannerCategory["Sábado"]
-                        ? {
-                            category: bannerCategory["Sábado"],
-                            // vapeId: bannerVape["Sábado"],
-                          }
-                        : null,
-
-                      Domingo: bannerCategory["Domingo"]
-                        ? {
-                            category: bannerCategory["Domingo"],
-                            vapeId: bannerVape["Domingo"],
-                          }
-                        : null,
-                    };
-
-                    console.log("ENVIANDO AL BACKEND =>", body);
-
-                    const res = await fetch(`${base}/banner`, {
-                      method: "POST",
-                      headers: {
-                        "Content-Type": "application/json",
-                      },
-                      body: JSON.stringify(body),
-                    });
-
-                    if (!res.ok) {
-                      toast.error("Error de servidor al guardar el banner");
-                      return;
-                    }
-                    toast.success("Banner guardado correctamente");
-                    setShowBanner(false);
-                  } catch (err) {
-                    console.error(err);
-                    toast.error("No se pudo guardar el banner");
-                  }
-                }}
+                onClick={onSaveBanner}
               >
                 Guardar banner
               </button>
