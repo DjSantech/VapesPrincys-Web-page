@@ -2,7 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 
 import { getBanner, updateBanner, updateBannerDay,updateBannerDayImage } from "../controllers/bannerController";
-const upload = multer({ dest: "uploads/" });
+const upload = multer({ storage: multer.memoryStorage() });
 
 const router = Router();
 

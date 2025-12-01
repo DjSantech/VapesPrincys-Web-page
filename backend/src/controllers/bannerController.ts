@@ -18,14 +18,14 @@ export const updateBannerDayImage = async (req, res) => {
     const { day } = req.params;
     if (!req.file) return res.status(400).json({ error: "Imagen requerida" });
 
-    const file = req.file.path;
+    const file = req.file.buffer;
     const uploaded = await uploadBufferToCloudinary(file, FOLDER_DESTINO);
 
     let banner = await Banner.findOne();
     if (!banner) banner = await Banner.create({});
 
     if (!banner[day]) banner[day] = { category: "", vapeId: "" };
-
+    
     banner[day].imageUrl = uploaded.secure_url;
     await banner.save();
 
