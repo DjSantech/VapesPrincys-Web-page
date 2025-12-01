@@ -1,6 +1,7 @@
 export interface BannerDay {
   category: string;
   vapeId: string;
+  bannerImageUrl?: string;
 }
 
 export interface BannerWeek {

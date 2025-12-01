@@ -310,10 +310,11 @@ const promoProduct = useMemo(() => {
             productId={promoProduct.id}
             productName={promoProduct.name}
             imageUrl={
-              promoProduct.imageUrl ??
-              promoProduct.images?.[0] ??
-              "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen"
-            }
+              todayBanner?.bannerImageUrl ?? // 1. Usar la imagen de banner dedicada si existe
+              promoProduct.imageUrl ?? // 2. Fallback: Usar la URL principal del producto
+              promoProduct.images?.[0] ?? // 3. Fallback: Usar la primera imagen de la lista
+              "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen" // 4. Fallback final
+          }
           />
         ) : (
           // Opcional: un mensaje mientras carga o si no hay promo
