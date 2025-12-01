@@ -3,6 +3,7 @@ import { Schema, model, Document } from "mongoose";
 export interface IBannerDay {
   category: string;
   vapeId: string;
+  imageUrl?: string; // 👈 NUEVO
 }
 
 // 👇 EXPRTAMOS BannerDays (ANTES NO ESTABA EXPORTADO)

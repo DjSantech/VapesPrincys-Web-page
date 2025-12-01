@@ -1,7 +1,7 @@
 // src/services/admin.ts
 
 // ===== Config =====
-const API_BASE = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:8080/api";
+const API_BASE = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:10000/api";
 const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem("admin_token") ?? ""}` });
 
 console.info("[admin.ts] API_BASE =", API_BASE);

@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { getBanner, updateBanner, updateBannerDay } from "../controllers/bannerController";
+import multer from "multer";
+
+import { getBanner, updateBanner, updateBannerDay,updateBannerDayImage } from "../controllers/bannerController";
+const upload = multer({ dest: "uploads/" });
 
 const router = Router();
 
 router.get("/", getBanner);
 router.post("/", updateBanner);
 router.patch("/:day", updateBannerDay);
+router.patch("/:day/image", upload.single("image"), updateBannerDayImage);
 
 export default router;

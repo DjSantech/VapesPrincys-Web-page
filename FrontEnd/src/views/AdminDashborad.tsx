@@ -135,29 +135,36 @@ export default function AdminDashboard() {
     });
   };
 
+  const [bannerImages, setBannerImages] = useState<Record<string, File | null>>({}); 
+  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null); // URL actual del banner
 
   const loadBanner = async () => {
-  try {
-    const data = await getBanner();
+    try {
+      const data = await getBanner();
 
-    if (data) {
-      const catsObj: Record<string, string> = {};
-      const vapeObj: Record<string, string> = {};
+      if (data) {
+        const catsObj: Record<string, string> = {};
+        const vapeObj: Record<string, string> = {};
 
-      Object.keys(data).forEach(day => {
-        if (data[day]) {
-          catsObj[day] = data[day].category ?? "";
-          vapeObj[day] = data[day].vapeId ?? "";
+        Object.keys(data).forEach(day => {
+          if (data[day]) {
+            catsObj[day] = data[day].category ?? "";
+            vapeObj[day] = data[day].vapeId ?? "";
+          }
+        });
+
+        setBannerCategory(catsObj);
+        setBannerVape(vapeObj);
+        
+        // 🚨 CAMBIO NUEVO: Asumiendo que 'data' tiene la URL de la imagen del banner
+        if (data.imageUrl) {
+          setBannerImageUrl(data.imageUrl); 
         }
-      });
-
-      setBannerCategory(catsObj);
-      setBannerVape(vapeObj);
+      }
+    } catch (err) {
+      console.error("Error cargando banner:", err);
     }
-  } catch (err) {
-    console.error("Error cargando banner:", err);
-  }
-};
+  }; 
 
 
   const loadProducts = async () => {
@@ -266,6 +273,21 @@ export default function AdminDashboard() {
       toast.error("Error actualizando producto");
     }
   };
+
+  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null); 
+
+  // 2. EFFECT HOOK PARA CREAR Y REVOCAR LA URL
+  useEffect(() => {
+    if (!bannerImages) {
+      setBannerPreviewUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(bannerImages);
+    setBannerPreviewUrl(objectUrl);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [bannerImages]);
 
   // ---- eliminar producto ----
   const onDeleteRow = async (id: string) => {
@@ -946,8 +968,41 @@ export default function AdminDashboard() {
                 ✕
               </button>
             </div>
+              
+              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+              
+              {/* 🚨 CAMBIO NUEVO: Sección de Imagen del Banner */}
+              <div className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]">
+                  <h3 className="text-sm text-zinc-200 font-semibold mb-2">Imagen de Fondo del Banner</h3>
 
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+                  <div className="flex items-center gap-3">
+                      {/* Previsualización de Imagen */}
+                      <img
+                          // Si hay un archivo en borrador, úsalo. Si no, usa la URL actual del servidor.
+                          src={bannerImages ? URL.createObjectURL(bannerImages) : bannerImageUrl || "https://picsum.photos/seed/banner/80"} 
+                          className="h-20 w-32 object-cover rounded-lg ring-1 ring-stone-800"
+                          alt="Banner Preview"
+                      />
+                      
+                      <label className="flex-1">
+                          <span className="text-xs text-zinc-400 block mb-1">Seleccionar Archivo</span>
+                          <input
+                              type="file"
+                              accept="image/*"
+                              onChange={e => setBannerImages(e.target.files?.[0] || null)}
+                              className="w-full text-xs text-zinc-300"
+                          />
+                          <div className="text-[11px] text-zinc-500 mt-1">
+                              {bannerImages ? "Nuevo archivo listo para subir." : (bannerImageUrl ? "Imagen actual cargada." : "No hay imagen seleccionada.")}
+                          </div>
+                      </label>
+                  </div>
+              </div>
+              
+              {/* --- Separador de días (opcional) --- */}
+              <div className="border-t border-stone-800 pt-4">
+                  <h3 className="text-sm text-zinc-400 font-semibold mb-3">Configuración por Día</h3>
+              </div>
 
               {weekDays.map((day) => {
                 const selectedCat = bannerCategory[day] ?? "";
@@ -1003,6 +1058,8 @@ export default function AdminDashboard() {
             {/* Botón Guardar */}
             <div className="mt-4 flex justify-end">
               <button
+
+                
                 className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm text-white"
                 onClick={async () => {
                   try {

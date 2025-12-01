@@ -22,3 +22,19 @@ export async function getBanner(): Promise<BannerWeek | null> {
 
   return res.json();
 }
+
+export async function uploadBannerImage(day: string, file: File) {
+  const base = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
+
+  const fd = new FormData();
+  fd.append("image", file);
+
+  const res = await fetch(`${base}/banner/${day}/image`, {
+    method: "PATCH",
+    body: fd,
+  });
+
+  if (!res.ok) throw new Error("Error al subir imagen del banner");
+
+  return res.json();
+}
