@@ -2,6 +2,13 @@ import { Request, Response } from "express";
 import { Banner, IBanner, IBannerDay,BannerDays } from "../models/Banner";
 import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary"; 
 
+interface FileRequest extends Request {
+  // Asumimos que la propiedad 'file' usa el tipo de archivo de Multer.
+  // En muchos entornos, el tipo correcto es Express.Multer.File (si está configurado globalmente)
+  // o el tipo de File que importaste (como se hace con 'multer').
+  file: Express.Multer.File;
+}
+
 const FOLDER_DESTINO = 'banners-princisvapes'
 // GET /api/banner
 export const getBanner = async (req: Request, res: Response) => {
@@ -13,27 +20,46 @@ export const getBanner = async (req: Request, res: Response) => {
   }
 };
 
-export const updateBannerDayImage = async (req, res) => {
-  try {
-    const { day } = req.params;
-    if (!req.file) return res.status(400).json({ error: "Imagen requerida" });
+export const updateBannerDayImage = async (req: FileRequest, res: Response) => {
+    // 1. Validar el día de la semana y el archivo
+    const day = req.params.day as keyof BannerDays; // Obtener el día
+    if (!req.file) {
+        return res.status(400).json({ error: "Imagen requerida" });
+    }
 
-    const file = req.file.buffer;
-    const uploaded = await uploadBufferToCloudinary(file, FOLDER_DESTINO);
+    try {
+        // 2. Subir la imagen a Cloudinary
+        const file = req.file.buffer;
+        const uploaded = await uploadBufferToCloudinary(file, FOLDER_DESTINO);
+        const imageUrl = uploaded.secure_url; // URL pública de la imagen
 
-    let banner = await Banner.findOne();
-    if (!banner) banner = await Banner.create({});
+        // 3. ✨ ACTUALIZACIÓN CRUCIAL: Usar Mongoose updateOne con $set
+        // Esto crea dinámicamente el camino: "Lunes.bannerImageUrl"
+        const updateField = `${day}.bannerImageUrl`; 
 
-    if (!banner[day]) banner[day] = { category: "", vapeId: "" };
-    
-    banner[day].imageUrl = uploaded.secure_url;
-    await banner.save();
+        const result = await Banner.updateOne(
+            // Condición para encontrar el único documento de Banner
+            {}, 
+            { 
+                $set: {
+                    [updateField]: imageUrl, // Guarda la URL en el campo correcto
+                }
+            },
+            // Opciones: upsert: true crea el documento si no existe
+            { upsert: true }
+        );
 
-    res.json({ ok: true, url: uploaded.secure_url, banner });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al subir imagen" });
-  }
+        // 4. Respuesta de éxito
+        res.json({ 
+            ok: true, 
+            message: `URL de banner para ${day} guardada.`,
+            bannerImageUrl: imageUrl, // Devolvemos la URL guardada
+        });
+        
+    } catch (err) {
+        console.error("Error al subir imagen y actualizar DB:", err);
+        res.status(500).json({ error: "Error al subir imagen" });
+    }
 };
 
 // POST /api/banner  → Guardar TODO el banner
