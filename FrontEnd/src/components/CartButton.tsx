@@ -18,10 +18,10 @@ type FormErrors = {
 const PHONE = "573043602980";
 
 const FEE_BY_ZONE: Record<DeliveryZone, number> = {
-  DOSQUEBRADAS:   6000,
+  DOSQUEBRADAS: 6000,
   PEREIRA_CENTRO: 9000,
-  CUBA:          12000,
-  NACIONAL:      20000,
+  CUBA: 12000,
+  NACIONAL: 20000,
 };
 
 // ———————————————————————————————————————
@@ -29,46 +29,75 @@ const FEE_BY_ZONE: Record<DeliveryZone, number> = {
 // (Si quieres TODAS las ciudades, luego cambiamos este objeto por un JSON completo.)
 // ———————————————————————————————————————
 const CO_DEPARTMENTS = [
-  "Amazonas","Antioquia","Arauca","Atlántico","Bogotá D.C.","Bolívar","Boyacá","Caldas","Caquetá","Casanare",
-  "Cauca","Cesar","Chocó","Córdoba","Cundinamarca","Guainía","Guaviare","Huila","La Guajira","Magdalena",
-  "Meta","Nariño","Norte de Santander","Putumayo","Quindío","Risaralda","San Andrés y Providencia","Santander",
-  "Sucre","Tolima","Valle del Cauca","Vaupés","Vichada"
+  "Amazonas",
+  "Antioquia",
+  "Arauca",
+  "Atlántico",
+  "Bogotá D.C.",
+  "Bolívar",
+  "Boyacá",
+  "Caldas",
+  "Caquetá",
+  "Casanare",
+  "Cauca",
+  "Cesar",
+  "Chocó",
+  "Córdoba",
+  "Cundinamarca",
+  "Guainía",
+  "Guaviare",
+  "Huila",
+  "La Guajira",
+  "Magdalena",
+  "Meta",
+  "Nariño",
+  "Norte de Santander",
+  "Putumayo",
+  "Quindío",
+  "Risaralda",
+  "San Andrés y Providencia",
+  "Santander",
+  "Sucre",
+  "Tolima",
+  "Valle del Cauca",
+  "Vaupés",
+  "Vichada",
 ] as const;
 
 const CITIES_BY_DEPT: Record<typeof CO_DEPARTMENTS[number], string[]> = {
   "Amazonas": ["Leticia"],
-  "Antioquia": ["Medellín","Bello","Envigado","Itagüí","Rionegro","Sabaneta"],
-  "Arauca": ["Arauca","Saravena"],
-  "Atlántico": ["Barranquilla","Soledad","Malambo","Puerto Colombia"],
+  "Antioquia": ["Medellín", "Bello", "Envigado", "Itagüí", "Rionegro", "Sabaneta"],
+  "Arauca": ["Arauca", "Saravena"],
+  "Atlántico": ["Barranquilla", "Soledad", "Malambo", "Puerto Colombia"],
   "Bogotá D.C.": ["Bogotá"],
-  "Bolívar": ["Cartagena","Magangué","Turbaco"],
-  "Boyacá": ["Tunja","Duitama","Sogamoso","Chiquinquirá"],
-  "Caldas": ["Manizales","Chinchiná","Villamaría"],
+  "Bolívar": ["Cartagena", "Magangué", "Turbaco"],
+  "Boyacá": ["Tunja", "Duitama", "Sogamoso", "Chiquinquirá"],
+  "Caldas": ["Manizales", "Chinchiná", "Villamaría"],
   "Caquetá": ["Florencia"],
-  "Casanare": ["Yopal","Aguazul","Villanueva"],
-  "Cauca": ["Popayán","Santander de Quilichao"],
-  "Cesar": ["Valledupar","Aguachica"],
-  "Chocó": ["Quibdó","Istmina"],
-  "Córdoba": ["Montería","Lorica","Sahagún"],
-  "Cundinamarca": ["Soacha","Chía","Zipaquirá","Facatativá","Girardot","Fusagasugá"],
+  "Casanare": ["Yopal", "Aguazul", "Villanueva"],
+  "Cauca": ["Popayán", "Santander de Quilichao"],
+  "Cesar": ["Valledupar", "Aguachica"],
+  "Chocó": ["Quibdó", "Istmina"],
+  "Córdoba": ["Montería", "Lorica", "Sahagún"],
+  "Cundinamarca": ["Soacha", "Chía", "Zipaquirá", "Facatativá", "Girardot", "Fusagasugá"],
   "Guainía": ["Inírida"],
   "Guaviare": ["San José del Guaviare"],
-  "Huila": ["Neiva","Pitalito","Garzón"],
-  "La Guajira": ["Riohacha","Maicao","Uribia"],
-  "Magdalena": ["Santa Marta","Ciénaga"],
-  "Meta": ["Villavicencio","Acacías","Restrepo"],
-  "Nariño": ["Pasto","Ipiales","Tumaco"],
-  "Norte de Santander": ["Cúcuta","Ocaña","Pamplona","Los Patios"],
-  "Putumayo": ["Mocoa","Puerto Asís"],
-  "Quindío": ["Armenia","Montenegro","La Tebaida","Quimbaya"],
-  "Risaralda": ["Pereira","Dosquebradas","La Virginia","Santa Rosa de Cabal"],
+  "Huila": ["Neiva", "Pitalito", "Garzón"],
+  "La Guajira": ["Riohacha", "Maicao", "Uribia"],
+  "Magdalena": ["Santa Marta", "Ciénaga"],
+  "Meta": ["Villavicencio", "Acacías", "Restrepo"],
+  "Nariño": ["Pasto", "Ipiales", "Tumaco"],
+  "Norte de Santander": ["Cúcuta", "Ocaña", "Pamplona", "Los Patios"],
+  "Putumayo": ["Mocoa", "Puerto Asís"],
+  "Quindío": ["Armenia", "Montenegro", "La Tebaida", "Quimbaya"],
+  "Risaralda": ["Pereira", "Dosquebradas", "La Virginia", "Santa Rosa de Cabal"],
   "San Andrés y Providencia": ["San Andrés"],
-  "Santander": ["Bucaramanga","Floridablanca","Giron","Piedecuesta","Barrancabermeja"],
-  "Sucre": ["Sincelejo","Corozal","Sampués"],
-  "Tolima": ["Ibagué","Espinal","Melgar"],
-  "Valle del Cauca": ["Cali","Palmira","Yumbo","Buga","Tuluá","Cartago"],
+  "Santander": ["Bucaramanga", "Floridablanca", "Giron", "Piedecuesta", "Barrancabermeja"],
+  "Sucre": ["Sincelejo", "Corozal", "Sampués"],
+  "Tolima": ["Ibagué", "Espinal", "Melgar"],
+  "Valle del Cauca": ["Cali", "Palmira", "Yumbo", "Buga", "Tuluá", "Cartago"],
   "Vaupés": ["Mitú"],
-  "Vichada": ["Puerto Carreño"]
+  "Vichada": ["Puerto Carreño"],
 };
 
 // ———————————————————————————————————————
@@ -92,8 +121,19 @@ const validateForm = (f: DeliveryInfo): FormErrors => {
 };
 
 export default function CartButton() {
-  const [open, setOpen] = useState(false);
-  const { items, removeItem, updateQty, clear, total, delivery, setDelivery } = useCart();
+  // 🔥 CAMBIO CLAVE: 'open' y 'setOpen' ahora se obtienen del hook useCart()
+  // Asumiendo que has movido el estado de visibilidad al store para control global.
+  const { 
+    items, 
+    removeItem, 
+    updateQty, 
+    clear, 
+    total, 
+    delivery, 
+    setDelivery,
+    open,     // <-- Obtenido del store
+    setOpen,  // <-- Obtenido del store
+  } = useCart();
 
   const count = items.reduce((n, i) => n + i.qty, 0);
   const sub = total();
@@ -138,7 +178,9 @@ export default function CartButton() {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    return () => {
+      document.body.style.overflow = prev;
+    };
   }, [open]);
 
   // Ciudades disponibles según departamento seleccionado
@@ -316,7 +358,7 @@ export default function CartButton() {
             {/* Zona */}
             <div className="flex items-center gap-3">
               <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
-              <select 
+              <select
                 className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm { color-scheme: dark; }"
                 value={form.zone}
                 onChange={(e) => {
@@ -436,13 +478,16 @@ export default function CartButton() {
         {/* Footer */}
         <div className="shrink-0 border-t border-stone-700 bg-[#111315] p-4 space-y-3">
           <div className="flex items-center justify-between text-sm">
-            <span>Subtotal</span><span>{formatCOP(sub)}</span>
+            <span>Subtotal</span>
+            <span>{formatCOP(sub)}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span>Domicilio</span><span>{formatCOP(fee)}</span>
+            <span>Domicilio</span>
+            <span>{formatCOP(fee)}</span>
           </div>
           <div className="flex items-center justify-between text-lg font-bold text-amber-400">
-            <span>Total</span><span>{formatCOP(grand)}</span>
+            <span>Total</span>
+            <span>{formatCOP(grand)}</span>
           </div>
 
           <div className="flex gap-3">

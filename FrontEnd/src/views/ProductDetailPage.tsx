@@ -4,7 +4,8 @@ import { useLocation, useParams, Link } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { getProductById } from "../services/products_service";
 import type { Product } from "../types/Product";
-import { useCart } from "../store/cart_info";
+// 🔥 CAMBIO 1: Importar 'setOpen' del store useCart
+import { useCart } from "../store/cart_info"; 
 import type { CartItem } from "../types/Cart";
 
 // ===== Helpers
@@ -45,7 +46,8 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const state = (location.state as LocationState) ?? {};
-  const { addItem } = useCart();
+  // 🔥 CAMBIO 1: Obtener 'setOpen' del hook useCart
+  const { addItem, setOpen } = useCart();
 
   const [product, setProduct] = useState<Product | undefined>(state.product);
   const [loading, setLoading] = useState<boolean>(!state.product);
@@ -265,7 +267,8 @@ export default function ProductDetailPage() {
         : null,
     };
     addItem(item);
-    alert("Producto agregado al carrito ✅");
+    // 🔥 CAMBIO 2: Reemplazamos el alert por la acción de abrir el carrito.
+    setOpen(true);
   };
 
   // ===== Mostrar puffs o ml (puffs > ml > nada), sin any
