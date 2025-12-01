@@ -78,7 +78,7 @@ export default function Navbar() {
   }, [cats]);
 
   return (
-    <header className="sticky top-0 z-50 bg-[#1a1d1f]/95 backdrop-blur border-b border-stone-800 text-zinc-100">
+    <header className="fixed w-full top-0 left-0 right-0 z-50 bg-[#1a1d1f]/95 backdrop-blur border-b border-stone-800 text-zinc-100">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
         <div className="h-16 flex items-center gap-3">
           {/* Brand */}
@@ -113,7 +113,7 @@ export default function Navbar() {
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Buscar (nombre del vape)"
-                className="w-full pl-10 pr-40 sm:pr-44 py-2.5 sm:py-3 text-sm bg-transparent placeholder:text-zinc-500 text-zinc-100 outline-none"
+                className="w-full pl-10 pr-36 sm:pr-44 py-2.5 sm:py-3 text-sm bg-transparent placeholder:text-zinc-500 text-zinc-100 outline-none"
                 aria-label="Buscar productos"
               />
 
@@ -126,7 +126,7 @@ export default function Navbar() {
                   id="nav-category"
                   value={cat}
                   onChange={(e) => setCat(e.target.value)}
-                  className="bg-[#1f2123] text-zinc-200 ring-1 ring-stone-800 rounded-full px-2.5 py-1.5 text-xs sm:text-sm outline-none hover:ring-stone-700"
+                  className="bg-[#1f2123] text-zinc-200 ring-1 ring-stone-800 rounded-full px-2.5 py-1.5 text-xs sm:text-sm outline-none hover:ring-stone-700 w-28 sm:w-32 truncate"
                   title="Categorías"
                   disabled={catsLoading}
                 >
