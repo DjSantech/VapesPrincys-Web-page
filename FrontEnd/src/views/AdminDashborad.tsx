@@ -25,6 +25,8 @@ import {
 
 import { patchBannerData } from "../services/banner_services";
 
+
+
 const toArray = (v: string): string[] =>
   v.split(",").map(s => s.trim()).filter(Boolean);
 const fromArray = (arr?: string[]): string => (arr ?? []).join(", ");
@@ -52,6 +54,7 @@ function toggleString(arr: readonly string[], value: string): string[] {
 }
 
 export default function AdminDashboard() {
+  const [searchTerm, setSearchTerm] = useState("");
   const [items, setItems] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,7 +63,10 @@ export default function AdminDashboard() {
   const [catsLoading, setCatsLoading] = useState(false);
   const [showCats, setShowCats] = useState(false);
   const [newCat, setNewCat] = useState("");
-
+  const filteredItems = items.filter((p) =>
+  p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  p.sku.toLowerCase().includes(searchTerm.toLowerCase())
+);
 
 
   const catsOrdered = useMemo(
@@ -480,8 +486,7 @@ type BannerDays =
       toast.error("Error eliminando plus");
     }
   };
-
-  // ====================================  
+// ====================================  
   // RENDER
   // ====================================  
   return (
@@ -493,6 +498,15 @@ type BannerDays =
           Panel de administración
         </h1>
 
+       <div className="p-6 w-full max-w-sm">
+        <input
+          type="text"
+          placeholder="Buscar productos..."
+          className="px-3 py-2 bg-[#1a1d1f] text-white rounded-xl w-full mb-4"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="rounded-lg bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-sm text-white"
@@ -529,6 +543,7 @@ type BannerDays =
           </button>
         </div>
       </div>
+      
 
       {/* LISTA DE PRODUCTOS */}
       <div className="space-y-3">
@@ -541,7 +556,7 @@ type BannerDays =
             Sin productos
           </div>
         ) : (
-          items.map(p => {
+          filteredItems.map(p => {
             const d = drafts[p.id] ?? {};
 
             const name = d.name ?? p.name;
