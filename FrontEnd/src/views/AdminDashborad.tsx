@@ -61,13 +61,7 @@ export default function AdminDashboard() {
   const [showCats, setShowCats] = useState(false);
   const [newCat, setNewCat] = useState("");
 
-  type CategoryDrafts = Record<string, { imageFile?: File | null }>;
-  const [catDrafts, setCatDrafts] = useState<CategoryDrafts>({});
-  const setCatDraft = (id: string, patch: CategoryDrafts[string]) =>
-    setCatDrafts(prev => ({
-      ...prev,
-      [id]: { ...(prev[id] ?? {}), ...patch }
-    }));
+
 
   const catsOrdered = useMemo(
     () =>
@@ -243,7 +237,7 @@ type BannerDays =
 
       toast.success("Banner guardado correctamente.", { id: toastId });
       setShowBanner(false);
-    } catch (err) {
+    } catch  {
       toast.error("Error guardando banner", { id: toastId });
     }
   };
@@ -254,7 +248,7 @@ type BannerDays =
       setLoading(true);
       const data = await getProducts();
       setItems(data);
-      setDrafts({});
+      
     } finally {
       setLoading(false);
     }
@@ -265,7 +259,7 @@ type BannerDays =
       setCatsLoading(true);
       const data = await getCategories();
       setCats(data);
-      setCatDrafts({});
+      
     } finally {
       setCatsLoading(false);
     }
