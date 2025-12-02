@@ -2,6 +2,7 @@ export interface BannerDay {
   category: string;
   vapeId: string;
   bannerImageUrl?: string;
+  descuento: number;
 }
 
 export interface BannerWeek {

@@ -115,6 +115,7 @@ export default function HomeView() {
   const [banner, setBanner] = useState<BannerWeek | null>(null);
   const q = params.get("q") || undefined;
   const category = params.get("category") || undefined;
+  
 
   
 
@@ -197,6 +198,10 @@ const promoProduct = useMemo(() => {
   return items.find(p => p.id === todayBanner.vapeId
   ) ?? null;
 }, [todayBanner, items]);
+
+const originalPrice = promoProduct?.price ?? 0;
+const discount = todayBanner?.descuento ?? 0;
+const finalPrice = originalPrice - (originalPrice * discount) / 100;
 
 
   // Grid reutilizable
@@ -304,23 +309,39 @@ const promoProduct = useMemo(() => {
    ========================= */
   return (
     <Container>
-        <div className="mb-10">
-        {promoProduct ? (
-          <DailyPromotion
-            productId={promoProduct.id}
-            productName={promoProduct.name}
-            imageUrl={
-              todayBanner?.bannerImageUrl ?? // 1. Usar la imagen de banner dedicada si existe
-              promoProduct.imageUrl ?? // 2. Fallback: Usar la URL principal del producto
-              promoProduct.images?.[0] ?? // 3. Fallback: Usar la primera imagen de la lista
-              "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen" // 4. Fallback final
+      <div className="mb-10">
+      {promoProduct && (
+        <div className="text-center mb-4 text-white">
+          <h2 className="text-xl font-bold">🔥 Promoción del día de hoy</h2>
+
+          <p className="text-sm text-white/70">
+            Precio antes:{" "}
+            <span className="line-through text-red-400">
+              ${originalPrice}
+            </span>
+          </p>
+
+          <p className="text-lg font-semibold text-green-400">
+            Precio después: ${finalPrice.toFixed(0)}
+          </p>
+        </div>
+      )}
+
+      {promoProduct ? (
+        <DailyPromotion
+          productId={promoProduct.id}
+          productName={promoProduct.name}
+          imageUrl={
+            todayBanner?.bannerImageUrl ??
+            promoProduct.imageUrl ??
+            promoProduct.images?.[0] ??
+            "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen"
           }
-          />
-        ) : (
-          // Opcional: un mensaje mientras carga o si no hay promo
-          <p className="text-white/60">No hay promoción para hoy.</p>
-        )}
-      </div>
+        />
+      ) : (
+        <p className="text-white/60">No hay promoción para hoy.</p>
+      )}
+    </div>
 
 
       {error && <p className="mt-4 text-red-400">{error}</p>}
