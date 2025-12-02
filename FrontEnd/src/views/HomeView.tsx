@@ -199,9 +199,6 @@ const promoProduct = useMemo(() => {
   ) ?? null;
 }, [todayBanner, items]);
 
-const originalPrice = promoProduct?.price ?? 0;
-const discount = todayBanner?.descuento ?? 0;
-const finalPrice = originalPrice - (originalPrice * discount) / 100;
 
 
   // Grid reutilizable
@@ -303,6 +300,10 @@ const finalPrice = originalPrice - (originalPrice * discount) / 100;
       ];
   }, [mainCategoryGroup, secondaryCategoriesGroup]);
   
+  const originalPrice = promoProduct?.price ?? 0;
+  const discount = todayBanner?.descuento ?? 0;
+  const finalPrice = originalPrice - (originalPrice * discount) / 100;
+
 
   /* =========================
    Render
@@ -337,11 +338,14 @@ const finalPrice = originalPrice - (originalPrice * discount) / 100;
             promoProduct.images?.[0] ??
             "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen"
           }
+            discount={discount}
+            finalPrice={finalPrice}
         />
       ) : (
         <p className="text-white/60">No hay promoción para hoy.</p>
       )}
     </div>
+    
 
 
       {error && <p className="mt-4 text-red-400">{error}</p>}

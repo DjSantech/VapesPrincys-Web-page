@@ -4,24 +4,22 @@ import { useLocation, useParams, Link } from "react-router-dom";
 import axios, { AxiosError } from "axios";
 import { getProductById } from "../services/products_service";
 import type { Product } from "../types/Product";
-// 🔥 CAMBIO 1: Importar 'setOpen' del store useCart
-import { useCart } from "../store/cart_info"; 
+import { useCart } from "../store/cart_info";
 import type { CartItem } from "../types/Cart";
 
 // ===== Helpers
 const formatCOP = (pesos: number) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(pesos || 0);
+  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(
+    pesos || 0
+  );
 
 type LocationState = { product?: Product };
 
-// Gift model
 type GiftVapeModel = { name: string; basePrice: number };
 
-// Categorías y producto con _id opcional (para listas por categoría)
 type Category = { id: string; name: string; slug?: string };
 type ProductWithMongoId = Product & { _id?: string };
 
-// Estados locales tipados
 type ExtraVapeState = {
   model?: string;
   flavor?: string;
@@ -46,18 +44,19 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const state = (location.state as LocationState) ?? {};
-  // 🔥 CAMBIO 1: Obtener 'setOpen' del hook useCart
   const { addItem, setOpen } = useCart();
+
+  const searchParams = new URLSearchParams(location.search);
+  const discount = Number(searchParams.get("discount") ?? 0);
+  const overridePrice = Number(searchParams.get("finalPrice") ?? 0);
 
   const [product, setProduct] = useState<Product | undefined>(state.product);
   const [loading, setLoading] = useState<boolean>(!state.product);
   const [error, setError] = useState<string>("");
 
-  // principal
   const [qty, setQty] = useState<number>(1);
   const [flavor, setFlavor] = useState<string>("");
 
-  // add-ons
   const [open2, setOpen2] = useState<boolean>(false);
   const [open3, setOpen3] = useState<boolean>(false);
 
@@ -66,7 +65,6 @@ export default function ProductDetailPage() {
 
   const productId = useMemo(() => id ?? "", [id]);
 
-  // Datos estáticos
   const DEFAULT_FLAVORS: string[] = ["Mango", "Ice Mint", "Sandía", "Uva"];
   const giftVapeModels: GiftVapeModel[] = [{ name: "Vape Classic 1000 (Regalo)", basePrice: 0 }];
 
@@ -99,13 +97,12 @@ export default function ProductDetailPage() {
         const p = await getProductById(productId);
         if (!active) return;
 
-        // Fallback robusto para el toggle de sabores
-        const usesFlavors = (p.hasFlavors ?? ((p.flavors?.length ?? 0) > 0));
+        const usesFlavors = p.hasFlavors ?? (p.flavors?.length ?? 0) > 0;
 
         setProduct(p);
 
         if (usesFlavors) {
-          const initialFlavors: string[] =
+          const initialFlavors =
             Array.isArray(p.flavors) && p.flavors.length > 0 ? p.flavors : DEFAULT_FLAVORS;
           setFlavor(prev => prev || initialFlavors[0]);
         } else {
@@ -191,16 +188,18 @@ export default function ProductDetailPage() {
     };
   }, [selectedCategoryId, baseURL]);
 
-  // Cuando se elige modelo, setear sabores y precio del extra (con fallback)
+  // Cuando se elige modelo
   useEffect(() => {
     if (!selectedModelId) return;
     const chosen = modelsByCategory.find(p => getProductKey(p) === selectedModelId);
 
-    const modelHasFlavors: boolean = (chosen?.hasFlavors ?? ((chosen?.flavors?.length ?? 0) > 0));
+    const modelHasFlavors = chosen?.hasFlavors ?? (chosen?.flavors?.length ?? 0) > 0;
     setSelectedModelHasFlavors(modelHasFlavors);
 
-    const flavors: string[] = modelHasFlavors
-      ? (chosen?.flavors && chosen.flavors.length > 0 ? chosen.flavors : DEFAULT_FLAVORS)
+    const flavors = modelHasFlavors
+      ? chosen?.flavors && chosen.flavors.length > 0
+        ? chosen.flavors
+        : DEFAULT_FLAVORS
       : [];
 
     setSelectedModelFlavors(flavors);
@@ -214,7 +213,7 @@ export default function ProductDetailPage() {
   }, [selectedModelId, modelsByCategory]);
 
   if (error) return <p className="p-6 text-red-400">{error}</p>;
-  if (loading || !product) {
+  if (loading || !product)
     return (
       <div className="p-6 text-zinc-100">
         <div className="h-6 w-40 mb-4 rounded bg-zinc-800/60 animate-pulse" />
@@ -222,22 +221,26 @@ export default function ProductDetailPage() {
         <div className="h-6 w-24 mt-4 rounded bg-zinc-800/60 animate-pulse" />
       </div>
     );
-  }
 
-  // Fallback robusto para el producto principal
-  const usesFlavors: boolean = (product.hasFlavors ?? ((product.flavors?.length ?? 0) > 0));
+  const usesFlavors = product.hasFlavors ?? (product.flavors?.length ?? 0) > 0;
 
-  const availableFlavors: string[] = usesFlavors
-    ? (Array.isArray(product.flavors) && product.flavors.length > 0 ? product.flavors : DEFAULT_FLAVORS)
+  const availableFlavors = usesFlavors
+    ? Array.isArray(product.flavors) && product.flavors.length > 0
+      ? product.flavors
+      : DEFAULT_FLAVORS
     : [];
 
-  const showMainFlavors: boolean = usesFlavors && availableFlavors.length > 0;
+  const showMainFlavors = usesFlavors && availableFlavors.length > 0;
 
   const img: string = product.imageUrl || product.images?.[0] || "https://picsum.photos/900";
   const inStock: number = product.stock ?? 0;
 
+  const basePrice = discount > 0 && overridePrice > 0 ? overridePrice : product.price;
+
   const addOnTotal: number = extraVape.price ?? 0;
-  const mainTotal: number = product.price * qty;
+
+  const mainTotal: number = basePrice * qty;
+
   const grandTotal: number = mainTotal + addOnTotal;
 
   const canOpen3: boolean = open2 && !!extraVape.model;
@@ -246,7 +249,7 @@ export default function ProductDetailPage() {
     const item: CartItem = {
       id: product.id,
       name: product.name,
-      price: product.price,
+      price: basePrice, // 🔥 precio con descuento aplicable
       qty,
       flavor: showMainFlavors ? flavor : "",
       imageUrl: product.imageUrl || product.images?.[0],
@@ -266,12 +269,11 @@ export default function ProductDetailPage() {
           }
         : null,
     };
+
     addItem(item);
-    // 🔥 CAMBIO 2: Reemplazamos el alert por la acción de abrir el carrito.
     setOpen(true);
   };
 
-  // ===== Mostrar puffs o ml (puffs > ml > nada), sin any
   const hasPuffs: boolean = typeof product.puffs === "number" && product.puffs > 0;
   const hasMl: boolean =
     typeof (product as Product & { ml?: number }).ml === "number" &&
@@ -286,38 +288,46 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="grid gap-8 md:grid-cols-2">
-        {/* IZQUIERDA: Imagen */}
         <div className="relative overflow-hidden rounded-2xl border border-stone-700 bg-[#111315]">
           <img src={img} alt={product.name} className="w-full h-full object-cover" loading="lazy" />
         </div>
 
-        {/* DERECHA */}
         <div className="space-y-6">
           <div>
             <h1 className="text-3xl font-bold text-zinc-100">{product.name}</h1>
-            <div className="mt-2 text-2xl font-bold text-amber-400">{formatCOP(product.price)}</div>
 
-            {/* Puffs o ml */}
+            {discount > 0 ? (
+              <>
+                <div className="text-zinc-400 line-through">{formatCOP(product.price)}</div>
+                <div className="mt-1 text-2xl font-bold text-green-400">{formatCOP(basePrice)}</div>
+                <div className="text-xs text-green-400">Descuento aplicado: {discount}%</div>
+              </>
+            ) : (
+              <div className="mt-2 text-2xl font-bold text-amber-400">{formatCOP(product.price)}</div>
+            )}
+
             {hasPuffs ? (
               <div className="mt-1 text-sm text-zinc-400">
                 {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(product.puffs!)} puffs
               </div>
             ) : hasMl ? (
               <div className="mt-1 text-sm text-zinc-400">
-                {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(
-                  (product as Product & { ml?: number }).ml!
-                )}{" "}
+                {
+                  new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(
+                    (product as Product & { ml?: number }).ml!
+                  )
+                }{" "}
                 ml
               </div>
             ) : null}
 
             <p className="mt-2 text-zinc-300">{product.description ?? "—"}</p>
+
             <div className="mt-2 text-sm text-zinc-400">
               Stock disponible: <span className="font-semibold text-zinc-200">{inStock}</span> unidades
             </div>
           </div>
 
-          {/* Cantidad + (opcional) Sabor */}
           <div className="rounded-2xl border border-stone-700 bg-[#111315] p-4 space-y-4">
             <div className="flex items-center gap-3">
               <label className="text-sm w-24 text-zinc-300">Cantidad</label>
@@ -326,20 +336,20 @@ export default function ProductDetailPage() {
                 min={1}
                 max={inStock || 99}
                 value={qty}
-                onChange={(e) => setQty(Math.max(1, Math.min(Number(e.target.value), inStock || 99)))}
+                onChange={e => setQty(Math.max(1, Math.min(Number(e.target.value), inStock || 99)))}
                 className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
               />
             </div>
 
-            {showMainFlavors && (
+            {availableFlavors.length > 0 && (
               <div className="flex items-center gap-3">
                 <label className="text-sm w-24 text-zinc-300">Sabor</label>
                 <select
                   value={flavor}
-                  onChange={(e) => setFlavor(e.target.value)}
+                  onChange={e => setFlavor(e.target.value)}
                   className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
-                  {availableFlavors.map((f) => (
+                  {availableFlavors.map(f => (
                     <option key={f} value={f}>
                       {f}
                     </option>
@@ -349,11 +359,11 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* ADD-ON 2: Agregar otro vape */}
+          {/* Agregar otro vape */}
           <div className="rounded-2xl border border-stone-700 overflow-hidden">
             <button
               type="button"
-              onClick={() => setOpen2((v) => !v)}
+              onClick={() => setOpen2(v => !v)}
               className="w-full text-left px-4 py-3 bg-[#1a1d1f] hover:bg-[#181b1d] flex items-center justify-between"
             >
               <span className="font-semibold text-zinc-100">➕ Agregar otro vape</span>
@@ -368,14 +378,15 @@ export default function ProductDetailPage() {
                   <select
                     className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={selectedCategoryId}
-                    onChange={(e) => setSelectedCategoryId(e.target.value)}
+                    onChange={e => setSelectedCategoryId(e.target.value)}
                   >
                     <option value="">Selecciona…</option>
+
                     {catLoading && <option value="" disabled>Cargando categorías…</option>}
                     {catError && <option value="" disabled>{catError}</option>}
                     {!catLoading &&
                       !catError &&
-                      categories.map((c) => (
+                      categories.map(c => (
                         <option key={c.id} value={c.id}>
                           {c.name}
                         </option>
@@ -389,17 +400,17 @@ export default function ProductDetailPage() {
                   <select
                     className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={selectedModelId}
-                    onChange={(e) => setSelectedModelId(e.target.value)}
+                    onChange={e => setSelectedModelId(e.target.value)}
                     disabled={!selectedCategoryId || modelsLoading || !!modelsError}
-                    title={!selectedCategoryId ? "Elige una categoría primero" : undefined}
                   >
                     {!selectedCategoryId && <option value="">Selecciona categoría primero…</option>}
                     {selectedCategoryId && modelsLoading && <option value="">Cargando modelos…</option>}
                     {selectedCategoryId && modelsError && <option value="">{modelsError}</option>}
+
                     {selectedCategoryId && !modelsLoading && !modelsError && (
                       <>
                         <option value="">Selecciona…</option>
-                        {modelsByCategory.map((p) => (
+                        {modelsByCategory.map(p => (
                           <option key={getProductKey(p)} value={getProductKey(p)}>
                             {p.name} ({formatCOP(p.price)})
                           </option>
@@ -409,29 +420,25 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
 
-                {/* Sabor del vape elegido — visible SOLO si el modelo tiene sabores */}
+                {/* Sabores del extra */}
                 {selectedModelHasFlavors && (
                   <div className="flex items-center gap-3">
                     <label className="text-sm w-24 text-zinc-300">Sabor</label>
                     <select
-                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       value={extraVape.flavor ?? ""}
-                      onChange={(e) => setExtraVape((prev) => ({ ...prev, flavor: e.target.value }))}
-                      disabled={!selectedModelId}
-                      title={!selectedModelId ? "Elige un modelo primero" : undefined}
+                      onChange={e => setExtraVape(prev => ({ ...prev, flavor: e.target.value }))}
+                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100"
                     >
-                      {!selectedModelId && <option value="">Selecciona modelo primero…</option>}
-                      {selectedModelId &&
-                        selectedModelFlavors.map((f) => (
-                          <option key={f} value={f}>
-                            {f}
-                          </option>
-                        ))}
+                      {selectedModelFlavors.map(f => (
+                        <option key={f} value={f}>
+                          {f}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 )}
 
-                {/* Cantidad */}
+                {/* Cantidad del extra */}
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-24 text-zinc-300">Cantidad</label>
                   <input
@@ -439,17 +446,17 @@ export default function ProductDetailPage() {
                     min={1}
                     max={99}
                     value={extraVape.qty ?? 1}
-                    onChange={(e) => setExtraVape((prev) => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))}
-                    className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
-                    disabled={!selectedModelId}
-                    title={!selectedModelId ? "Elige un modelo primero" : undefined}
+                    onChange={e =>
+                      setExtraVape(prev => ({ ...prev, qty: Math.max(1, Number(e.target.value)) }))
+                    }
+                    className="w-24 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100"
                   />
                 </div>
               </div>
             )}
           </div>
 
-          {/* ADD-ON 3: Regalo */}
+          {/* Vape de regalo */}
           <div
             className={`rounded-2xl border overflow-hidden ${
               canOpen3 ? "border-stone-700" : "border-stone-800 opacity-60 pointer-events-none"
@@ -457,7 +464,7 @@ export default function ProductDetailPage() {
           >
             <button
               type="button"
-              onClick={() => canOpen3 && setOpen3((v) => !v)}
+              onClick={() => canOpen3 && setOpen3(v => !v)}
               className="w-full text-left px-4 py-3 bg-[#1a1d1f] hover:bg-[#181b1d] flex items-center justify-between"
             >
               <span className="font-semibold text-zinc-100">🎁 Vape de regalo</span>
@@ -466,7 +473,7 @@ export default function ProductDetailPage() {
 
             {!canOpen3 && (
               <StepNotice>
-                Este paso se habilita al elegir un modelo en <span className="font-semibold">“Agregar otro vape”</span>.
+                Este paso se habilita al elegir un modelo en <b>"Agregar otro vape"</b>.
               </StepNotice>
             )}
 
@@ -475,14 +482,14 @@ export default function ProductDetailPage() {
                 <div className="flex items-center gap-3">
                   <label className="text-sm w-24 text-zinc-300">Modelo</label>
                   <select
-                    className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                     value={giftVape.model ?? ""}
-                    onChange={(e) => setGiftVape((prev) => ({ ...prev, model: e.target.value }))}
+                    onChange={e => setGiftVape(prev => ({ ...prev, model: e.target.value }))}
+                    className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100"
                   >
                     <option value="" disabled>
                       Selecciona…
                     </option>
-                    {giftVapeModels.map((m) => (
+                    {giftVapeModels.map(m => (
                       <option key={m.name} value={m.name}>
                         {m.name}
                       </option>
@@ -490,19 +497,18 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
 
-                {/* Sabor del regalo — visible solo si el producto principal maneja sabores */}
                 {showMainFlavors && (
                   <div className="flex items-center gap-3">
                     <label className="text-sm w-24 text-zinc-300">Sabor</label>
                     <select
-                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-2 focus:ring-amber-400"
                       value={giftVape.flavor ?? ""}
-                      onChange={(e) => setGiftVape((prev) => ({ ...prev, flavor: e.target.value }))}
+                      onChange={e => setGiftVape(prev => ({ ...prev, flavor: e.target.value }))}
+                      className="flex-1 rounded-xl bg-zinc-900 border border-stone-700 px-3 py-2 text-sm text-zinc-100"
                     >
                       <option value="" disabled>
                         Selecciona…
                       </option>
-                      {availableFlavors.map((f) => (
+                      {availableFlavors.map(f => (
                         <option key={f} value={f}>
                           {f}
                         </option>
@@ -516,21 +522,24 @@ export default function ProductDetailPage() {
             )}
           </div>
 
-          {/* RESUMEN + CTA */}
+          {/* TOTAL */}
           <div className="flex items-center justify-between rounded-2xl border border-stone-700 bg-[#1a1d1f] px-4 py-3">
             <div className="text-sm text-zinc-300">
               <div>
-                Total producto: <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span>
+                Total producto:{" "}
+                <span className="font-semibold text-zinc-100">{formatCOP(mainTotal)}</span>
               </div>
               <div>
                 Extras: <span className="font-semibold text-zinc-100">{formatCOP(addOnTotal)}</span>
               </div>
             </div>
+
             <div className="text-right">
               <div className="text-lg font-bold text-amber-400">Total: {formatCOP(grandTotal)}</div>
+
               <button
                 onClick={addToCart}
-                className="mt-2 rounded-xl bg-amber-400 px-5 py-2 text-sm font-semibold text-black hover:bg-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                className="mt-2 rounded-xl bg-amber-400 px-5 py-2 text-sm font-semibold text-black hover:bg-amber-300"
               >
                 Agregar al carrito
               </button>

@@ -1,17 +1,19 @@
 // src/components/DailyPromotion.tsx
 import { Link } from "react-router-dom";
 
+
 interface DailyPromotionProps {
   productId: string;
   productName: string;
   imageUrl: string;
+  discount: number;
+  finalPrice: number;
 }
 
-export default function DailyPromotion({ productId, productName, imageUrl }: DailyPromotionProps) {
+export default function DailyPromotion({ productId, productName, imageUrl,discount, finalPrice }: DailyPromotionProps) {
   return (
     <Link
-      to={`/product/${productId}`}
-      className="block w-full relative group cursor-pointer"
+    to={`/product/${productId}?discount=${discount}&finalPrice=${finalPrice}`}
     >
       {/* Imagen del banner */}
       <img
