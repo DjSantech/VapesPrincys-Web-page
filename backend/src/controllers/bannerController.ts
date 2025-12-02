@@ -37,6 +37,7 @@ export const getBanner = async (req: Request, res: Response) => {
 };
 
 export const updateBannerDayImage = async (req: FileRequest, res: Response) => {
+  console.log("🚨 FILE RECIBIDO:", req.file);
     const day = req.params.day as keyof BannerDays;
 
     if (!req.file) {
