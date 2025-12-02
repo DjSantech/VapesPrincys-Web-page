@@ -206,7 +206,7 @@ type BannerDays =
           ? {
               category: bannerCategory["Miércoles"],
               vapeId: bannerVape["Miércoles"],
-              descuento: bannerDiscount["Miercoles"]
+              descuento: bannerDiscount["Miércoles"]
             }
           : null,
         Jueves: bannerCategory["Jueves"]
@@ -227,7 +227,7 @@ type BannerDays =
           ? {
               category: bannerCategory["Sábado"],
               vapeId: bannerVape["Sábado"],
-              descuento: bannerDiscount["Sabado"]
+              descuento: bannerDiscount["Sábado"]
             }
           : null,
         Domingo: bannerCategory["Domingo"]

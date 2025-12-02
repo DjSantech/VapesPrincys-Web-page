@@ -13,18 +13,25 @@ interface DailyPromotionProps {
 export default function DailyPromotion({ productId, productName, imageUrl,discount, finalPrice }: DailyPromotionProps) {
   return (
     <Link
-    to={`/product/${productId}?discount=${discount}&finalPrice=${finalPrice}`}
+      to={`/product/${productId}?discount=${discount}&finalPrice=${finalPrice}`}
+      className="block"
     >
       {/* Imagen del banner */}
       <img
         src={imageUrl}
         alt={productName}
-        className="w-full rounded-xl object-cover transition-all duration-300 group-hover:brightness-90"
+        className="w-full rounded-xl object-cover"
       />
 
-      {/* Texto encima de la imagen */}
-      <div className="absolute bottom-4 left-4 text-white font-bold text-lg sm:text-2xl drop-shadow-lg">
-        {productName}
+      {/* Texto abajo de la imagen */}
+      <div className="mt-4 text-center">
+        <p className="text-lg sm:text-xl font-bold text-white">{productName}</p>
+
+        <p className="text-green-400 font-semibold text-sm">
+          Ahora: ${finalPrice.toFixed(0)}
+        </p>
+
+        <p className="text-red-400 text-xs">-{discount}% descuento</p>
       </div>
     </Link>
   );
