@@ -1,4 +1,7 @@
-// src/views/AdminDashboard.tsx
+// =========================
+// AdminDashboard.tsx LIMPIO
+// =========================
+
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
@@ -9,28 +12,29 @@ import {
   patchProductImage,
   deleteProduct,
   type AdminProduct,
-  // categorías:
   getCategories,
   createCategory,
   deleteCategoryById,
   patchCategory,
-  patchCategoryImage, // <--- CAMBIO 1: Importar la nueva función de servicio
-  type AdminCategory, // ⚠️ Asumimos que AdminCategory ahora tiene 'imageUrl?: string'
-  // ===== PLUS =====
+  type AdminCategory,
   getPluses,
   createPlus,
   deletePlusById,
   type AdminPlus,
 } from "../services/admin";
 
-import { uploadBannerImage,patchBannerData } from "../services/banner_services";
-// helpers CSV
-const toArray = (v: string): string[] => v.split(",").map(s => s.trim()).filter(Boolean);
+import { patchBannerData } from "../services/banner_services";
+
+const toArray = (v: string): string[] =>
+  v.split(",").map(s => s.trim()).filter(Boolean);
 const fromArray = (arr?: string[]): string => (arr ?? []).join(", ");
 
 const fmt = (cents: number) =>
-  new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 })
-    .format((cents || 0));
+  new Intl.NumberFormat("es-CO", {
+    style: "currency",
+    currency: "COP",
+    maximumFractionDigits: 0
+  }).format((cents || 0));
 
 type Drafts = Record<
   string,
@@ -41,62 +45,49 @@ type Drafts = Record<
   }
 >;
 
-// Añade esta definición del tipo de días
-type BannerDays = 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes' | 'Sábado' | 'Domingo';
-const daysOfWeek: BannerDays[] = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
-
 function toggleString(arr: readonly string[], value: string): string[] {
-  return arr.includes(value) ? arr.filter(v => v !== value) : [...arr, value];
+  return arr.includes(value)
+    ? arr.filter(v => v !== value)
+    : [...arr, value];
 }
 
 export default function AdminDashboard() {
   const [items, setItems] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ---- categorías ----
+  // ===== Categorías =====
   const [cats, setCats] = useState<AdminCategory[]>([]);
-  const [catsLoading, setCatsLoading] = useState<boolean>(false);
-  const [showCats, setShowCats] = useState<boolean>(false);
-  const [newCat, setNewCat] = useState<string>("");
+  const [catsLoading, setCatsLoading] = useState(false);
+  const [showCats, setShowCats] = useState(false);
+  const [newCat, setNewCat] = useState("");
 
-  // CAMBIO 2: Estado para borradores de imagen de categoría
   type CategoryDrafts = Record<string, { imageFile?: File | null }>;
   const [catDrafts, setCatDrafts] = useState<CategoryDrafts>({});
   const setCatDraft = (id: string, patch: CategoryDrafts[string]) =>
-      setCatDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
+    setCatDrafts(prev => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? {}), ...patch }
+    }));
 
-
-  // ordenadas por homeOrder (menor primero), luego nombre
   const catsOrdered = useMemo(
-    () => [...cats].sort(
-      (a, b) => (a.homeOrder ?? 1000) - (b.homeOrder ?? 1000) || a.name.localeCompare(b.name, "es")
-    ),
+    () =>
+      [...cats].sort(
+        (a, b) =>
+          (a.homeOrder ?? 1000) - (b.homeOrder ?? 1000) ||
+          a.name.localeCompare(b.name, "es")
+      ),
     [cats]
   );
 
-  // ---- pluses ----
+  // ===== Pluses =====
   const [pluses, setPluses] = useState<AdminPlus[]>([]);
-  const [plusesLoading, setPlusesLoading] = useState<boolean>(false);
-  const [showPluses, setShowPluses] = useState<boolean>(false);
-  const [newPlus, setNewPlus] = useState<string>("");
+  const [plusesLoading, setPlusesLoading] = useState(false);
+  const [showPluses, setShowPluses] = useState(false);
+  const [newPlus, setNewPlus] = useState("");
 
-  // ---- crear producto ----
+  // ===== Crear producto =====
   const [showCreate, setShowCreate] = useState(false);
-  const [form, setForm] = useState<{
-    sku: string;
-    name: string;
-    description: string;
-    price: number;          // centavos
-    stock: number;
-    puffs: number;
-    ml: number;
-    visible: boolean;
-    category: string;       // nombre de categoría
-    hasFlavors: boolean;    // NUEVO
-    flavorsCSV: string;     // texto → se parsea al enviar
-    pluses: string[];       // nombres de plus seleccionados
-    image: File | null;
-  }>({
+  const [form, setForm] = useState({
     sku: "",
     name: "",
     description: "",
@@ -108,21 +99,16 @@ export default function AdminDashboard() {
     category: "",
     hasFlavors: true,
     flavorsCSV: "",
-    pluses: [],
-    image: null,
+    pluses: [] as string[],
+    image: null as File | null
   });
-
-  // ---- borradores por fila ----
-  const [drafts, setDrafts] = useState<Drafts>({});
-  const setDraft = (id: string, patch: Drafts[string]) =>
-    setDrafts(prev => ({ ...prev, [id]: { ...(prev[id] ?? {}), ...patch } }));
 
   const imagePreview = useMemo(
     () => (form.image ? URL.createObjectURL(form.image) : ""),
     [form.image]
   );
 
-  const resetForm = () => {
+  const resetForm = () =>
     setForm({
       sku: "",
       name: "",
@@ -136,59 +122,139 @@ export default function AdminDashboard() {
       hasFlavors: true,
       flavorsCSV: "",
       pluses: [],
-      image: null,
+      image: null
     });
-  };
 
-  // ---- Banner ----
-  // LÍNEA ~136: Restablece el tipo a Record, que es el que soporta la imagen por día
-  const [bannerImages, setBannerImages] = useState<Record<string, File | null>>({}); 
+  // ===== Borradores =====
+  const [drafts, setDrafts] = useState<Drafts>({});
+  const setDraft = (id: string, patch: Drafts[string]) =>
+    setDrafts(prev => ({
+      ...prev,
+      [id]: { ...(prev[id] ?? {}), ...patch }
+    }));
 
-  // LÍNEA ~137: Mantén el preview URL (esto soluciona el error de variable no usada, siempre y cuando se use en el JSX)
-  const [bannerPreviewUrl, setBannerPreviewUrl] = useState<string | null>(null);
+  // ===== Banner (SIN IMÁGENES) =====
+  const [showBanner, setShowBanner] = useState(false);
 
-  // LÍNEA ~138: Nuevo estado para saber qué día se está configurando
-  const [selectedDay, setSelectedDay] = useState<BannerDays>('Lunes');
+  const [bannerCategory, setBannerCategory] = useState<Record<string, string>>({});
+  const [bannerVape, setBannerVape] = useState<Record<string, string>>({});
+  const [bannerDiscount, setBannerDiscount] = useState<Record<string, number>>({});
 
-  const [bannerImageUrl, setBannerImageUrl] = useState<string | null>(null);
+type BannerDays =
+  | "Lunes"
+  | "Martes"
+  | "Miércoles"
+  | "Jueves"
+  | "Viernes"
+  | "Sábado"
+  | "Domingo";
+  
+  const weekDays: BannerDays[] = [
+  "Lunes",
+  "Martes",
+  "Miércoles",
+  "Jueves",
+  "Viernes",
+  "Sábado",
+  "Domingo",
+];
 
   const loadBanner = async () => {
     try {
       const data = await getBanner();
+      if (!data) return;
 
-      if (data) {
-        const catsObj: Record<string, string> = {};
-        const vapeObj: Record<string, string> = {};
+      const catsObj: Record<string, string> = {};
+      const vapeObj: Record<string, string> = {};
+      const discountObj: Record<string, number> = {};
 
-        Object.keys(data).forEach(day => {
-          if (data[day]) {
-            catsObj[day] = data[day].category ?? "";
-            vapeObj[day] = data[day].vapeId ?? "";
-          }
-        });
+      for (const day of weekDays) {
+        catsObj[day] = data[day]?.category ?? "";
+        vapeObj[day] = data[day]?.vapeId ?? "";
+        discountObj[day] = data[day]?.descuento ?? 0;
 
-        setBannerCategory(catsObj);
-        setBannerVape(vapeObj);
-        
-        // 🚨 CAMBIO NUEVO: Asumiendo que 'data' tiene la URL de la imagen del banner
-        if (data.imageUrl) {
-          setBannerImageUrl(data.imageUrl); 
-        }
       }
+      setBannerDiscount(discountObj);
+      setBannerCategory(catsObj);
+      setBannerVape(vapeObj);
     } catch (err) {
       console.error("Error cargando banner:", err);
     }
-  }; 
+  };
 
+  const onSaveBanner = async () => {
+    const toastId = toast.loading("Guardando banner...");
 
+    try {
+      const body = {
+        Lunes: bannerCategory["Lunes"]
+          ? {
+              category: bannerCategory["Lunes"],
+              vapeId: bannerVape["Lunes"],
+              descuento: bannerDiscount["Lunes"]
+            }
+          : null,
+        Martes: bannerCategory["Martes"]
+          ? {
+              category: bannerCategory["Martes"],
+              vapeId: bannerVape["Martes"],
+              descuento: bannerDiscount["Martes"]
+              
+            }
+          : null,
+        Miércoles: bannerCategory["Miércoles"]
+          ? {
+              category: bannerCategory["Miércoles"],
+              vapeId: bannerVape["Miércoles"],
+              descuento: bannerDiscount["Miercoles"]
+            }
+          : null,
+        Jueves: bannerCategory["Jueves"]
+          ? {
+              category: bannerCategory["Jueves"],
+              vapeId: bannerVape["Jueves"],
+              descuento: bannerDiscount["Jueves"]
+            }
+          : null,
+        Viernes: bannerCategory["Viernes"]
+          ? {
+              category: bannerCategory["Viernes"],
+              vapeId: bannerVape["Viernes"],
+              descuento: bannerDiscount["Viernes"]
+            }
+          : null,
+        Sábado: bannerCategory["Sábado"]
+          ? {
+              category: bannerCategory["Sábado"],
+              vapeId: bannerVape["Sábado"],
+              descuento: bannerDiscount["Sabado"]
+            }
+          : null,
+        Domingo: bannerCategory["Domingo"]
+          ? {
+              category: bannerCategory["Domingo"],
+              vapeId: bannerVape["Domingo"],
+              descuento: bannerDiscount["Domingo"]
+            }
+          : null
+      };
+
+      await patchBannerData(body);
+
+      toast.success("Banner guardado correctamente.", { id: toastId });
+      setShowBanner(false);
+    } catch (err) {
+      toast.error("Error guardando banner", { id: toastId });
+    }
+  };
+
+  // ===== LOADERS =====
   const loadProducts = async () => {
     try {
       setLoading(true);
       const data = await getProducts();
       setItems(data);
       setDrafts({});
-    } catch {
-      toast.error("No se pudieron cargar los productos");
     } finally {
       setLoading(false);
     }
@@ -197,12 +263,9 @@ export default function AdminDashboard() {
   const loadCategories = async () => {
     try {
       setCatsLoading(true);
-      // ⚠️ getCategories debe devolver objetos AdminCategory con la propiedad imageUrl
-      const data = await getCategories(); 
+      const data = await getCategories();
       setCats(data);
-      setCatDrafts({}); // Limpiar borradores al recargar
-    } catch {
-      toast.error("No se pudieron cargar las categorías");
+      setCatDrafts({});
     } finally {
       setCatsLoading(false);
     }
@@ -213,49 +276,59 @@ export default function AdminDashboard() {
       setPlusesLoading(true);
       const data = await getPluses();
       setPluses(data);
-    } catch {
-      toast.error("No se pudieron cargar los pluses");
     } finally {
       setPlusesLoading(false);
     }
   };
 
-  useEffect(() => { void loadProducts(); }, []);
-  useEffect(() => { void loadCategories(); }, []);
-  useEffect(() => { void loadPluses(); }, []);
-  useEffect(() => {void loadBanner();}, []);
+  useEffect(() => void loadProducts(), []);
+  useEffect(() => void loadCategories(), []);
+  useEffect(() => void loadPluses(), []);
+  useEffect(() => void loadBanner(), []);
 
-  // ---- update solo imagen (multipart) ----
+  // ===== update image =====
   const updateImage = async (id: string, file: File) => {
     try {
       const tempUrl = URL.createObjectURL(file);
-      setItems(prev => prev.map(p => (p.id === id ? { ...p, imageUrl: tempUrl } : p)));
+      setItems(prev =>
+        prev.map(p => (p.id === id ? { ...p, imageUrl: tempUrl } : p))
+      );
 
       const updated = await patchProductImage(id, file);
-      setItems(prev => prev.map(p => (p.id === id ? updated : p)));
+      setItems(prev =>
+        prev.map(p => (p.id === id ? updated : p))
+      );
       toast.success("Imagen actualizada");
     } catch {
       toast.error("No se pudo actualizar la imagen");
       void loadProducts();
     }
   };
-  
-  // ---- guardar cambios de una fila ----
+
+  // ===== save row =====
   const onSaveRow = async (id: string) => {
     const current = items.find(p => p.id === id);
     if (!current) return;
 
     const draft = drafts[id] ?? {};
-    const merged: AdminProduct & { hasFlavors?: boolean; flavors?: string[] } = { ...current, ...draft };
+    const merged: AdminProduct & {
+      hasFlavors?: boolean;
+      flavors?: string[];
+    } = { ...current, ...draft };
 
     const categoryTrim = (merged.category ?? "").trim();
     const nextPluses = draft.pluses ?? merged.pluses ?? [];
+
     const hasFlavors: boolean =
       draft.hasFlavors ??
-      (typeof merged.hasFlavors === "boolean" ? merged.hasFlavors : (merged.flavors?.length ?? 0) > 0);
+      (typeof merged.hasFlavors === "boolean"
+        ? merged.hasFlavors
+        : (merged.flavors?.length ?? 0) > 0);
 
     const nextFlavors = hasFlavors
-      ? (draft.flavorsCSV !== undefined ? toArray(draft.flavorsCSV) : (merged.flavors ?? []))
+      ? draft.flavorsCSV !== undefined
+        ? toArray(draft.flavorsCSV)
+        : merged.flavors ?? []
       : [];
 
     const patch: Partial<AdminProduct> & {
@@ -274,8 +347,7 @@ export default function AdminDashboard() {
       hasFlavors,
       ...(categoryTrim !== "" ? { category: categoryTrim } : {}),
       flavors: nextFlavors,
-      pluses: nextPluses,
-      imageUrl: undefined,
+      pluses: nextPluses
     };
 
     try {
@@ -288,32 +360,13 @@ export default function AdminDashboard() {
     }
   };
 
-
-  // 2. EFFECT HOOK PARA CREAR Y REVOCAR LA URL
-    useEffect(() => {
-      // 1. Obtener el archivo del día seleccionado. Esto resuelve el error TS2769 y TS2345.
-      const fileToPreview = bannerImages[selectedDay];
-
-      // Si el archivo no existe o es null, limpiamos la URL
-      if (!fileToPreview) {
-        setBannerPreviewUrl(null);
-        return;
-      }
-
-      // 2. Usar el archivo individual (File/Blob) para crear la URL
-      const objectUrl = URL.createObjectURL(fileToPreview);
-      setBannerPreviewUrl(objectUrl);
-
-      // Revocar la URL cuando el componente se desmonte o el archivo/día cambie.
-      return () => URL.revokeObjectURL(objectUrl);
-    }, [bannerImages, selectedDay]); // 🚨 IMPORTANTE: Depende tanto de 'bannerImages' como de 'selectedDay'
-
-  // ---- eliminar producto ----
+  // ===== delete row =====
   const onDeleteRow = async (id: string) => {
     const p = items.find(x => x.id === id);
     if (!p) return;
-    const ok = window.confirm(`¿Eliminar el producto "${p.name}"? Esta acción no se puede deshacer.`);
+    const ok = window.confirm(`¿Eliminar el producto "${p.name}"?`);
     if (!ok) return;
+
     try {
       await deleteProduct(id);
       setItems(prev => prev.filter(x => x.id !== id));
@@ -324,18 +377,14 @@ export default function AdminDashboard() {
       });
       toast.success("Producto eliminado");
     } catch {
-      toast.error("No se pudo eliminar el producto");
+      toast.error("No se pudo eliminar");
     }
   };
 
-  // ---- crear producto ----
+  // ===== create product =====
   const onCreate = async () => {
-    if (!form.sku.trim())  { toast.error("El SKU es obligatorio"); return; }
-    if (!form.name.trim()) { toast.error("El nombre es obligatorio"); return; }
-    if (form.price < 0)    { toast.error("El precio no puede ser negativo"); return; }
-    if (form.stock < 0)    { toast.error("El stock no puede ser negativo"); return; }
-    if (form.puffs < 0)    { toast.error("Los puffs no pueden ser negativos"); return; }
-    if (form.ml < 0)       { toast.error("Los ml no pueden ser negativos"); return; }
+    if (!form.sku.trim()) return toast.error("SKU obligatorio");
+    if (!form.name.trim()) return toast.error("Nombre obligatorio");
 
     try {
       const created = await createProduct({
@@ -351,22 +400,24 @@ export default function AdminDashboard() {
         image: form.image,
         hasFlavors: form.hasFlavors,
         flavors: form.hasFlavors ? toArray(form.flavorsCSV) : [],
-        pluses: form.pluses,
+        pluses: form.pluses
       });
+
       setItems(prev => [created, ...prev]);
       toast.success("Producto creado");
       setShowCreate(false);
       resetForm();
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo crear el producto");
+      toast.error("No se pudo crear");
     }
   };
 
-  // ---- categorías: crear y eliminar ----
+  // ===== create category =====
   const onCreateCategory = async () => {
     const name = newCat.trim();
     if (!name) return;
+
     try {
       const created = await createCategory(name);
       setCats(prev => [created, ...prev]);
@@ -374,27 +425,32 @@ export default function AdminDashboard() {
       toast.success("Categoría creada");
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo crear la categoría");
+      toast.error("Error creando categoría");
     }
   };
 
+  // ===== delete category =====
   const onDeleteCategory = async (id: string) => {
     const cat = cats.find(c => c.id === id);
     if (!cat) return;
-    const ok = window.confirm(`¿Eliminar la categoría "${cat.name}"?`);
+
+    const ok = window.confirm(`¿Eliminar "${cat.name}"?`);
     if (!ok) return;
+
     try {
       await deleteCategoryById(id);
       setCats(prev => prev.filter(c => c.id !== id));
-      setForm(f => (f.category === cat.name ? { ...f, category: "" } : f));
+      setForm(f =>
+        f.category === cat.name ? { ...f, category: "" } : f
+      );
       toast.success("Categoría eliminada");
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo eliminar la categoría");
+      toast.error("Error eliminando categoría");
     }
   };
 
-  // ---- pluses: crear y eliminar ----
+  // ===== create plus =====
   const onCreatePlus = async () => {
     const name = newPlus.trim();
     if (!name) return;
@@ -405,124 +461,44 @@ export default function AdminDashboard() {
       toast.success("Plus creado");
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo crear el plus");
+      toast.error("Error creando plus");
     }
   };
 
+  // ===== delete plus =====
   const onDeletePlus = async (id: string) => {
     const pl = pluses.find(p => p.id === id);
     if (!pl) return;
-    const ok = window.confirm(`¿Eliminar el plus "${pl.name}"?`);
+
+    const ok = window.confirm(`¿Eliminar "${pl.name}"?`);
     if (!ok) return;
+
     try {
       await deletePlusById(id);
       setPluses(prev => prev.filter(p => p.id !== id));
-      // quitarlo del form si estaba seleccionado
-      setForm(f => ({ ...f, pluses: f.pluses.filter(n => n !== pl.name) }));
-      // quitarlo de borradores
-      setDrafts(prev => {
-        const next: Drafts = {};
-        for (const [pid, d] of Object.entries(prev)) {
-          next[pid] = { ...d, pluses: (d.pluses ?? []).filter(n => n !== pl.name) };
-        }
-        return next;
-      });
+      setForm(f => ({
+        ...f,
+        pluses: f.pluses.filter(n => n !== pl.name)
+      }));
       toast.success("Plus eliminado");
     } catch (e) {
       console.error(e);
-      toast.error("No se pudo eliminar el plus");
+      toast.error("Error eliminando plus");
     }
   };
 
-  // En la sección donde defines tus handlers (e.g., cerca de onDeletePlus)
-// Dentro de la función AdminDashboard()
-// Dentro de la función AdminDashboard()
-
-const onSaveBanner = async () => {
-    const toastId = toast.loading("Guardando configuración del banner...");
-    
-    try {
-        // ==============================================
-        // 1. SUBIR IMÁGENES (PATCH) - El paso de archivos
-        // ==============================================
-        const uploadPromises = Object.entries(bannerImages)
-            .filter(([, file]) => file instanceof File) 
-            .map(async ([day, file]) => {
-                // Llama al servicio que envía el FormData y la autorización
-                await uploadBannerImage(day, file!); 
-            });
-
-        // Esperamos a que TODAS las imágenes suban
-        await Promise.all(uploadPromises);
-        
-        // Limpiamos el estado de archivos locales después de la subida exitosa
-        setBannerImages({}); 
-
-        // ==============================================
-        // 2. ACTUALIZAR DATA (POST/PATCH) - El paso de JSON
-        // ==============================================
-
-        // 🚨 RECREACIÓN EXACTA DEL CUERPO JSON DE TU onClick
-        const body = {
-            Lunes: bannerCategory["Lunes"]
-                ? { category: bannerCategory["Lunes"], vapeId: bannerVape["Lunes"] } : null,
-            Martes: bannerCategory["Martes"]
-                ? { category: bannerCategory["Martes"], vapeId: bannerVape["Martes"] } : null,
-            Miércoles: bannerCategory["Miércoles"]
-                ? { category: bannerCategory["Miércoles"], vapeId: bannerVape["Miércoles"] } : null,
-            Jueves: bannerCategory["Jueves"]
-                ? { category: bannerCategory["Jueves"], vapeId: bannerVape["Jueves"] } : null,
-            Viernes: bannerCategory["Viernes"]
-                ? { category: bannerCategory["Viernes"], vapeId: bannerVape["Viernes"] } : null,
-            Sábado: bannerCategory["Sábado"]
-                ? { category: bannerCategory["Sábado"], vapeId: bannerVape["Sábado"] } : null,
-            Domingo: bannerCategory["Domingo"]
-                ? { category: bannerCategory["Domingo"], vapeId: bannerVape["Domingo"] } : null,
-        };
-
-        // Llama al nuevo servicio que envía el JSON al backend
-        await patchBannerData(body);
-        
-        // ==============================================
-        // 3. ACCIONES DE ÉXITO FINAL
-        // ==============================================
-        
-        // 🚀 Si tienes una función para recargar la data del banner, llámala aquí:
-        // await loadBannerData(); 
-        
-        toast.success("Banner (imágenes y datos) actualizado correctamente.", { id: toastId });
-        // Asegúrate que 'setShowBanner' esté definido en tu componente si lo usas
-        // setShowBanner(false); 
-
-    } catch (err) {
-        console.error(err);
-        toast.error(`No se pudo guardar el banner. Error: ${(err as Error).message || "Desconocido"}`, { id: toastId });
-    }
-};
-  // ---- Banner ----
-  const [showBanner, setShowBanner] = useState(false);
-
-  const weekDays = [
-    "Lunes",
-    "Martes",
-    "Miércoles",
-    "Jueves",
-    "Viernes",
-    "Sábado",
-    "Domingo",
-  ];
-
-  // Estado: para cada día, la categoría seleccionada
-  const [bannerCategory, setBannerCategory] = useState<Record<string, string>>({});
-
-  // Estado: para cada día, el vape seleccionado
-  const [bannerVape, setBannerVape] = useState<Record<string, string>>({});
-
-
+  // ====================================  
+  // RENDER
+  // ====================================  
   return (
     <div className="px-3 sm:px-4 md:px-6 py-6">
+
+      {/* HEADER */}
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">Panel de administración</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-zinc-100">
+          Panel de administración
+        </h1>
+
         <div className="flex flex-wrap items-center gap-2">
           <button
             className="rounded-lg bg-purple-600 hover:bg-purple-700 px-3 py-1.5 text-sm text-white"
@@ -530,7 +506,6 @@ const onSaveBanner = async () => {
           >
             Banner
           </button>
-
           <button
             className="rounded-lg bg-indigo-600 hover:bg-indigo-700 px-3 py-1.5 text-sm text-white"
             onClick={() => setShowCats(true)}
@@ -551,22 +526,30 @@ const onSaveBanner = async () => {
           </button>
           <button
             className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-zinc-200 hover:bg-[#323230]"
-            onClick={() => { localStorage.removeItem("admin_token"); location.href = "/"; }}
+            onClick={() => {
+              localStorage.removeItem("admin_token");
+              location.href = "/";
+            }}
           >
             Cerrar sesión
           </button>
         </div>
       </div>
 
-      {/* Lista de productos (cards) */}
+      {/* LISTA DE PRODUCTOS */}
       <div className="space-y-3">
         {loading ? (
-          <div className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-6 text-zinc-400">Cargando…</div>
+          <div className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-6 text-zinc-400">
+            Cargando…
+          </div>
         ) : items.length === 0 ? (
-          <div className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-6 text-zinc-400">Sin productos</div>
+          <div className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-6 text-zinc-400">
+            Sin productos
+          </div>
         ) : (
           items.map(p => {
             const d = drafts[p.id] ?? {};
+
             const name = d.name ?? p.name;
             const sku = (d.sku ?? p.sku) ?? "";
             const price = Math.round(d.price ?? p.price ?? 0);
@@ -576,19 +559,22 @@ const onSaveBanner = async () => {
             const category = (d.category ?? p.category) ?? "";
             const description = d.description ?? p.description ?? "";
 
-            // sabores
             const inferredHasFlavors = p.hasFlavors as boolean | undefined;
-            const hasFlavors = d.hasFlavors ?? (typeof inferredHasFlavors === "boolean"
-              ? inferredHasFlavors
-              : ((p.flavors?.length ?? 0) > 0));
-            const flavorsCSV = d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
+            const hasFlavors =
+              d.hasFlavors ??
+              (typeof inferredHasFlavors === "boolean"
+                ? inferredHasFlavors
+                : (p.flavors?.length ?? 0) > 0);
+            const flavorsCSV =
+              d.flavorsCSV ?? fromArray(d.flavors ?? p.flavors);
 
-            // pluses por nombre
             const assignedPluses: string[] = d.pluses ?? p.pluses ?? [];
 
             return (
-              <div key={p.id} className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-4">
-                {/* Encabezado + imagen */}
+              <div
+                key={p.id}
+                className="rounded-2xl border border-stone-800 bg-[#1a1d1f] p-4"
+              >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                   <div className="flex items-center gap-3">
                     <label className="relative">
@@ -601,190 +587,237 @@ const onSaveBanner = async () => {
                         type="file"
                         accept="image/*"
                         className="absolute inset-0 opacity-0 cursor-pointer"
-                        title="Cambiar imagen"
                         onChange={e => {
                           const file = e.target.files?.[0];
-                          if (file) { void updateImage(p.id, file); }
+                          if (file) void updateImage(p.id, file);
                         }}
                       />
                     </label>
+
                     <div className="flex-1 min-w-0">
                       <input
                         className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                         value={name}
-                        onChange={e => setDraft(p.id, { name: e.target.value })}
-                        placeholder="Nombre del producto"
+                        onChange={e =>
+                          setDraft(p.id, { name: e.target.value })
+                        }
                       />
-                      <div className="text-[11px] text-zinc-500 mt-0.5 truncate">
+                      <div className="text-[11px] text-zinc-500 truncate">
                         ID: {p.id}
                       </div>
                     </div>
                   </div>
 
-                  {/* Acciones (sm+) */}
                   <div className="hidden sm:flex gap-2 sm:ml-auto">
                     <button
                       className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-1.5 text-sm text-white"
                       onClick={() => void onSaveRow(p.id)}
                     >
-                      Actualizar producto
+                      Actualizar
                     </button>
                     <button
                       className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-1.5 text-sm text-white"
                       onClick={() => void onDeleteRow(p.id)}
                     >
-                      Eliminar producto
+                      Eliminar
                     </button>
                   </div>
                 </div>
 
-                {/* Descripción (edición) */}
+                {/* Descripción */}
                 <div className="mt-3">
                   <label className="text-xs text-zinc-400">Descripción</label>
                   <textarea
-                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-none"
                     rows={2}
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-none"
                     value={description}
-                    onChange={e => setDraft(p.id, { description: e.target.value })}
-                    placeholder="Descripción del producto"
+                    onChange={e =>
+                      setDraft(p.id, {
+                        description: e.target.value
+                      })
+                    }
                   />
                 </div>
 
-                {/* Campos editables */}
+                {/* Campos */}
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                  {/* SKU */}
                   <div>
                     <label className="text-xs text-zinc-400">SKU</label>
                     <input
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 uppercase"
                       value={sku}
-                      onChange={e => setDraft(p.id, { sku: e.target.value.toUpperCase() })}
-                      placeholder="VAPE-UV-5000"
+                      onChange={e =>
+                        setDraft(p.id, {
+                          sku: e.target.value.toUpperCase()
+                        })
+                      }
                     />
                   </div>
 
+                  {/* Precio */}
                   <div>
-                    <label className="text-xs text-zinc-400">Precio (Pesos Colombianos)</label>
+                    <label className="text-xs text-zinc-400">
+                      Precio (COP)
+                    </label>
                     <input
                       type="number"
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={price}
-                      onChange={e => setDraft(p.id, { price: Math.max(0, Number(e.target.value)) })}
+                      onChange={e =>
+                        setDraft(p.id, {
+                          price: Math.max(0, Number(e.target.value))
+                        })
+                      }
                     />
-                    <div className="text-[11px] text-zinc-500 mt-0.5">{fmt(price)}</div>
+                    <div className="text-[11px] text-zinc-500">
+                      {fmt(price)}
+                    </div>
                   </div>
 
+                  {/* Stock */}
                   <div>
                     <label className="text-xs text-zinc-400">Stock</label>
                     <input
                       type="number"
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={stock}
-                      onChange={e => setDraft(p.id, { stock: Math.max(0, Number(e.target.value)) })}
+                      onChange={e =>
+                        setDraft(p.id, {
+                          stock: Math.max(0, Number(e.target.value))
+                        })
+                      }
                     />
                   </div>
 
+                  {/* Puffs */}
                   <div>
                     <label className="text-xs text-zinc-400">Puffs</label>
                     <input
                       type="number"
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={puffs}
-                      onChange={e => setDraft(p.id, { puffs: Math.max(0, Number(e.target.value)) })}
-                      placeholder="5000"
+                      onChange={e =>
+                        setDraft(p.id, {
+                          puffs: Math.max(0, Number(e.target.value))
+                        })
+                      }
                     />
                   </div>
 
-                  {/* Mililitros */}
+                  {/* ml */}
                   <div>
-                    <label className="text-xs text-zinc-400">Mililitros (ml)</label>
+                    <label className="text-xs text-zinc-400">ml</label>
                     <input
                       type="number"
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={ml}
-                      onChange={e => setDraft(p.id, { ml: Math.max(0, Number(e.target.value)) })}
-                      placeholder="10"
+                      onChange={e =>
+                        setDraft(p.id, {
+                          ml: Math.max(0, Number(e.target.value))
+                        })
+                      }
                     />
                   </div>
 
-                  {/* Categoría (select) */}
+                  {/* Categoría */}
                   <div>
                     <label className="text-xs text-zinc-400">Categoría</label>
                     <select
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={category}
-                      onChange={e => setDraft(p.id, { category: e.target.value })}
+                      onChange={e =>
+                        setDraft(p.id, {
+                          category: e.target.value
+                        })
+                      }
                     >
                       <option value="">— Selecciona —</option>
                       {cats.map(c => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
-                    <div className="text-[11px] text-zinc-500 mt-0.5">
-                      Administra categorías en el botón “Categorías”.
-                    </div>
                   </div>
 
-                  {/* NUEVO: Toggle de sabores */}
+                  {/* Toggle sabores */}
                   <div className="flex items-center gap-2">
                     <input
-                      id={`hasFlavors-${p.id}`}
                       type="checkbox"
                       className="accent-sky-400"
                       checked={!!hasFlavors}
-                      onChange={e => {
-                        const checked = e.target.checked;
+                      onChange={e =>
                         setDraft(p.id, {
-                          hasFlavors: checked,
-                          ...(checked ? {} : { flavorsCSV: "" })
-                        });
-                      }}
+                          hasFlavors: e.target.checked,
+                          ...(e.target.checked
+                            ? {}
+                            : { flavorsCSV: "" })
+                        })
+                      }
                     />
-                    <label htmlFor={`hasFlavors-${p.id}`} className="text-xs text-zinc-400">
+                    <label className="text-xs text-zinc-400">
                       Producto con sabores
                     </label>
                   </div>
 
-                  {/* Sabores (solo si hasFlavors) */}
+                  {/* Sabores */}
                   {hasFlavors && (
                     <div className="lg:col-span-2">
-                      <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                      <label className="text-xs text-zinc-400">
+                        Sabores (coma)
+                      </label>
                       <input
                         className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                         value={flavorsCSV}
-                        onChange={e => setDraft(p.id, { flavorsCSV: e.target.value })}
-                        placeholder="Uva, Menta, Sandía"
+                        onChange={e =>
+                          setDraft(p.id, {
+                            flavorsCSV: e.target.value
+                          })
+                        }
                       />
-                      <div className="text-[11px] text-zinc-500 mt-0.5">
-                        Se guardan al presionar “Actualizar producto”
-                      </div>
                     </div>
                   )}
 
+                  {/* Visible */}
                   <div className="flex items-center gap-2">
                     <input
-                      id={`visible-${p.id}`}
                       type="checkbox"
                       className="accent-emerald-400"
                       checked={(d.visible ?? p.visible) ?? true}
-                      onChange={e => setDraft(p.id, { visible: e.target.checked })}
+                      onChange={e =>
+                        setDraft(p.id, {
+                          visible: e.target.checked
+                        })
+                      }
                     />
-                    <label htmlFor={`visible-${p.id}`} className="text-xs text-zinc-400">Visible</label>
+                    <label className="text-xs text-zinc-400">
+                      Visible
+                    </label>
                   </div>
 
-                  {/* PLUS: selección por checkboxes */}
+                  {/* Pluses */}
                   <div className="sm:col-span-2 lg:col-span-4">
                     <label className="text-xs text-zinc-400">Pluses</label>
                     <div className="mt-1 flex flex-wrap gap-2">
                       {pluses.map(pl => {
                         const checked = assignedPluses.includes(pl.name);
                         return (
-                          <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
+                          <label
+                            key={pl.id}
+                            className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100"
+                          >
                             <input
                               type="checkbox"
                               className="accent-sky-400"
                               checked={checked}
                               onChange={() =>
-                                setDraft(p.id, { pluses: toggleString(assignedPluses, pl.name) })
+                                setDraft(p.id, {
+                                  pluses: toggleString(
+                                    assignedPluses,
+                                    pl.name
+                                  )
+                                })
                               }
                             />
                             {pl.name}
@@ -792,25 +825,27 @@ const onSaveBanner = async () => {
                         );
                       })}
                       {pluses.length === 0 && (
-                        <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
+                        <span className="text-xs text-zinc-500">
+                          No hay pluses
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
 
-                {/* Acciones (móvil) */}
+                {/* Botones móviles */}
                 <div className="mt-4 flex flex-col sm:hidden gap-2">
                   <button
                     className="rounded-lg bg-amber-600 hover:bg-amber-700 px-3 py-2 text-sm text-white"
                     onClick={() => void onSaveRow(p.id)}
                   >
-                    Actualizar producto
+                    Actualizar
                   </button>
                   <button
                     className="rounded-lg bg-red-600 hover:bg-red-700 px-3 py-2 text-sm text-white"
                     onClick={() => void onDeleteRow(p.id)}
                   >
-                    Eliminar producto
+                    Eliminar
                   </button>
                 </div>
               </div>
@@ -819,145 +854,202 @@ const onSaveBanner = async () => {
         )}
       </div>
 
+      {/* FOOTER INFO */}
       <p className="mt-4 text-xs text-zinc-500">
-        Edita los campos y presiona <span className="text-amber-400 font-medium">“Actualizar producto”</span> en cada tarjeta para guardar los cambios. La imagen se guarda al seleccionarla.
+        Edita los campos y presiona{" "}
+        <span className="text-amber-400 font-medium">
+          “Actualizar producto”
+        </span>{" "}
+        para guardar los cambios.
       </p>
 
-      {/* Modal crear producto */}
+      {/* MODAL CREATE PRODUCT */}
       {showCreate && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-stretch justify-center p-0 sm:items-center sm:p-3">
           <div className="w-full h-full sm:h-auto sm:max-w-lg bg-[#1a1d1f] border border-stone-800 sm:rounded-2xl flex flex-col">
-            {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-stone-800 sticky top-0 bg-[#1a1d1f]">
-              <h2 className="text-lg font-semibold text-zinc-100">Nuevo producto</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Nuevo producto
+              </h2>
               <button
                 className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
-                onClick={() => { setShowCreate(false); resetForm(); }}
-                aria-label="Cerrar modal crear producto"
+                onClick={() => {
+                  setShowCreate(false);
+                  resetForm();
+                }}
               >
                 ✕
               </button>
             </div>
 
-            {/* Body */}
             <div className="flex-1 overflow-y-auto px-4 py-4 max-h-[90vh] sm:max-h-[70vh]">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Nombre */}
                 <div className="sm:col-span-2">
                   <label className="text-xs text-zinc-400">Nombre</label>
                   <input
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.name}
-                    onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                    placeholder="Vape Desechable XYZ"
+                    onChange={e =>
+                      setForm(f => ({ ...f, name: e.target.value }))
+                    }
                   />
                 </div>
 
                 {/* Descripción */}
                 <div className="sm:col-span-2">
-                  <label className="text-xs text-zinc-400">Descripción</label>
+                  <label className="text-xs text-zinc-400">
+                    Descripción
+                  </label>
                   <textarea
-                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-y"
                     rows={3}
+                    className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 resize-y"
                     value={form.description}
-                    onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-                    placeholder="Describe el producto brevemente..."
+                    onChange={e =>
+                      setForm(f => ({ ...f, description: e.target.value }))
+                    }
                   />
                 </div>
 
+                {/* Precio */}
                 <div>
-                  <label className="text-xs text-zinc-400">Precio (centavos)</label>
+                  <label className="text-xs text-zinc-400">
+                    Precio (centavos)
+                  </label>
                   <input
                     type="number"
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.price}
-                    onChange={e => setForm(f => ({ ...f, price: Math.max(0, Number(e.target.value)) }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        price: Math.max(0, Number(e.target.value))
+                      }))
+                    }
                   />
-                  <div className="text-[11px] text-zinc-500 mt-0.5">{fmt(form.price)}</div>
+                  <div className="text-[11px] text-zinc-500">
+                    {fmt(form.price)}
+                  </div>
                 </div>
 
+                {/* Stock */}
                 <div>
                   <label className="text-xs text-zinc-400">Stock</label>
                   <input
                     type="number"
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.stock}
-                    onChange={e => setForm(f => ({ ...f, stock: Math.max(0, Number(e.target.value)) }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        stock: Math.max(0, Number(e.target.value))
+                      }))
+                    }
                   />
                 </div>
 
+                {/* Puffs */}
                 <div>
                   <label className="text-xs text-zinc-400">Puffs</label>
                   <input
                     type="number"
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.puffs}
-                    onChange={e => setForm(f => ({ ...f, puffs: Math.max(0, Number(e.target.value)) }))}
-                    placeholder="5000"
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        puffs: Math.max(0, Number(e.target.value))
+                      }))
+                    }
                   />
                 </div>
 
+                {/* ml */}
                 <div>
-                  <label className="text-xs text-zinc-400">Mililitros (ml)</label>
+                  <label className="text-xs text-zinc-400">ml</label>
                   <input
                     type="number"
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.ml}
-                    onChange={e => setForm(f => ({ ...f, ml: Math.max(0, Number(e.target.value)) }))}
-                    placeholder="10"
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        ml: Math.max(0, Number(e.target.value))
+                      }))
+                    }
                   />
                 </div>
 
+                {/* SKU */}
                 <div>
                   <label className="text-xs text-zinc-400">SKU</label>
                   <input
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100 uppercase"
                     value={form.sku}
-                    onChange={e => setForm(f => ({ ...f, sku: e.target.value.toUpperCase() }))}
-                    placeholder="VAPE-UV-5000"
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        sku: e.target.value.toUpperCase()
+                      }))
+                    }
                   />
                 </div>
 
+                {/* Categoría */}
                 <div>
                   <label className="text-xs text-zinc-400">Categoría</label>
                   <select
                     className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                     value={form.category}
-                    onChange={e => setForm(f => ({ ...f, category: e.target.value }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        category: e.target.value
+                      }))
+                    }
                   >
                     <option value="">— Selecciona —</option>
                     {cats.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
                     ))}
                   </select>
-                  <div className="text-[11px] text-zinc-500 mt-0.5">
-                    Administra categorías en el botón “Categorías”.
-                  </div>
                 </div>
 
-                {/* NUEVO: Toggle de sabores (crear) */}
+                {/* Sabores */}
                 <div className="flex items-center gap-2">
                   <input
-                    id="hasFlavors"
                     type="checkbox"
                     className="accent-sky-400"
                     checked={form.hasFlavors}
-                    onChange={e => setForm(f => ({
-                      ...f,
-                      hasFlavors: e.target.checked,
-                      ...(e.target.checked ? {} : { flavorsCSV: "" })
-                    }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        hasFlavors: e.target.checked,
+                        ...(e.target.checked ? {} : { flavorsCSV: "" })
+                      }))
+                    }
                   />
-                  <label htmlFor="hasFlavors" className="text-xs text-zinc-400">Producto con sabores</label>
+                  <label className="text-xs text-zinc-400">
+                    Producto con sabores
+                  </label>
                 </div>
 
                 {form.hasFlavors && (
                   <div className="sm:col-span-2">
-                    <label className="text-xs text-zinc-400">Sabores (separados por coma)</label>
+                    <label className="text-xs text-zinc-400">
+                      Sabores (coma)
+                    </label>
                     <input
                       className="w-full rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                       value={form.flavorsCSV}
-                      onChange={e => setForm(f => ({ ...f, flavorsCSV: e.target.value }))}
-                      placeholder="Uva, Menta, Sandía"
+                      onChange={e =>
+                        setForm(f => ({
+                          ...f,
+                          flavorsCSV: e.target.value
+                        }))
+                      }
                     />
                   </div>
                 )}
@@ -969,42 +1061,59 @@ const onSaveBanner = async () => {
                     {pluses.map(pl => {
                       const checked = form.pluses.includes(pl.name);
                       return (
-                        <label key={pl.id} className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100">
+                        <label
+                          key={pl.id}
+                          className="inline-flex items-center gap-2 rounded-md bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100"
+                        >
                           <input
                             type="checkbox"
                             className="accent-sky-400"
                             checked={checked}
                             onChange={() =>
-                              setForm(f => ({ ...f, pluses: toggleString(f.pluses, pl.name) }))
+                              setForm(f => ({
+                                ...f,
+                                pluses: toggleString(
+                                  f.pluses,
+                                  pl.name
+                                )
+                              }))
                             }
                           />
                           {pl.name}
                         </label>
                       );
                     })}
-                    {pluses.length === 0 && (
-                      <span className="text-xs text-zinc-500">No hay pluses. Crea algunos en el botón “Pluses”.</span>
-                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 mt-1">
+                {/* Visible */}
+                <div className="flex items-center gap-2">
                   <input
-                    id="visible"
                     type="checkbox"
                     className="accent-emerald-400"
                     checked={form.visible}
-                    onChange={e => setForm(f => ({ ...f, visible: e.target.checked }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        visible: e.target.checked
+                      }))
+                    }
                   />
-                  <label htmlFor="visible" className="text-xs text-zinc-400">Visible</label>
+                  <label className="text-xs text-zinc-400">Visible</label>
                 </div>
 
+                {/* Imagen */}
                 <div className="sm:col-span-2">
                   <label className="text-xs text-zinc-400">Imagen</label>
                   <input
                     type="file"
                     accept="image/*"
-                    onChange={e => setForm(f => ({ ...f, image: e.target.files?.[0] || null }))}
+                    onChange={e =>
+                      setForm(f => ({
+                        ...f,
+                        image: e.target.files?.[0] || null
+                      }))
+                    }
                     className="w-full text-xs text-zinc-300"
                   />
                   {imagePreview && (
@@ -1018,12 +1127,14 @@ const onSaveBanner = async () => {
               </div>
             </div>
 
-            {/* Footer fijo */}
             <div className="px-4 py-3 border-t border-stone-800 sticky bottom-0 bg-[#1a1d1f]">
               <div className="flex justify-end gap-2">
                 <button
                   className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm text-zinc-200 hover:bg-[#323230]"
-                  onClick={() => { setShowCreate(false); resetForm(); }}
+                  onClick={() => {
+                    setShowCreate(false);
+                    resetForm();
+                  }}
                 >
                   Cancelar
                 </button>
@@ -1039,12 +1150,17 @@ const onSaveBanner = async () => {
         </div>
       )}
 
-            {showBanner && (
+      {/* ====================== */}
+      {/* MODAL BANNER SIN IMAGEN */}
+      {/* ====================== */}
+      {showBanner && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
           <div className="w-full max-w-2xl rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
 
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-zinc-100">Banner de la semana</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Banner de la semana
+              </h2>
               <button
                 className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
                 onClick={() => setShowBanner(false)}
@@ -1052,143 +1168,127 @@ const onSaveBanner = async () => {
                 ✕
               </button>
             </div>
-              
-              <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
-              
-              {/* 🚨 CAMBIO NUEVO: Sección de Imagen del Banner */}
-              <div className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]">
-                 {/* 🚀 AÑADIR SELECTOR DE DÍA */}
-                <div className="mb-4">
-                    <label htmlFor="banner-day-select" className="block text-xs text-zinc-400 mb-1">
-                        Seleccionar Día a Configurar
-                    </label>
-                    <select
-                        id="banner-day-select"
-                        value={selectedDay}
-                        onChange={(e) => setSelectedDay(e.target.value as BannerDays)}
-                        className="w-full rounded-md bg-stone-900 border border-stone-700 text-sm text-zinc-100 p-2"
-                    >
-                        {daysOfWeek.map(day => (
-                            <option key={day} value={day}>{day}</option>
-                        ))}
-                    </select>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                    {/* 🚨 CORRECCIÓN: USAR bannerPreviewUrl (Resuelve el error de variable no usada) */}
-                    <img
-                        src={bannerPreviewUrl || bannerImageUrl || "https://picsum.photos/seed/banner/80"} 
-                        className="h-20 w-32 object-cover rounded-lg ring-1 ring-stone-800"
-                        alt={`Banner para ${selectedDay}`}
-                    />
-                    
-                    <label className="flex-1">
-                        <span className="text-xs text-zinc-400 block mb-1">
-                            Seleccionar Archivo para {selectedDay}
-                        </span>
-                        <input
-                            type="file"
-                            accept="image/*"
-                            // 🛑 CORRECCIÓN CLAVE: Actualiza el estado como un Record para el día seleccionado
-                            onChange={e => {
-                                const newFile = e.target.files?.[0] || null;
-                                setBannerImages(prev => ({
-                                    ...prev, // Mantén los archivos de otros días
-                                    [selectedDay]: newFile, // Actualiza solo el día actual
-                                }));
-                            }}
-                            className="w-full text-xs text-zinc-300"
-                        />
-                        <div className="text-[11px] text-zinc-500 mt-1">
-                            {/* Mostrar estado del archivo del día seleccionado */}
-                            {bannerImages[selectedDay] ? 
-                                `Archivo listo para ${selectedDay}: ${bannerImages[selectedDay]?.name}` : 
-                                "No hay imagen nueva seleccionada para este día."
-                            }
-                        </div>
-                    </label>
-                </div>
-            </div>
-              
-              {/* --- Separador de días (opcional) --- */}
+
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+
+              {/* Título */}
               <div className="border-t border-stone-800 pt-4">
-                  <h3 className="text-sm text-zinc-400 font-semibold mb-3">Configuración por Día</h3>
+                <h3 className="text-sm text-zinc-400 font-semibold mb-3">
+                  Configuración por día
+                </h3>
               </div>
 
-              {weekDays.map((day) => {
+              {/* Configuración por día */}
+              {weekDays.map(day => {
                 const selectedCat = bannerCategory[day] ?? "";
-                const filteredProducts = items.filter(p => p.category === selectedCat);
+                const filteredProducts = items.filter(
+                  p => p.category === selectedCat
+                );
 
                 return (
-                  <div key={day} className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]">
-                    <h3 className="text-sm text-zinc-200 font-semibold mb-2">{day}</h3>
+                  <div
+                    key={day}
+                    className="rounded-xl border border-stone-800 p-4 bg-[#0f1113]"
+                  >
+                    <h3 className="text-sm text-zinc-200 font-semibold mb-2">
+                      {day}
+                    </h3>
 
-                    {/* Select Categoría */}
+                    {/* Categoría */}
                     <div className="mb-2">
-                      <label className="text-xs text-zinc-400">Categoría</label>
+                      <label className="text-xs text-zinc-400">
+                        Categoría
+                      </label>
                       <select
                         className="w-full rounded-lg bg-[#1a1d1f] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                         value={selectedCat}
-                        onChange={(e) =>
-                          setBannerCategory(prev => ({ ...prev, [day]: e.target.value }))
+                        onChange={e =>
+                          setBannerCategory(prev => ({
+                            ...prev,
+                            [day]: e.target.value
+                          }))
                         }
                       >
-                        <option value="">— Selecciona categoría —</option>
+                        <option value="">— Selecciona —</option>
                         {cats.map(c => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
+                          <option key={c.id} value={c.name}>
+                            {c.name}
+                          </option>
                         ))}
                       </select>
                     </div>
 
-                    {/* Select Producto filtrado por categoría */}
+                    {/* Vape */}
                     <div>
-                      <label className="text-xs text-zinc-400">Vape del día</label>
+                      <label className="text-xs text-zinc-400">
+                        Vape del día
+                      </label>
                       <select
                         className="w-full rounded-lg bg-[#1a1d1f] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                         value={bannerVape[day] ?? ""}
-                        onChange={(e) =>
-                          setBannerVape(prev => ({ ...prev, [day]: e.target.value }))
+                        onChange={e =>
+                          setBannerVape(prev => ({
+                            ...prev,
+                            [day]: e.target.value
+                          }))
                         }
                         disabled={!selectedCat}
                       >
-                        <option value="">— Selecciona vape —</option>
-
-                        {filteredProducts.map((p) => (
+                        <option value="">— Selecciona —</option>
+                        {filteredProducts.map(p => (
                           <option key={p.id} value={p.id}>
                             {p.name} ({p.sku})
                           </option>
                         ))}
                       </select>
+                       {/* 🔥 TU INPUT DE DESCUENTO AQUÍ MISMO */}
+                    <div className="mt-2">
+                      <label className="text-xs text-zinc-400">Descuento (%)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        className="w-full rounded-lg bg-[#1a1d1f] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
+                        value={bannerDiscount[day] ?? 0}
+                        onChange={e =>
+                          setBannerDiscount(prev => ({
+                            ...prev,
+                            [day]: Number(e.target.value)
+                          }))
+                        }
+                      />
+                    </div>
                     </div>
                   </div>
+                  
                 );
+                
               })}
-
             </div>
+            
+              
 
-            {/* Botón Guardar */}
+            {/* Botón guardar */}
             <div className="mt-4 flex justify-end">
               <button
-
-                
                 className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-4 py-2 text-sm text-white"
                 onClick={onSaveBanner}
               >
                 Guardar banner
               </button>
             </div>
-
           </div>
         </div>
       )}
 
-
-      {/* Modal categorías */}
+      {/* MODAL CATEGORÍAS */}
       {showCats && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
           <div className="w-full max-w-lg rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-zinc-100">Categorías</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Categorías
+              </h2>
               <button
                 className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
                 onClick={() => setShowCats(false)}
@@ -1197,8 +1297,11 @@ const onSaveBanner = async () => {
               </button>
             </div>
 
+            {/* Crear categoría */}
             <div className="mb-3">
-              <label className="text-xs text-zinc-400">Nueva categoría</label>
+              <label className="text-xs text-zinc-400">
+                Nueva categoría
+              </label>
               <div className="flex gap-2">
                 <input
                   className="flex-1 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
@@ -1208,7 +1311,7 @@ const onSaveBanner = async () => {
                 />
                 <button
                   className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
-                  onClick={() => void onCreateCategory()}
+                  onClick={onCreateCategory}
                   disabled={catsLoading}
                 >
                   Crear
@@ -1216,44 +1319,29 @@ const onSaveBanner = async () => {
               </div>
             </div>
 
+            {/* Lista de categorías */}
             <div className="rounded-xl border border-stone-800 overflow-hidden">
               <div className="bg-[#0f1113] px-3 py-2 text-xs text-zinc-400">
-                {catsLoading ? "Cargando categorías…" : `Total: ${cats.length}`}
+                {catsLoading
+                  ? "Cargando..."
+                  : `Total: ${cats.length}`}
               </div>
-              <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
-                {catsOrdered.map((c) => {
-                  const draftFile = catDrafts[c.id]?.imageFile; // Obtener el archivo en borrador
-                  
-                  return (
-                  <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-3 py-2">
-                    {/* Información, Imagen y Home Order */}
-                    <div className="flex items-center gap-3 min-w-0">
-                      
-                      {/* 🚨 CAMBIO 3: Imagen y selector de archivo (guarda en borrador) */}
-                      <label className="relative" title="Cambiar imagen de categoría">
-                        <img
-                            // Usar el archivo en borrador para la previsualización, sino la URL existente
-                            src={draftFile ? URL.createObjectURL(draftFile) : c.imageUrl || `https://picsum.photos/seed/${c.id}/40`} 
-                            className="h-10 w-10 object-cover rounded-md ring-1 ring-stone-800 cursor-pointer"
-                            alt={c.name}
-                        />
-                        {/* Selector de archivo OCULTO para la imagen */}
-                        <input
-                            type="file"
-                            accept="image/*"
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={e => {
-                                const file = e.target.files?.[0];
-                                if (!file) return;
 
-                                // Guarda el archivo en el estado de borrador (catDrafts)
-                                setCatDraft(c.id, { imageFile: file });
-                                
-                                // Resetear el input para permitir subir el mismo archivo si se cancela
-                                e.target.value = ''; 
-                            }}
-                        />
-                      </label>
+              <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
+                {catsOrdered.map(c => (
+                  <li
+                    key={c.id}
+                    className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={
+                          c.imageUrl ||
+                          `https://picsum.photos/seed/${c.id}/40`
+                        }
+                        className="h-10 w-10 object-cover rounded-md ring-1 ring-stone-800"
+                        alt={c.name}
+                      />
 
                       <input
                         type="number"
@@ -1261,70 +1349,56 @@ const onSaveBanner = async () => {
                         value={c.homeOrder ?? 1000}
                         onChange={e => {
                           const val = Number(e.target.value);
-                          setCats(prev => prev.map(x => x.id === c.id ? { ...x, homeOrder: val } : x));
+                          setCats(prev =>
+                            prev.map(x =>
+                              x.id === c.id
+                                ? { ...x, homeOrder: val }
+                                : x
+                            )
+                          );
                         }}
-                        title="Orden en Home (menor sale primero)"
                       />
-                      <span className="text-sm text-zinc-100 truncate">{c.name}</span>
+
+                      <span className="text-sm text-zinc-100 truncate">
+                        {c.name}
+                      </span>
                     </div>
-                    
-                    {/* Botones de acción */}
+
                     <div className="flex items-center gap-2">
                       <button
                         className="rounded-md bg-amber-600 hover:bg-amber-700 px-2 py-1 text-xs text-white"
-                        // 🚨 CAMBIO 4: Lógica para guardar orden E imagen al hacer clic
                         onClick={async () => {
-                          const draftFile = catDrafts[c.id]?.imageFile;
-                          
                           try {
-                            // 1. GUARDAR ORDEN
-                            const updatedOrder = await patchCategory(c.id, { homeOrder: c.homeOrder ?? 1000 });
-
-                            // 2. GUARDAR IMAGEN SI HAY BORRADOR
-                            let finalCategory = updatedOrder;
-                            if (draftFile) {
-                                toast.info("Subiendo imagen de categoría...");
-                                // ⚠️ Llamada a la nueva función de servicio (patchCategoryImage)
-                                finalCategory = await patchCategoryImage(c.id, draftFile);
-                            }
-
-                            // 3. ACTUALIZAR ESTADO LOCAL Y LIMPIAR BORRADOR
-                            setCats(prev => prev.map(x => x.id === c.id ? finalCategory : x));
-                            setCatDrafts(prev => {
-                                const next = { ...prev };
-                                delete next[c.id]; // Limpiar borrador de imagen
-                                return next;
+                            const updated = await patchCategory(c.id, {
+                              homeOrder: c.homeOrder ?? 1000
                             });
-
-                            // 4. CAMBIO: Mensaje de éxito
-                            toast.success("Cambios guardados");
-                          } catch (error) {
-                            console.error(error);
-                            // 5. CAMBIO: Mensaje de error
-                            toast.error("No se pudieron guardar los cambios");
-                            
-                            // Si falla, recargar para revertir la imagen temporal si existía
-                            if (draftFile) {
-                                void loadCategories(); 
-                            }
+                            setCats(prev =>
+                              prev.map(x =>
+                                x.id === c.id ? updated : x
+                              )
+                            );
+                            toast.success("Guardado");
+                          } catch {
+                            toast.error("Error");
                           }
                         }}
                       >
-                        {/* 6. CAMBIO: Texto del botón */}
-                        Guardar Cambios 
+                        Guardar
                       </button>
                       <button
                         className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
-                        onClick={() => void onDeleteCategory(c.id)}
+                        onClick={() => onDeleteCategory(c.id)}
                       >
                         Eliminar
                       </button>
                     </div>
                   </li>
-                );
-                })}
+                ))}
+
                 {cats.length === 0 && !catsLoading && (
-                  <li className="px-3 py-3 text-sm text-zinc-400">No hay categorías</li>
+                  <li className="px-3 py-3 text-sm text-zinc-400">
+                    No hay categorías
+                  </li>
                 )}
               </ul>
             </div>
@@ -1341,12 +1415,14 @@ const onSaveBanner = async () => {
         </div>
       )}
 
-      {/* Modal pluses */}
+      {/* MODAL PLUSES */}
       {showPluses && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-3">
           <div className="w-full max-w-lg rounded-2xl border border-stone-800 bg-[#1a1d1f] p-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-zinc-100">Pluses</h2>
+              <h2 className="text-lg font-semibold text-zinc-100">
+                Pluses
+              </h2>
               <button
                 className="text-sm rounded-lg bg-[#2a2a28] border border-stone-700 px-2 py-1 text-zinc-200 hover:bg-[#323230]"
                 onClick={() => setShowPluses(false)}
@@ -1355,6 +1431,7 @@ const onSaveBanner = async () => {
               </button>
             </div>
 
+            {/* Crear plus */}
             <div className="mb-3">
               <label className="text-xs text-zinc-400">Nuevo plus</label>
               <div className="flex gap-2">
@@ -1362,11 +1439,11 @@ const onSaveBanner = async () => {
                   className="flex-1 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-sm text-zinc-100"
                   value={newPlus}
                   onChange={e => setNewPlus(e.target.value)}
-                  placeholder="Batería extra, Edición limitada…"
+                  placeholder="Batería extra"
                 />
                 <button
                   className="rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-1.5 text-sm text-white"
-                  onClick={() => void onCreatePlus()}
+                  onClick={onCreatePlus}
                   disabled={plusesLoading}
                 >
                   Crear
@@ -1374,24 +1451,36 @@ const onSaveBanner = async () => {
               </div>
             </div>
 
+            {/* Lista pluses */}
             <div className="rounded-xl border border-stone-800 overflow-hidden">
               <div className="bg-[#0f1113] px-3 py-2 text-xs text-zinc-400">
-                {plusesLoading ? "Cargando pluses…" : `Total: ${pluses.length}`}
+                {plusesLoading
+                  ? "Cargando..."
+                  : `Total: ${pluses.length}`}
               </div>
+
               <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
                 {pluses.map(pl => (
-                  <li key={pl.id} className="flex items-center justify-between px-3 py-2">
-                    <span className="text-sm text-zinc-100">{pl.name}</span>
+                  <li
+                    key={pl.id}
+                    className="flex items-center justify-between px-3 py-2"
+                  >
+                    <span className="text-sm text-zinc-100">
+                      {pl.name}
+                    </span>
                     <button
                       className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
-                      onClick={() => void onDeletePlus(pl.id)}
+                      onClick={() => onDeletePlus(pl.id)}
                     >
                       Eliminar
                     </button>
                   </li>
                 ))}
+
                 {pluses.length === 0 && !plusesLoading && (
-                  <li className="px-3 py-3 text-sm text-zinc-400">No hay pluses</li>
+                  <li className="px-3 py-3 text-sm text-zinc-400">
+                    No hay pluses
+                  </li>
                 )}
               </ul>
             </div>
@@ -1407,6 +1496,7 @@ const onSaveBanner = async () => {
           </div>
         </div>
       )}
+
     </div>
   );
 }

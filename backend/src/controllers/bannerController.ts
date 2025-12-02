@@ -85,12 +85,12 @@ export const updateBanner = async (req: Request, res: Response) => {
 export const updateBannerDay = async (req: Request, res: Response) => {
   try {
     const day = req.params.day as keyof BannerDays;
-    const { category, vapeId } = req.body as IBannerDay;
+    const { category, vapeId, descuento } = req.body as IBannerDay;
 
     let banner = await Banner.findOne();
     if (!banner) banner = await Banner.create({});
 
-    banner[day] = { category, vapeId };
+    banner[day] = { category, vapeId, descuento };
     await banner.save();
 
     res.json({ ok: true, banner });

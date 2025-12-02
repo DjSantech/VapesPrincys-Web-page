@@ -3,7 +3,8 @@ import { Schema, model, Document } from "mongoose";
 export interface IBannerDay {
   category: string;
   vapeId: string;
-  imageUrl?: string; // 👈 NUEVO
+  imageUrl?: string;
+  descuento: number // 👈 NUEVO
 }
 
 // 👇 EXPRTAMOS BannerDays (ANTES NO ESTABA EXPORTADO)
@@ -23,6 +24,7 @@ export interface IBanner extends Document, BannerDays {}
 const daySchema = new Schema<IBannerDay>({
   category: { type: String, required: true },
   vapeId: { type: String, required: true },
+   descuento: { type: Number, default: 0 },
 });
 
 const bannerSchema = new Schema<IBanner>(
