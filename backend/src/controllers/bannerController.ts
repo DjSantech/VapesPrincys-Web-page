@@ -14,11 +14,28 @@ const FOLDER_DESTINO = 'banners-princisvapes'
 export const getBanner = async (req: Request, res: Response) => {
   try {
     const banner = await Banner.findOne();
+
+    // Si nunca se ha creado un banner, devolvemos uno vacío
+    if (!banner) {
+      return res.json({
+        Lunes: null,
+        Martes: null,
+        Miércoles: null,
+        Jueves: null,
+        Viernes: null,
+        Sábado: null,
+        Domingo: null
+      });
+    }
+
     res.json(banner);
+    
   } catch (error) {
+    console.error("Error en GET /banner:", error);
     res.status(500).json({ error: "Error al obtener el banner" });
   }
 };
+
 
 export const updateBannerDayImage = async (req: FileRequest, res: Response) => {
     // 1. Validar el día de la semana y el archivo

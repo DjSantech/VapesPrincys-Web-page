@@ -3,7 +3,7 @@ import { Schema, model, Document } from "mongoose";
 export interface IBannerDay {
   category: string;
   vapeId: string;
-  imageUrl?: string;
+  bannerImageUrl?: string;
   descuento: number // 👈 NUEVO
 }
 
@@ -25,6 +25,7 @@ const daySchema = new Schema<IBannerDay>({
   category: { type: String, required: true },
   vapeId: { type: String, required: true },
    descuento: { type: Number, default: 0 },
+  bannerImageUrl: { type: String, default: "" },
 });
 
 const bannerSchema = new Schema<IBanner>(
