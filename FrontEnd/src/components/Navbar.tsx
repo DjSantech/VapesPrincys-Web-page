@@ -83,8 +83,12 @@ export default function Navbar() {
         <div className="h-16 flex items-center gap-3">
           {/* Brand */}
           <Link to="/" className="flex items-center gap-2 shrink-0">
-            <div className="h-9 w-9 rounded-xl bg-[#2a2a28] border border-stone-700 flex items-center justify-center">
-              <span className="text-sm font-bold text-zinc-200">VP</span>
+            <div className="h-9 w-9 rounded-xl bg-[#2a2a28] border border-stone-700 flex items-center justify-center overflow-hidden">
+              <img
+                src="/princys_img/logo.jpg"
+                alt="Logo"
+                className="h-full w-full object-cover"
+              />
             </div>
             <span className="hidden xs:inline text-lg sm:text-xl font-semibold tracking-wide text-zinc-100">
               Vapitos Princys
