@@ -16,6 +16,7 @@ import {
   createCategory,
   deleteCategoryById,
   patchCategory,
+  patchCategoryImage,
   type AdminCategory,
   getPluses,
   createPlus,
@@ -1355,13 +1356,10 @@ const onSaveBanner = async () => {
                 </button>
               </div>
             </div>
-
             {/* Lista de categorías */}
             <div className="rounded-xl border border-stone-800 overflow-hidden">
               <div className="bg-[#0f1113] px-3 py-2 text-xs text-zinc-400">
-                {catsLoading
-                  ? "Cargando..."
-                  : `Total: ${cats.length}`}
+                {catsLoading ? "Cargando..." : `Total: ${cats.length}`}
               </div>
 
               <ul className="max-h-72 overflow-auto divide-y divide-stone-800">
@@ -1371,15 +1369,53 @@ const onSaveBanner = async () => {
                     className="flex flex-wrap items-center justify-between gap-3 px-3 py-2"
                   >
                     <div className="flex items-center gap-3 min-w-0">
+
+                      {/* 🔥 Imagen editable */}
+                      <label className="relative cursor-pointer">
                       <img
-                        src={
-                          c.imageUrl ||
-                          `https://picsum.photos/seed/${c.id}/40`
-                        }
+                        src={c.imageUrl || `https://picsum.photos/seed/${c.id}/40`}
                         className="h-10 w-10 object-cover rounded-md ring-1 ring-stone-800"
                         alt={c.name}
                       />
 
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="absolute inset-0 opacity-0 cursor-pointer"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+
+                          // PREVIEW local rápido
+                          const preview = URL.createObjectURL(file);
+                          setCats(prev =>
+                            prev.map(x =>
+                              x.id === c.id ? { ...x, imageUrl: preview } : x
+                            )
+                          );
+
+                          try {
+                            // SUBIR al backend usando tu función
+                            const updated = await patchCategoryImage(c.id, file);
+
+
+                            // Actualizar la URL real que devuelve tu API
+                            setCats(prev =>
+                              prev.map(x =>
+                                x.id === c.id ? updated : x
+                              )
+                            );
+
+                            toast.success("Imagen de categoría actualizada");
+                          } catch (err) {
+                            toast.error("Error subiendo imagen");
+                            console.error(err);
+                          }
+                        }}
+                      />
+                    </label>
+
+                      {/* Orden en el home */}
                       <input
                         type="number"
                         className="w-16 rounded-lg bg-[#0f1113] ring-1 ring-stone-800 px-2 py-1 text-xs text-zinc-100"
@@ -1422,6 +1458,7 @@ const onSaveBanner = async () => {
                       >
                         Guardar
                       </button>
+
                       <button
                         className="rounded-md bg-red-600 hover:bg-red-700 px-2 py-1 text-xs text-white"
                         onClick={() => onDeleteCategory(c.id)}
@@ -1439,6 +1476,8 @@ const onSaveBanner = async () => {
                 )}
               </ul>
             </div>
+
+
 
             <div className="mt-3 text-right">
               <button
