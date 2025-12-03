@@ -23,7 +23,8 @@ import {
   type AdminPlus,
 } from "../services/admin";
 
-import { patchBannerData } from "../services/banner_services";
+import { patchBannerData,uploadBannerImage } from "../services/banner_services";
+import type { BannerWeek } from "../services/banner_services";
 
 
 
@@ -78,6 +79,7 @@ export default function AdminDashboard() {
       ),
     [cats]
   );
+
 
   // ===== Pluses =====
   const [pluses, setPluses] = useState<AdminPlus[]>([]);
@@ -139,7 +141,11 @@ export default function AdminDashboard() {
   const [bannerCategory, setBannerCategory] = useState<Record<string, string>>({});
   const [bannerVape, setBannerVape] = useState<Record<string, string>>({});
   const [bannerDiscount, setBannerDiscount] = useState<Record<string, number>>({});
+  
+  type BannerImageDrafts = Record<string, { imageFile?: File | null; previewUrl?: string }>;
+const [bannerImageDrafts, setBannerImageDrafts] = useState<BannerImageDrafts>({});
 
+  
 type BannerDays =
   | "Lunes"
   | "Martes"
@@ -158,6 +164,7 @@ type BannerDays =
   "Sábado",
   "Domingo",
 ];
+
 
   const loadBanner = async () => {
     try {
@@ -182,71 +189,6 @@ type BannerDays =
     }
   };
 
-  const onSaveBanner = async () => {
-    const toastId = toast.loading("Guardando banner...");
-
-    try {
-      const body = {
-        Lunes: bannerCategory["Lunes"]
-          ? {
-              category: bannerCategory["Lunes"],
-              vapeId: bannerVape["Lunes"],
-              descuento: bannerDiscount["Lunes"]
-            }
-          : null,
-        Martes: bannerCategory["Martes"]
-          ? {
-              category: bannerCategory["Martes"],
-              vapeId: bannerVape["Martes"],
-              descuento: bannerDiscount["Martes"]
-              
-            }
-          : null,
-        Miércoles: bannerCategory["Miércoles"]
-          ? {
-              category: bannerCategory["Miércoles"],
-              vapeId: bannerVape["Miércoles"],
-              descuento: bannerDiscount["Miércoles"]
-            }
-          : null,
-        Jueves: bannerCategory["Jueves"]
-          ? {
-              category: bannerCategory["Jueves"],
-              vapeId: bannerVape["Jueves"],
-              descuento: bannerDiscount["Jueves"]
-            }
-          : null,
-        Viernes: bannerCategory["Viernes"]
-          ? {
-              category: bannerCategory["Viernes"],
-              vapeId: bannerVape["Viernes"],
-              descuento: bannerDiscount["Viernes"]
-            }
-          : null,
-        Sábado: bannerCategory["Sábado"]
-          ? {
-              category: bannerCategory["Sábado"],
-              vapeId: bannerVape["Sábado"],
-              descuento: bannerDiscount["Sábado"]
-            }
-          : null,
-        Domingo: bannerCategory["Domingo"]
-          ? {
-              category: bannerCategory["Domingo"],
-              vapeId: bannerVape["Domingo"],
-              descuento: bannerDiscount["Domingo"]
-            }
-          : null
-      };
-
-      await patchBannerData(body);
-
-      toast.success("Banner guardado correctamente.", { id: toastId });
-      setShowBanner(false);
-    } catch  {
-      toast.error("Error guardando banner", { id: toastId });
-    }
-  };
 
   // ===== LOADERS =====
   const loadProducts = async () => {
@@ -259,6 +201,62 @@ type BannerDays =
       setLoading(false);
     }
   };
+
+const onSaveBanner = async () => {
+  const toastId = toast.loading("Guardando banner...");
+
+  try {
+    const days: BannerDays[] = [
+      "Lunes",
+      "Martes",
+      "Miércoles",
+      "Jueves",
+      "Viernes",
+      "Sábado",
+      "Domingo",
+    ];
+
+    const body: BannerWeek = {
+      Lunes: null,
+      Martes: null,
+      Miércoles: null,
+      Jueves: null,
+      Viernes: null,
+      Sábado: null,
+      Domingo: null,
+    };
+
+    for (const day of days) {
+      const category = bannerCategory[day];
+      const vapeId = bannerVape[day];
+      const descuento = bannerDiscount[day];
+
+      if (!category) {
+        body[day] = null;
+        continue;
+      }
+
+      // 1️⃣ Subir imagen SOLO si el usuario la cambió
+      if (bannerImageDrafts[day]?.imageFile) {
+          const res = await uploadBannerImage(day, bannerImageDrafts[day].imageFile);
+          bannerImageDrafts[day].previewUrl = res.bannerImageUrl;
+      }
+
+      // 2️⃣ NO ENVÍES bannerImageUrl desde frontend
+      body[day] = { category, vapeId, descuento };
+    }
+
+    await patchBannerData(body);
+
+    toast.success("Banner guardado correctamente.", { id: toastId });
+    setShowBanner(false);
+
+  } catch (error) {
+    console.error(error);
+    toast.error("Error guardando banner", { id: toastId });
+  }
+};
+
 
   const loadCategories = async () => {
     try {
@@ -1268,6 +1266,36 @@ type BannerDays =
                       />
                     </div>
                     </div>
+                    <div className="mt-4">
+                    <label className="text-xs text-zinc-400">Imagen del banner</label>
+
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="w-full bg-[#1a1d1f] border border-stone-800 rounded-lg px-2 py-1 text-sm text-zinc-100"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        if (!file) return;
+
+                        const previewUrl = URL.createObjectURL(file);
+
+                        setBannerImageDrafts(prev => ({
+                          ...prev,
+                          [day]: { imageFile: file, previewUrl }
+                        }));
+                      }}
+                    />
+
+                    {bannerImageDrafts[day]?.previewUrl && (
+                      <img
+                        src={bannerImageDrafts[day]!.previewUrl}
+                        alt="preview"
+                        className="mt-2 w-full h-40 object-cover rounded-lg border border-stone-700"
+                      />
+                    )}
+                  </div>
+
+                
                   </div>
                   
                 );

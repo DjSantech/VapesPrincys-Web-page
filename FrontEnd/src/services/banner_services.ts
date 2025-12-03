@@ -14,6 +14,14 @@ export interface BannerWeek {
   Sábado?: BannerDay | null;
   Domingo?: BannerDay | null;
 }
+export type BannerDayName =
+  | "Lunes"
+  | "Martes"
+  | "Miércoles"
+  | "Jueves"
+  | "Viernes"
+  | "Sábado"
+  | "Domingo";
 
 export async function getBanner(): Promise<BannerWeek | null> {
   const base =
@@ -33,6 +41,7 @@ export async function uploadBannerImage(day: string, file: File) {
     fd.append("image", file);
 
     const res = await fetch(`${base}/banner/${day}/image`, {
+
         method: "PATCH",
         headers: {
             // 🚀 Incluir el header de autorización
