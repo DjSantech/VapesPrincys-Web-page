@@ -94,15 +94,36 @@ export const updateBanner = async (req: Request, res: Response) => {
     if (!banner) {
       banner = await Banner.create(data);
     } else {
-      Object.assign(banner, data);
+      // 👇 Aquí reemplazamos Object.assign por actualización inteligente
+      for (const day of Object.keys(data)) {
+        const dayData = data[day as keyof IBanner];
+        
+        // Si el día viene vacío → mantener null
+        if (!dayData) {
+          banner[day] = null;
+          continue;
+        }
+
+        // 👇 Mantener la imagen PREVIAMENTE guardada
+        const previousUrl = banner[day]?.bannerImageUrl || null;
+
+        banner[day] = {
+          ...banner[day],        // ❗ mantiene bannerImageUrl
+          ...dayData,            // ❗ actualiza category, vapeId, descuento
+          bannerImageUrl: previousUrl, // ❗ se asegura de NO borrar la URL
+        };
+      }
+
       await banner.save();
     }
 
     res.json({ ok: true, banner });
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Error al actualizar el banner" });
   }
 };
+
 
 // PATCH /api/banner/:day  → Actualizar **solo un día**
 export const updateBannerDay = async (req: Request, res: Response) => {
