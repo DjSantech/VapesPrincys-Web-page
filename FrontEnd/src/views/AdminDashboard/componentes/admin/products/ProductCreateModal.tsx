@@ -55,7 +55,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
-  const availablePluses = ['SALUD', 'SALIDA', 'KIT THC', 'THC RECARGA', 'THC PLUS', 'SMOKE', 'DINAMICO', 'JUGOOSO', 'QUALITY', 'COMESTIBLE', 'UNLIMITED', 'VIP']; // Ajusta según tus datos
+  const availablePluses = ['']; // Ajusta según tus datos
 
   const handlePlusChange = (plusName: string, isChecked: boolean) => {
     if (isChecked) {

@@ -3,10 +3,7 @@
 import { useState } from "react";
 // Importa el tipo de producto completo que manejas en tu backend
 import type { AdminProduct } from "../../../../../services/admin"; 
-
-// Nota: DEBES CREAR una función de servicio como esta. 
-// Por ahora, solo usamos la interfaz, la función se simula en onSave.
-// import { updateProductFull } from "../../../../../services/admin"; 
+import { patchProduct } from "../../../../../services/products.service";
 
 
 // Componente auxiliar para simplificar los inputs
@@ -98,15 +95,24 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
 
     setIsSaving(true);
     try {
-        // Llama al servicio de actualización real
-        // const updatedProduct = await updateProductFull(formData.id, formData); 
-        
-        // SIMULACIÓN: En un entorno real, la línea de arriba se ejecutaría.
-        // Asumiendo que la actualización fue exitosa, usamos los datos del formulario:
-        const updatedProduct = formData; 
+        const updatedProduct = await patchProduct(product.id, {
+            sku: formData.sku,
+            name: formData.name,
+            price: formData.price,
+            description: formData.description,
+            stock: formData.stock,
+            puffs: formData.puffs,
+            ml: formData.ml,
+            visible: formData.visible,
+            category: formData.category,
+            flavors: formData.flavors,
+            hasFlavors: formData.hasFlavors,
+            pluses: formData.pluses,
+            // NOTA: Omitimos 'imageUrl' y 'images' ya que se actualizan con patchProductImage
+        });
 
-        // Notifica al componente padre y cierra el modal
-        onSave(updatedProduct); 
+        // 2. Ejecuta la función del padre (ProductsSection) con el producto que devolvió el servidor
+        onSave(updatedProduct);
     } catch (err) {
         console.error("Error al actualizar producto:", err);
         alert("Error al actualizar producto. Revisa la consola.");
@@ -142,6 +148,14 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
         
         {/* ID */}
         <p className="text-xs text-zinc-400">ID: {formData.id}</p>
+
+        <InputGroup 
+            label="Nombre del Producto" 
+            name="name" 
+            value={formData.name} 
+            onChange={handleChange} 
+            type="text" 
+        />
 
         {/* DESCRIPCIÓN */}
         <div>
