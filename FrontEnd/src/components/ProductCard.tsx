@@ -87,17 +87,20 @@ export default function ProductCard({
             </span>
           )}
         </div>
+        {/* 1. Mostrar Puffs (si existe) */}
+         {typeof puffs === "number" && puffs > 0 && (
+         <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
+          {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(puffs)} puffs
+          </p>
+          )}
 
-        {/* Mostrar puffs o ml */}
-        {typeof puffs === "number" && puffs > 0 ? (
-          <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
-            {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(puffs)} puffs
-          </p>
-        ) : typeof ml === "number" && ml > 0 ? (
-          <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
-            {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(ml)} ml
-          </p>
-        ) : null}
+        {/* 2. Mostrar ML (si existe) */}
+        {typeof ml === "number" && ml > 0 && (
+        <p className={`${(typeof puffs === "number" && puffs > 0) ? '' : 'mt-1'} text-[11px] sm:text-xs text-zinc-400`}>
+        {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(ml)} ml
+        </p>
+        )}
+                
       </div>
     </Link>
   );
