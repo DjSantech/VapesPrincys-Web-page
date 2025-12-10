@@ -9,7 +9,7 @@ import LoginView from "./views/LoginView";
 import RegisterView from "./views/RegisterView";
 import HomeView from "./views/HomeView";
 import ProductDetailPage from "./views/ProductDetailPage";
-import AdminDashboard from "./views/AdminDashborad";
+import AdminDashboard from "./views/AdminDashboard/AdminDashborad";
 
 import AdminRoute from "./routes/AdminRoute";
 
