@@ -107,6 +107,7 @@ async function fetchPublicCategories(): Promise<PublicCategory[]> {
 export default function HomeView() {
   const [params] = useSearchParams();
   const [items, setItems] = useState<Product[]>([]);
+  const [allLoadedProducts, setAllLoadedProducts] = useState<Product[]>([]);
   const [cats, setCats] = useState<PublicCategory[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [catsLoading, setCatsLoading] = useState<boolean>(true);
@@ -145,9 +146,13 @@ export default function HomeView() {
               )
             : undefined;
         
-        const data = await getProducts(cleanedFilters);
-        const visibles = data.filter(isVisibleProduct);
-        if (alive) setItems(visibles);
+            const data = await getProducts(cleanedFilters); 
+            
+            if (alive) setAllLoadedProducts(data);
+                    
+            
+            const visibles = data.filter(isVisibleProduct);
+            if (alive) setItems(visibles);
       } catch (e) {
         console.error("Error al obtener productos:", e);
         if (alive) setError("No pudimos cargar los productos.");
@@ -195,9 +200,9 @@ const todayBanner: BannerDay | null =
 const promoProduct = useMemo(() => {
   if (!todayBanner || !todayBanner.vapeId) return null;
 
-  return items.find(p => p.id === todayBanner.vapeId
-  ) ?? null;
-}, [todayBanner, items]);
+  return allLoadedProducts.find(p => p.id === todayBanner.vapeId
+   ) ?? null;
+}, [todayBanner, allLoadedProducts]);
 
 
 
