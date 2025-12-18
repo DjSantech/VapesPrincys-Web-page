@@ -334,6 +334,8 @@ const promoProduct = useMemo(() => {
       )}
 
       {promoProduct ? (
+        <div className="w-full overflow-hidden rounded-2xl shadow-lg 
+                    h-[140px] sm:h-[180px] md:h-[220px] lg:h-[250px]">
         <DailyPromotion
           productId={promoProduct.id}
           productName={promoProduct.name}
@@ -346,6 +348,7 @@ const promoProduct = useMemo(() => {
             discount={discount}
             finalPrice={finalPrice}
         />
+        </div>
       ) : (
         <p className="text-white/60">No hay promoción para hoy.</p>
       )}
