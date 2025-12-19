@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import  { useState } from 'react';
 import type { AdminProduct } from '../../services/admin';
 import { calculateWholesalePrice, MIN_WHOLESALE_QTY } from '../../utils/wholesaleUtils';
 
