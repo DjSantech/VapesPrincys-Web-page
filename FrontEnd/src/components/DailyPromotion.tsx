@@ -1,5 +1,6 @@
 // src/components/DailyPromotion.tsx
 import { Link } from "react-router-dom";
+import { optimizeImage } from "../utils/cloudinary";
 
 interface DailyPromotionProps {
   productId: string;
@@ -23,7 +24,7 @@ export default function DailyPromotion({
     >
       {/* 1. La Imagen: Ahora ocupa todo el espacio del contenedor */}
       <img
-        src={imageUrl}
+        src={optimizeImage(imageUrl, 1200)}
         alt={productName}
         className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
