@@ -21,35 +21,18 @@
     const [productToEdit, setProductToEdit] = useState<AdminProduct | null>(null);
 
 
-    // LÓGICA DE CREACIÓN (Devuelta desde AdminDashboard)
     const onCreate = async (data: CreateProductPayload) => {
-      try {
-        // Usamos todos los datos completos que vienen del modal detallado
-        const newP = await createProduct({
-          sku: data.sku,
-          name: data.name,
-          price: data.price,
-          image: data.image ?? null,
-          
-          description: data.description, 
-          stock: data.stock,
-          puffs: data.puffs,
-          ml: data.ml,
-          visible: data.visible,
-          category: data.category,
-          flavors: data.flavors,
-          hasFlavors: data.hasFlavors,
-          pluses: data.pluses,
-        });
+    try {
+      // 3. Como ahora los tipos coinciden, puedes pasar 'data' directamente
+      const newP = await createProduct(data);
 
-        setItems(prev => [...prev, newP]);
-        setShowCreate(false); // Cierra el modal
-      } catch (err) {
-        console.error(err);
-        alert("Error creando producto");
-      }
-    };
-
+      setItems(prev => [...prev, newP]);
+      setShowCreate(false); 
+    } catch (err) {
+      console.error(err);
+      alert("Error creando producto");
+    }
+  };
 
     // LÓGICA DE EDICIÓN (Mantenida aquí)
     const handleRowClick = (product: AdminProduct) => {
