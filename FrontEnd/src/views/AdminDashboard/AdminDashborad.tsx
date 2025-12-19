@@ -156,87 +156,80 @@ export default function AdminDashboard() {
   // =======================
   // RENDER
   // =======================
-return (
-    <div className="px-4 py-6">
+  return (
+  <div className="px-4 py-6 max-w-[1600px] mx-auto">
 
-      {/* HEADER: Nuevo diseño con título, búsqueda y botones */}
-      <div className="mb-8 flex items-center justify-between gap-4">
-        
-        {/* Título (Panel de administración) */}
-        <h1 className="text-2xl font-bold text-zinc-100 flex-shrink-0">
+    {/* HEADER RESPONSIVE */}
+    <div className="mb-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      
+      {/* Título y Buscador: Se agrupan para mejor control en tablets */}
+      <div className="flex flex-col md:flex-row md:items-center gap-4 flex-grow">
+        <h1 className="text-2xl font-bold text-zinc-100 whitespace-nowrap">
           Panel de administración
         </h1>
 
-        {/* Campo de Búsqueda */}
-        <input
-          type="text"
-          placeholder="Buscar productos..."
-          value={searchTerm} 
-          onChange={(e) => setSearchTerm(e.target.value)} 
-          className="w-full max-w-lg rounded-lg border-none bg-[#1e1e1e] p-3 text-zinc-200 placeholder:text-zinc-500 focus:ring-purple-600 focus:ring-2"
-        />
-
-        {/* Contenedor de Botones */}
-        <div className="flex gap-2 flex-wrap flex-shrink-0">
-          
-          {/* Botón Banner */}
-          <button
-            className="rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700 transition"
-            onClick={() => setShowBanner(true)}
-          >
-            Banner
-          </button>
-
-          {/* Botón Categorías (ABRE MODAL DE GESTIÓN) */}
-          <button
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 transition"
-            onClick={() => setShowCategoriesModal(true)}
-          >
-            Categorías
-          </button>
-          
-          {/* Botón Pluses (ABRE MODAL DE GESTIÓN) */}
-          <button
-            className="rounded-lg bg-cyan-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-cyan-600 transition"
-            onClick={() => setShowPlusesModal(true)}
-          >
-            Pluses
-          </button>
-
-          {/* Botón Agregar producto (ABRE MODAL DE CREACIÓN) */}
-          <button
-            className="rounded-lg bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 transition"
-            onClick={() => setShowAddProductModal(true)}
-          >
-            + Agregar producto
-          </button>
-
-          {/* Botón Cerrar sesión */}
-          <button
-            className="rounded-lg bg-[#2a2a28] border border-stone-700 px-3 py-1.5 text-sm font-medium text-zinc-200 hover:bg-[#323230] transition"
-            onClick={() => {
-              localStorage.removeItem("admin_token");
-              location.href = "/";
-            }}
-          >
-            Cerrar sesión
-          </button>
+        <div className="relative w-full max-w-lg">
+          <input
+            type="text"
+            placeholder="Buscar productos..."
+            value={searchTerm} 
+            onChange={(e) => setSearchTerm(e.target.value)} 
+            className="w-full rounded-lg border-none bg-[#1e1e1e] p-3 text-zinc-200 placeholder:text-zinc-500 focus:ring-purple-600 focus:ring-2"
+          />
         </div>
       </div>
 
-      {/* ======================= */}
-      {/* SECCIÓN PRODUCTOS (Se queda en la vista principal) */}
-      {/* ======================= */}
+      {/* Contenedor de Botones: Ahora con grid/flex ajustable */}
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+        
+        <button
+          className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700 transition"
+          onClick={() => setShowBanner(true)}
+        >
+          Banner
+        </button>
+
+        <button
+          className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+          onClick={() => setShowCategoriesModal(true)}
+        >
+          Categorías
+        </button>
+        
+        <button
+          className="rounded-lg bg-cyan-500 px-4 py-2 text-sm font-medium text-white hover:bg-cyan-600 transition"
+          onClick={() => setShowPlusesModal(true)}
+        >
+          Pluses
+        </button>
+
+        <button
+          className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition shadow-lg shadow-emerald-900/20"
+          onClick={() => setShowAddProductModal(true)}
+        >
+          + Agregar producto
+        </button>
+
+        <button
+          className="rounded-lg bg-zinc-800 border border-zinc-700 px-4 py-2 text-sm font-medium text-zinc-200 hover:bg-zinc-700 transition"
+          onClick={() => {
+            localStorage.removeItem("admin_token");
+            window.location.href = "/";
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
+    </div>
+
+    {/* SECCIÓN PRODUCTOS */}
+    <div className="overflow-x-auto">
       <ProductsSection
         items={filteredProducts}
         setItems={setProducts}
         loading={productsLoading}
       />
-
-      {/* NOTA: Se eliminaron las Secciones de Categorías y Pluses 
-        de la vista principal, ya que ahora solo se muestran dentro de sus modales.
-      */}
-
+    </div>
       {/* ======================= */}
       {/* MODAL BANNER */}
       {/* ======================= */}

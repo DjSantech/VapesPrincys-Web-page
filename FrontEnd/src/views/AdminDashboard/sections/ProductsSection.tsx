@@ -51,13 +51,7 @@
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-zinc-100">Productos</h2>
 
-          {/* BOTÓN AGREGAR PRODUCTO (Devuelto aquí) */}
-          <button
-            onClick={() => setShowCreate(true)}
-            className="bg-emerald-600 hover:bg-emerald-700 px-3 py-1 rounded text-white text-sm font-medium"
-          >
-            + Agregar Producto
-          </button>
+          
         </div>
 
         <ProductTable
