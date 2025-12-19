@@ -10,6 +10,7 @@ import RegisterView from "./views/RegisterView";
 import HomeView from "./views/HomeView";
 import ProductDetailPage from "./views/ProductDetailPage";
 import AdminDashboard from "./views/AdminDashboard/AdminDashborad";
+import WholesaleView from "./views/WholesaleView"; // 1. Importar la nueva vista
 
 import AdminRoute from "./routes/AdminRoute";
 
@@ -23,9 +24,11 @@ export default function Router() {
           <Route path="/auth/register" element={<RegisterView />} />
         </Route>
 
-        {/* Home bajo MainLayout */}
+        {/* Home y Mayoristas bajo MainLayout */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomeView />} />
+          {/* 2. Añadir la ruta de mayoristas aquí */}
+          <Route path="/mayoristas" element={<WholesaleView />} />
         </Route>
 
         {/* Detalle de producto bajo ProductLayout */}
@@ -33,7 +36,7 @@ export default function Router() {
           <Route path="/product/:id" element={<ProductDetailPage />} />
         </Route>
 
-        {/* Admin protegido por AdminRoute y con MainLayout (si quieres mantener el mismo layout) */}
+        {/* Admin protegido */}
         <Route element={<MainLayout />}>
           <Route
             path="/admin"
@@ -45,8 +48,6 @@ export default function Router() {
           />
         </Route>
 
-        {/* (Opcional) 404 */}
-        {/* <Route path="*" element={<NotFoundView />} /> */}
       </Routes>
     </BrowserRouter>
   );
