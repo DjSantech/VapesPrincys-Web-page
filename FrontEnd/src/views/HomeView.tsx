@@ -7,6 +7,7 @@ import ProductCard from "../components/ProductCard";
 import Container from "../components/Container";
 import DailyPromotion from "../components/DailyPromotion";
 import { getBanner } from "../services/admin";
+import { optimizeImage } from "../utils/cloudinary"; 
 import {
   type BannerWeek,
   type BannerDay
@@ -209,24 +210,27 @@ const promoProduct = useMemo(() => {
   // Grid reutilizable
   const Grid = ({ products }: { products: Product[] }) => (
     <div className="mt-4 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-      {products.map((p) => (
-        <ProductCard
-          key={p.id}
-          id={p.id}
-          name={p.name}
-          price={p.price}
-          imageUrl={p.imageUrl ?? (p.images && p.images.length > 0 ? p.images[0] : undefined)}
-          // 🚨 CORRECCIÓN LINTER: Se añade la descripción para la regla @ts-expect-error
-          // La propiedad 'brand' no existe en la interfaz 'Product', se asume que existe para ProductCard.
-          // @ts-expect-error Propiedad 'brand' no existe en la interfaz 'Product', se asume que existe para ProductCard.
-          brand={p.brand} 
-          categoryName={getCategoryNameFromProduct(p)}
-          pluses={p.pluses}
-          puffs={p.puffs}
-          ml={p.ml}
-          className="!p-0"
-        />
-      ))}
+      {products.map((p) => {
+        // 1. Aquí creamos la variable (dentro de las llaves)
+        const rawImageUrl = p.imageUrl ?? (p.images && p.images.length > 0 ? p.images[0] : undefined);
+
+        // 2. Ahora sí, devolvemos el componente con 'return'
+        return (
+          <ProductCard
+            key={p.id}
+            id={p.id}
+            name={p.name}
+            price={p.price}
+            imageUrl={optimizeImage(rawImageUrl || "", 500)}
+            brand={p.brand} 
+            categoryName={getCategoryNameFromProduct(p)}
+            pluses={p.pluses}
+            puffs={p.puffs}
+            ml={p.ml}
+            className="!p-0"
+          />
+        );
+      })}
     </div>
   );
 
@@ -339,12 +343,13 @@ const promoProduct = useMemo(() => {
         <DailyPromotion
           productId={promoProduct.id}
           productName={promoProduct.name}
-          imageUrl={
-            todayBanner?.bannerImageUrl ??
-            promoProduct.imageUrl ??
-            promoProduct.images?.[0] ??
-            "https://placehold.co/1600x500/000000/FFFFFF?text=Sin+imagen"
-          }
+          imageUrl={optimizeImage(
+              todayBanner?.bannerImageUrl ??
+              promoProduct.imageUrl ??
+              promoProduct.images?.[0] ??
+              "", 
+              1200
+            )}
             discount={discount}
             finalPrice={finalPrice}
         />
@@ -412,11 +417,12 @@ const promoProduct = useMemo(() => {
                 {/* 🚀 AÑADIR: La imagen como fondo semi-transparente */}
                 {cat.imageUrl && (
                   <img
-                  src={cat.imageUrl}
-                  alt={cat.name} // Importante para accesibilidad
-                  // Estilos: Ocupa el 100%, mantiene la relación rectangular (4/3)
+                  // ✅ 5. Las categorías son pequeñas, 400px es suficiente
+                  src={optimizeImage(cat.imageUrl, 400)}
+                  alt={cat.name}
                   className="w-full h-full object-cover transition duration-300 group-hover:scale-105 rounded-2xl" 
-                  style={{ aspectRatio: '4/3' }} 
+                  style={{ aspectRatio: '4/3' }}
+                  loading="lazy" // Ayuda a no cargar todo al inicio
                 />
                 )}
               </a>

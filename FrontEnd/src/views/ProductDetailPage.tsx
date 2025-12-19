@@ -6,6 +6,7 @@ import { getProductById } from "../services/products_service";
 import type { Product } from "../types/Product";
 import { useCart } from "../store/cart_info";
 import type { CartItem } from "../types/Cart";
+import { optimizeImage } from "../utils/cloudinary"; // ✅ Importación lista
 
 /* ==== Helpers ==== */
 const formatCOP = (pesos: number) =>
@@ -280,11 +281,11 @@ export default function ProductDetailPage() {
     usesFlavors && availableFlavors.length > 0;
 
   /* ==== IMAGEN ==== */
-  const img: string =
+  const rawImg: string =
     product.imageUrl ||
     product.images?.[0] ||
     "https://picsum.photos/900";
-
+  const img = optimizeImage(rawImg, 1000);
   const inStock: number = product.stock ?? 0;
 
   /* ==== PRECIO CON DESCUENTO ==== */
@@ -366,7 +367,7 @@ export default function ProductDetailPage() {
             src={img}
             alt={product.name}
             className="w-full h-full object-cover"
-            loading="lazy"
+            loading="eager"
           />
         </div>
 

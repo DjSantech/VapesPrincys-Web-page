@@ -1,5 +1,6 @@
 // src/components/ProductCard.tsx
 import { Link } from "react-router-dom";
+import { optimizeImage } from "../utils/cloudinary"; // ✅ Importación lista
 
 export type ProductCardProps = {
   id: string;
@@ -7,9 +8,11 @@ export type ProductCardProps = {
   price: number;
   imageUrl?: string;
   className?: string;
+  categoryName?: string;
+  brand?: string;
   pluses?: string[];
   puffs?: number;
-  ml?: number; // ✅ nuevo campo
+  ml?: number;
 };
 
 const formatPrice = (pesos: number) =>
@@ -30,7 +33,10 @@ export default function ProductCard({
   ml,
 }: ProductCardProps) {
   const fallback = "https://picsum.photos/seed/vape/600/600";
-  const img = imageUrl || fallback;
+  
+  // ✅ Aplicamos la optimización aquí
+  // Usamos 600 como ancho máximo para que se vea bien en móviles y escritorio
+  const img = imageUrl ? optimizeImage(imageUrl, 600) : fallback;
 
   const hasPlus = Array.isArray(pluses) && pluses.length > 0;
   const mainPlus = hasPlus ? String(pluses[0] ?? "").toUpperCase() : "";
@@ -47,9 +53,9 @@ export default function ProductCard({
       {/* Imagen */}
       <div className="relative overflow-hidden bg-black/20">
         <img
-          src={img}
+          src={img} // ✅ URL optimizada (f_auto, q_auto, w_600)
           alt={name}
-          loading="lazy"
+          loading="lazy" // ✅ Mantiene el lazy loading para no gastar ancho de banda innecesario
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src = fallback;
           }}
@@ -87,14 +93,15 @@ export default function ProductCard({
             </span>
           )}
         </div>
-        {/* 1. Mostrar Puffs (si existe) */}
+        
+        {/* Puffs */}
          {typeof puffs === "number" && puffs > 0 && (
          <p className="mt-1 text-[11px] sm:text-xs text-zinc-400">
           {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(puffs)} puffs
           </p>
           )}
 
-        {/* 2. Mostrar ML (si existe) */}
+        {/* ML */}
         {typeof ml === "number" && ml > 0 && (
         <p className={`${(typeof puffs === "number" && puffs > 0) ? '' : 'mt-1'} text-[11px] sm:text-xs text-zinc-400`}>
         {new Intl.NumberFormat("es-CO", { maximumFractionDigits: 0 }).format(ml)} ml

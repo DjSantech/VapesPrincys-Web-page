@@ -4,6 +4,7 @@ import { Schema, model, InferSchemaType } from "mongoose";
 const productSchema = new Schema({
   sku: { type: String, required: true, unique: true, index: true, trim: true },
   name:     { type: String, required: true, trim: true },
+  brand: { type: String, default: "", trim: true },
   puffs:    { type: Number, required: true, min: 0 },
   ml:       { type: Number, required: true, min: 0 },
   price:    { type: Number, required: true, min: 0 },   // en centavos

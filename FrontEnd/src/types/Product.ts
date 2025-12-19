@@ -1,7 +1,8 @@
 export interface Product {
   id: string;
   name: string;
-  price: number;        // en centavos
+  price: number;       // en centavos
+  brand?: string;    // opcional
   description?: string; // opcional
   stock?: number;       // opcional
   puffs?: number;      // opcional

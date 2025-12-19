@@ -1,4 +1,5 @@
 import type { AdminProduct } from "../../../../../services/admin";
+import { optimizeImage } from "../../../../../utils/cloudinary";
 
 interface ProductRowProps {
   p: AdminProduct;
@@ -21,7 +22,7 @@ export function ProductRow({ p, onUploadImage, onDelete, onRowClick }: ProductRo
       <td className="px-3 py-2">
         <label className="cursor-pointer">
           <img
-            src={p.imageUrl}
+            src={optimizeImage(p.imageUrl || "", 150)}
             className="h-12 w-12 object-cover rounded-md ring-1 ring-stone-700"
           />
           <input

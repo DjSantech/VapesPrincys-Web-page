@@ -1,3 +1,4 @@
+import imageCompression from "browser-image-compression";
 import type {
   AdminProduct,
   CreateProductPayload,
@@ -27,6 +28,21 @@ export async function createProduct(
   payload: CreateProductPayload
 ): Promise<AdminProduct> {
   const fd = new FormData();
+  // Lógica de compresión
+  if (payload.image) {
+    const options = {
+      maxSizeMB: 0.8, // Máximo 800KB
+      maxWidthOrHeight: 1200,
+      useWebWorker: true
+    };
+    try {
+      const compressedFile = await imageCompression(payload.image, options);
+      fd.append("image", compressedFile);
+    } catch (error) {
+      console.error("Error comprimiendo imagen", error);
+      fd.append("image", payload.image); // fallback si falla
+    }
+  }
   fd.append("sku", payload.sku);
   fd.append("name", payload.name);
   if (payload.description) fd.append("description", payload.description);
