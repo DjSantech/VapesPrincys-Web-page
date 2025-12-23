@@ -1,35 +1,41 @@
 import { useState } from 'react';
 import { calculateWholesalePrice } from '../utils/wholesaleUtils';
+import type { AdminProduct } from '../services/admin.types';
 
 export interface WholesaleItem {
   productId: string;
   name: string;
   flavor: string;
   quantity: number;
-  unitPrice: number; // El precio unitario base (sin descuento aún)
-  totalPriceWithDiscount: number; // El precio final calculado
+  // Guardamos el producto completo para tener acceso a sus wholesaleRates en cualquier momento
+  product: AdminProduct; 
+  totalPriceWithDiscount: number; 
 }
 
 export function useWholesaleCart() {
   const [cart, setCart] = useState<WholesaleItem[]>([]);
 
-  const addToCart = (item: Omit<WholesaleItem, 'totalPriceWithDiscount'>) => {
+  const addToCart = (product: AdminProduct, flavor: string, quantity: number) => {
     setCart(prev => {
-      // Calculamos el precio real aquí mismo usando la utilidad importada
-      // Esto garantiza que el descuento sea correcto según la cantidad enviada
-      const realUnitPrice = calculateWholesalePrice(item.unitPrice, item.quantity);
+      // 1. Calculamos el precio unitario correcto usando el objeto producto completo
+      const realUnitPrice = calculateWholesalePrice(product, quantity);
       
       const newItem: WholesaleItem = {
-        ...item,
+        productId: product.id,
+        name: product.name,
+        flavor: flavor,
+        quantity: quantity,
+        product: product,
         totalPriceWithDiscount: realUnitPrice
       };
 
       const existingIndex = prev.findIndex(
-        i => i.productId === item.productId && i.flavor === item.flavor
+        i => i.productId === product.id && i.flavor === flavor
       );
 
       if (existingIndex > -1) {
         const newCart = [...prev];
+        // Si ya existe, reemplazamos con la nueva cantidad y el nuevo precio calculado
         newCart[existingIndex] = newItem;
         return newCart;
       }
@@ -38,7 +44,7 @@ export function useWholesaleCart() {
     });
   };
 
-  // Cálculo del total general del carrito
+  // El total es: precio_con_descuento * cantidad
   const total = cart.reduce((acc, item) => acc + (item.totalPriceWithDiscount * item.quantity), 0);
 
   return { cart, addToCart, total };
