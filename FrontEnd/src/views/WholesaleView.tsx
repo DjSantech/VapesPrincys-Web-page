@@ -2,30 +2,38 @@ import { useEffect, useState } from 'react';
 import { getProducts, type AdminProduct } from '../services/admin';
 import { WholesaleTable } from '../components/wholesale/WholesaleTable';
 import { useWholesaleCart } from '../hooks/useWholesaleCart';
-
 export default function WholesaleView() {
-  const handleSendWhatsApp = () => {
-  if (cart.length === 0) return;
-
-  const phoneNumber = "573043602980"; // Reemplaza con tu número real
-  let message = "¡Hola! Quisiera realizar un pedido mayorista:%0A%0A";
-
-  cart.forEach((item) => {
-    message += `• *${item.name}* (${item.flavor})%0A`;
-    message += `  Cantidad: ${item.quantity} | Precio Unit: $${item.totalPriceWithDiscount.toLocaleString()}%0A`;
-  });
-
-  message += `%0A*TOTAL ESTIMADO: $${total.toLocaleString()}*`;
-
-  window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
-};
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const { cart, addToCart, total } = useWholesaleCart();
+
+  // 1. Creamos esta función para "adaptar" lo que manda la tabla a lo que recibe el hook
+  const handleAddToCart = (item: { productId: string; flavor: string; quantity: number }) => {
+    // Buscamos el objeto producto completo que corresponde al id
+    const fullProduct = products.find(p => p.id === item.productId);
+    
+    if (fullProduct) {
+      // Llamamos al hook con los 3 argumentos que espera
+      addToCart(fullProduct, item.flavor, item.quantity);
+    }
+  };
+
+  const handleSendWhatsApp = () => {
+    if (cart.length === 0) return;
+    const phoneNumber = "573043602980";
+    let message = "¡Hola! Quisiera realizar un pedido mayorista:%0A%0A";
+
+    cart.forEach((item) => {
+      message += `• *${item.name}* (${item.flavor})%0A`;
+      message += `   Cantidad: ${item.quantity} | Precio Unit: $${item.totalPriceWithDiscount.toLocaleString()}%0A`;
+    });
+
+    message += `%0A*TOTAL ESTIMADO: $${total.toLocaleString()}*`;
+    window.open(`https://wa.me/${phoneNumber}?text=${message}`, "_blank");
+  };
 
   useEffect(() => {
     async function load() {
       const data = await getProducts();
-      // FILTRO: No mostrar productos de categorías "Promociones" o "Combos"
       const filtered = data.filter(p => 
         p.category?.toLowerCase() !== 'promociones' && 
         p.category?.toLowerCase() !== 'combos'
@@ -51,13 +59,14 @@ export default function WholesaleView() {
         </div>
       </header>
 
-      <WholesaleTable products={products} onAdd={addToCart} />
+      {/* 2. Usamos la función intermediaria en lugar de pasarle addToCart directamente */}
+      <WholesaleTable products={products} onAdd={handleAddToCart} />
 
       {cart.length > 0 && (
         <div className="fixed bottom-8 right-8">
           <button 
-          onClick={handleSendWhatsApp}
-          className="bg-white text-black px-8 py-4 rounded-full font-bold shadow-2xl hover:scale-105 transition">
+            onClick={handleSendWhatsApp}
+            className="bg-white text-black px-8 py-4 rounded-full font-bold shadow-2xl hover:scale-105 transition">
             Finalizar Pedido ({cart.length})
           </button>
         </div>
