@@ -8,6 +8,7 @@ import Container from "../components/Container";
 import DailyPromotion from "../components/DailyPromotion";
 import { getBanner } from "../services/admin";
 import { optimizeImage } from "../utils/cloudinary"; 
+import AnnouncementModal from '../components/AnnouncementModal';
 import {
   type BannerWeek,
   type BannerDay
@@ -318,6 +319,10 @@ const promoProduct = useMemo(() => {
    Render
    ========================= */
   return (
+    <div className="relative">
+      {/* Colócalo al principio del return */}
+      <AnnouncementModal  
+      />
     <Container>
       <div className="mb-10">
       {promoProduct && (
@@ -453,5 +458,6 @@ const promoProduct = useMemo(() => {
         </div>
       )}
     </Container>
+    </div>
   );
 }

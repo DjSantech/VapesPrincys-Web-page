@@ -9,6 +9,7 @@ import productsRouter from "./routes/products_routes";
 import plusesRouter from "./routes/pluses_routes";
 import bannerRoutes from "./routes/banner_routes";
 import CategoriesRouter from "./routes/categories_routes";
+import adminSettingsRoutes from "./routes/adminSettings.routes";
 
 const app = express();
 
@@ -29,6 +30,7 @@ app.use("/api/products", productsRouter);
 app.use("/api/categories", CategoriesRouter);
 app.use("/api/pluses", plusesRouter);
 app.use("/api/banner", bannerRoutes);
+app.use("/api/settings", adminSettingsRoutes);
 console.log("Pluses router mounted at /api/pluses");
 
 app.get("/api/health", (_req, res) => res.json({ ok: true }));
