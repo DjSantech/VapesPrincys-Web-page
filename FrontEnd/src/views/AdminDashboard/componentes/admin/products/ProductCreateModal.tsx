@@ -61,6 +61,11 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
   const [pluses, setPluses] = useState<string[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [wholesaleRates, setWholesaleRates] = useState({
+    tier1: 0,
+    tier2: 0,
+    tier3: 0
+  });
 
   // --- 2. EFECTO DE CARGA INICIAL ---
   useEffect(() => {
@@ -111,6 +116,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
       flavors,
       pluses,
       visible, 
+      wholesaleRates,
     };
 
     onCreate(payload);
@@ -184,6 +190,34 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
                 <label htmlFor="visible" className="text-sm text-zinc-200">Visible</label>
               </div>
             </div>
+
+            <div className="col-span-full mt-4 p-4 bg-zinc-900/50 rounded-xl border border-emerald-500/20">
+            <h4 className="text-emerald-400 text-sm font-bold mb-3 uppercase tracking-wider">Precios de Mayoreo (Tiers)</h4>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <InputGroup 
+                label="Tier 1 (10-30 u.)" 
+                name="tier1" 
+                value={wholesaleRates.tier1} 
+                onChange={(e) => setWholesaleRates({...wholesaleRates, tier1: +e.target.value})} 
+                type="number" 
+              />
+              <InputGroup 
+                label="Tier 2 (31-50 u.)" 
+                name="tier2" 
+                value={wholesaleRates.tier2} 
+                onChange={(e) => setWholesaleRates({...wholesaleRates, tier2: +e.target.value})} 
+                type="number" 
+              />
+              <InputGroup 
+                label="Tier 3 (51+ u.)" 
+                name="tier3" 
+                value={wholesaleRates.tier3} 
+                onChange={(e) => setWholesaleRates({...wholesaleRates, tier3: +e.target.value})} 
+                type="number" 
+              />
+            </div>
+          </div>
+
 
             <div className="mt-4">
               <label className="block text-sm font-medium text-zinc-400 mb-1">Sabores (separados por coma)</label>

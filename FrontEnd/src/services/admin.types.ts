@@ -1,4 +1,9 @@
 // src/services/admin.types.ts
+export interface WholesaleRates {
+  tier1: number; // 10 a 30 unidades
+  tier2: number; // 31 a 50 unidades
+  tier3: number; // 51 a 80 unidades
+}
 
 export interface AdminProduct {
   id: string;
@@ -15,6 +20,7 @@ export interface AdminProduct {
   flavors: string[];
   hasFlavors: boolean;
   pluses?: string[];
+  wholesaleRates: WholesaleRates;
 }
 
 export interface CreateProductPayload {
@@ -31,6 +37,7 @@ export interface CreateProductPayload {
   flavors?: string[];
   hasFlavors: boolean;
   pluses?: string[];
+  wholesaleRates: WholesaleRates;
 }
 
 export type PatchProductPayload = Partial<
@@ -48,6 +55,7 @@ export type PatchProductPayload = Partial<
       | "pluses"
       | "ml"
       | "hasFlavors"
+      | "wholesaleRates"
   >
 >;
 

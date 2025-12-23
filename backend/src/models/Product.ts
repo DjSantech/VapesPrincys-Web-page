@@ -1,20 +1,26 @@
-// src/models/Product.ts
 import { Schema, model, InferSchemaType } from "mongoose";
 
 const productSchema = new Schema({
   sku: { type: String, required: true, unique: true, index: true, trim: true },
-  name:     { type: String, required: true, trim: true },
+  name:      { type: String, required: true, trim: true },
   brand: { type: String, default: "", trim: true },
   puffs:    { type: Number, required: true, min: 0 },
   ml:       { type: Number, required: true, min: 0 },
-  price:    { type: Number, required: true, min: 0 },   // en centavos
+  price:    { type: Number, required: true, min: 0 },   // precio base público
   stock:    { type: Number, default: 0, min: 0 },
   imageUrl: { type: String, default: "" },
   category: { type: Schema.Types.ObjectId, ref: "Category", default: null },
   isActive: { type: Boolean, default: true },
   description: { type: String, default: "", trim: true },
   hasFlavors: { type: Boolean, default: false },
-  // Sabores (lista de strings, sin duplicados)
+  
+  // 🚩 NUEVA PROPIEDAD: Precios de mayoreo por niveles
+  wholesaleRates: {
+    tier1: { type: Number, default: 0, min: 0 }, // 10 a 30 unidades
+    tier2: { type: Number, default: 0, min: 0 }, // 31 a 50 unidades
+    tier3: { type: Number, default: 0, min: 0 }  // 51 a 80 unidades
+  },
+
   flavors: {
     type: [String],
     default: [],
@@ -26,9 +32,7 @@ const productSchema = new Schema({
       message: "Los sabores no pueden repetirse"
     }
   },
-  
 
-  // NUEVO: Pluses (lista de nombres de plus, sin duplicados)
   pluses: {
     type: [String],
     default: [],
@@ -42,19 +46,15 @@ const productSchema = new Schema({
   }
 }, { timestamps: true });
 
+// Middleware para formatear datos antes de validar
 productSchema.pre("validate", function (next) {
-  // @ts-ignore
   if (this.sku) this.sku = String(this.sku).trim().toUpperCase();
 
-  // @ts-ignore
   if (Array.isArray(this.flavors)) {
-    // @ts-ignore
     this.flavors = this.flavors.map((s: string) => s.trim()).filter(Boolean);
   }
 
-  // @ts-ignore
   if (Array.isArray(this.pluses)) {
-    // @ts-ignore
     this.pluses = this.pluses.map((s: string) => s.trim()).filter(Boolean);
   }
 

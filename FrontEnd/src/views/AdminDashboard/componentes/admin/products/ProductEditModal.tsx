@@ -41,9 +41,13 @@ interface ProductEditModalProps {
 
 export function ProductEditModal({ product, onClose, onSave }: ProductEditModalProps) {
   // Inicializamos el estado del formulario con los datos del producto
-  const [formData, setFormData] = useState<AdminProduct>(product);
+  const [formData, setFormData] = useState<AdminProduct>({
+    ...product,
+    wholesaleRates: product.wholesaleRates || { tier1: 0, tier2: 0, tier3: 0 }
+  });
   const [isSaving, setIsSaving] = useState(false);
 
+  
   // Lista de Pluses disponibles (usada para renderizar los checkboxes, DEBES AJUSTAR ESTO)
   // Idealmente, esta lista vendría del AdminDashboard como una prop.
   const availablePluses = ['SALUD', 'SALIDA', 'KIT THC', 'THC RECARGA', 'THC PLUS', 'SMOKE', 'DINAMICO', 'JUGOOSO', 'QUALITY', 'COMESTIBLE', 'UNLIMITED', 'VIP'];
@@ -69,6 +73,17 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
         }));
     }
   };
+  // 2. NUEVO: Handler específico para los niveles de mayoreo
+  // Esto permite actualizar tier1, tier2 o tier3 sin perder los otros valores
+  const handleTierChange = (tier: keyof typeof formData.wholesaleRates, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      wholesaleRates: {
+        ...prev.wholesaleRates,
+        [tier]: Number(value)
+      }
+    }));
+};
   
   // Manejar cambios en Pluses (Checkboxes)
   const handlePlusChange = (plusName: string, isChecked: boolean) => {
@@ -126,7 +141,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center backdrop-blur-sm z-50">
       <div className="bg-[#0f1113] p-6 rounded-xl border border-stone-800 space-y-4 w-full max-w-5xl max-h-[90vh] overflow-y-auto text-zinc-100">
 
-        {/* HEADER DEL MODAL (similar a la imagen) */}
+        {/* HEADER DEL MODAL */}
         <div className="flex items-center justify-between pb-3 border-b border-stone-700">
             <h3 className="text-xl font-semibold text-zinc-100">{formData.name}</h3>
             <div className="flex gap-2">
@@ -171,23 +186,12 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
 
         {/* GRID DE CAMPOS PRINCIPALES */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-            
-            {/* SKU */}
             <InputGroup label="SKU" name="sku" value={formData.sku} onChange={handleChange} type="text" />
-            
-            {/* PRECIO */}
-            <InputGroup label="Precio (COP)" name="price" value={formData.price} onChange={handleChange} type="number" />
-            
-            {/* STOCK */}
+            <InputGroup label="Precio Base (COP)" name="price" value={formData.price} onChange={handleChange} type="number" />
             <InputGroup label="Stock" name="stock" value={formData.stock} onChange={handleChange} type="number" />
-            
-            {/* PUFFS */}
             <InputGroup label="Puffs" name="puffs" value={formData.puffs} onChange={handleChange} type="number" />
-            
-            {/* ML */}
             <InputGroup label="ml" name="ml" value={formData.ml} onChange={handleChange} type="number" />
 
-            {/* CATEGORÍA (DEBE SER UN SELECT EN PRODUCCIÓN) */}
             <div className="space-y-1">
                 <label className="block text-sm font-medium text-zinc-400">Categoría</label>
                 <select
@@ -196,20 +200,15 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
                     onChange={(e) => handleChange(e as React.ChangeEvent<HTMLSelectElement>)}
                     className="w-full bg-[#141619] px-3 py-2 rounded ring-1 ring-stone-800 text-sm text-zinc-100 h-10 appearance-none"
                 >
-                    {/* Placeholder si no hay categorías disponibles */}
                     <option value="" disabled>Seleccionar Categoría</option> 
-                    {/* Idealmente, mapearías las categorías pasadas como props: */}
-                    {/* {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)} */}
                     <option value="POPULARES">POPULARES</option>
                     <option value="NOVEDADES">NOVEDADES</option>
-                    {/* Valor actual si no coincide con opciones */}
                     {formData.category && !['POPULARES', 'NOVEDADES'].includes(formData.category) && (
                         <option value={formData.category}>{formData.category} (Personalizada)</option>
                     )}
                 </select>
             </div>
 
-            {/* PRODUCTO CON SABORES */}
             <div className="flex items-center space-x-2 pt-6">
                 <input
                     id="hasFlavors"
@@ -222,7 +221,6 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
                 <label htmlFor="hasFlavors" className="text-sm text-zinc-200">Producto con sabores</label>
             </div>
 
-             {/* VISIBLE */}
             <div className="flex items-center space-x-2 pt-6">
                 <input
                     id="visible"
@@ -236,28 +234,61 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             </div>
         </div>
 
+        {/* 🚩 NUEVA SECCIÓN: CONFIGURACIÓN DE MAYOREO */}
+        <div className="mt-6 p-4 bg-zinc-900 rounded-xl border border-orange-500/20">
+            <h4 className="text-orange-400 text-xs font-black mb-4 uppercase tracking-widest">Configuración de Descuentos por Niveles</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 1: 10 a 30 u.</label>
+                    <input
+                        type="number"
+                        value={formData.wholesaleRates.tier1}
+                        onChange={(e) => handleTierChange('tier1', e.target.value)}
+                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
+                        placeholder="Precio T1"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 2: 31 a 50 u.</label>
+                    <input
+                        type="number"
+                        value={formData.wholesaleRates.tier2}
+                        onChange={(e) => handleTierChange('tier2', e.target.value)}
+                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
+                        placeholder="Precio T2"
+                    />
+                </div>
+                <div className="space-y-1">
+                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 3: 51+ u.</label>
+                    <input
+                        type="number"
+                        value={formData.wholesaleRates.tier3}
+                        onChange={(e) => handleTierChange('tier3', e.target.value)}
+                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
+                        placeholder="Precio T3"
+                    />
+                </div>
+            </div>
+        </div>
+
         {/* SABORES */}
         <div className="mt-4">
-            <label className="block text-sm font-medium text-zinc-400 mb-1">Sabores (coma)</label>
+            <label className="block text-sm font-medium text-zinc-400 mb-1">Sabores (separados por coma)</label>
             <input
                 name="flavors"
-                // Muestra el array de sabores como una cadena separada por coma
-                value={formData.flavors.join(', ') || ''} 
+                value={formData.flavors.join(', ')} 
                 onChange={(e) => {
-                    // Actualiza el estado como array de strings
                     setFormData(prev => ({
                         ...prev,
-                        flavors: e.target.value.split(',').map(s => s.trim()).filter(s => s.length > 0)
+                        flavors: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
                     }));
                 }}
                 className="w-full bg-[#141619] px-3 py-2 rounded ring-1 ring-stone-800 text-sm text-zinc-100"
                 placeholder="Ej: Tabaco, Mixed Berries, Mint"
             />
         </div>
-        
-       
 
-        {/* PLUSES (Checkboxes) */}
+        {/* PLUSES */}
         <div className="mt-4">
             <label className="block text-sm font-medium text-zinc-400 mb-2">Pluses</label>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -266,8 +297,6 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
                         <input
                             id={`plus-${plusName}`}
                             type="checkbox"
-                            name={`plus-${plusName}`}
-                            // Verifica si el plus actual está incluido en la lista del producto
                             checked={formData.pluses?.includes(plusName) ?? false}
                             onChange={(e) => handlePlusChange(plusName, e.target.checked)}
                             className="h-4 w-4 text-emerald-600 border-stone-600 rounded bg-stone-700"
@@ -278,10 +307,9 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             </div>
         </div>
         
-        {/* Botón de cierre inferior */}
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-end pt-4 border-t border-stone-800 mt-6">
              <button 
-                className="px-3 py-1 bg-zinc-700 rounded text-white hover:bg-zinc-600" 
+                className="px-4 py-2 bg-zinc-700 rounded text-white hover:bg-zinc-600 text-sm transition" 
                 onClick={onClose}
              >
                 Cerrar sin guardar
