@@ -24,14 +24,17 @@ export async function getProducts(): Promise<AdminProduct[]> {
   return res.json();
 }
 
+// src/services/products.service.ts
+
 export async function createProduct(
   payload: CreateProductPayload
 ): Promise<AdminProduct> {
   const fd = new FormData();
-  // Lógica de compresión
+
+  // 1. Lógica de compresión e IMAGEN ÚNICA
   if (payload.image) {
     const options = {
-      maxSizeMB: 0.8, // Máximo 800KB
+      maxSizeMB: 0.8,
       maxWidthOrHeight: 1200,
       useWebWorker: true
     };
@@ -40,38 +43,47 @@ export async function createProduct(
       fd.append("image", compressedFile);
     } catch (error) {
       console.error("Error comprimiendo imagen", error);
-      fd.append("image", payload.image); // fallback si falla
+      fd.append("image", payload.image); // Fallback
     }
   }
+
+  // 2. Datos básicos
   fd.append("sku", payload.sku);
   fd.append("name", payload.name);
   if (payload.description) fd.append("description", payload.description);
   fd.append("price", String(payload.price));
-  if (payload.stock != null) fd.append("stock", String(payload.stock));
-  if (payload.visible != null) fd.append("visible", String(payload.visible));
-  if (payload.category) fd.append("category", payload.category);
-  if (payload.image) fd.append("image", payload.image);
+  fd.append("stock", String(payload.stock ?? 0));
+  fd.append("visible", String(payload.visible ?? true));
+  fd.append("category", payload.category || "");
+  fd.append("puffs", String(payload.puffs ?? 0));
+  fd.append("ml", String(payload.ml ?? 0));
 
-  fd.append("puffs", String(payload.puffs));
-  fd.append("ml", String(payload.ml));
-
+  // 3. Sabores (como elementos individuales)
   fd.append("hasFlavors", String(Boolean(payload.hasFlavors)));
   if (payload.hasFlavors && payload.flavors) {
-    for (const f of payload.flavors) fd.append("flavors", f);
+    payload.flavors.forEach(f => fd.append("flavors", f));
   }
 
-  fd.append("pluses", JSON.stringify(payload.pluses ?? []));
+  // 4. Pluses (como elementos individuales, no Stringify)
+  if (payload.pluses) {
+    payload.pluses.forEach(p => fd.append("pluses", p));
+  }
+
+  // 5. NUEVO: Precios de mayoreo (Tiers)
+  // Asegúrate de que CreateProductPayload incluya este campo
+  if (payload.wholesaleRates) {
+    fd.append("wholesaleRates", JSON.stringify(payload.wholesaleRates));
+  }
 
   const res = await fetch(`${API_BASE}/products`, {
     method: "POST",
     headers: { ...authHeader() },
-    body: fd,
+    body: fd, // El navegador pondrá el Content-Type correcto automáticamente
   });
 
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 export async function patchProduct(
   id: string,
   patch: PatchProductPayload

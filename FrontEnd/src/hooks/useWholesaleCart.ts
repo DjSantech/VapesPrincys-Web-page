@@ -1,14 +1,13 @@
 import { useState } from 'react';
 import { calculateWholesalePrice } from '../utils/wholesaleUtils';
-import type { AdminProduct } from '../services/admin.types';
+import type { AdminProduct } from '../services/admin';
 
 export interface WholesaleItem {
   productId: string;
   name: string;
   flavor: string;
   quantity: number;
-  // Guardamos el producto completo para tener acceso a sus wholesaleRates en cualquier momento
-  product: AdminProduct; 
+  product: AdminProduct; // Guardamos el producto para recalcular precios si cambia la cantidad
   totalPriceWithDiscount: number; 
 }
 
@@ -17,7 +16,7 @@ export function useWholesaleCart() {
 
   const addToCart = (product: AdminProduct, flavor: string, quantity: number) => {
     setCart(prev => {
-      // 1. Calculamos el precio unitario correcto usando el objeto producto completo
+      // Calculamos el precio real usando la utilidad y el objeto producto
       const realUnitPrice = calculateWholesalePrice(product, quantity);
       
       const newItem: WholesaleItem = {
@@ -35,7 +34,6 @@ export function useWholesaleCart() {
 
       if (existingIndex > -1) {
         const newCart = [...prev];
-        // Si ya existe, reemplazamos con la nueva cantidad y el nuevo precio calculado
         newCart[existingIndex] = newItem;
         return newCart;
       }
@@ -44,7 +42,6 @@ export function useWholesaleCart() {
     });
   };
 
-  // El total es: precio_con_descuento * cantidad
   const total = cart.reduce((acc, item) => acc + (item.totalPriceWithDiscount * item.quantity), 0);
 
   return { cart, addToCart, total };

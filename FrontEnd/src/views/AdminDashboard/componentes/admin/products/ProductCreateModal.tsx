@@ -9,7 +9,6 @@ import type {
 
 interface ProductCreateModalProps {
   onClose: () => void;
-  // Usamos CreateProductPayload que es el tipo que espera tu API
   onCreate: (data: CreateProductPayload) => void; 
 }
 
@@ -56,7 +55,11 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
   const [ml, setMl] = useState(0);
   const [category, setCategory] = useState("");
   const [hasFlavors, setHasFlavors] = useState(false);
+  
+  // ESTADOS DE SABORES (Separados para evitar pérdida de foco)
   const [flavors, setFlavors] = useState<string[]>([]);
+  const [flavorsInput, setFlavorsInput] = useState(""); 
+
   const [visible, setVisible] = useState(true);
   const [pluses, setPluses] = useState<string[]>([]);
   const [image, setImage] = useState<File | null>(null);
@@ -72,7 +75,6 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
     async function loadInitialData() {
       try {
         setLoading(true);
-        // Traemos categorías y pluses en paralelo
         const [cats, pls] = await Promise.all([
           getCategories(),
           getPluses()
@@ -111,9 +113,9 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
       stock,
       puffs,
       ml,
-      category, // El valor que viene del select
+      category,
       hasFlavors,
-      flavors,
+      flavors, // Enviamos el array procesado
       pluses,
       visible, 
       wholesaleRates,
@@ -128,7 +130,6 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
         
         <h3 className="text-xl font-semibold text-zinc-100">Nuevo Producto</h3>
 
-        {/* Muestra un indicador si los datos están cargando */}
         {loading ? (
           <div className="py-10 text-center text-emerald-500 animate-pulse">
             Cargando categorías y pluses...
@@ -162,7 +163,6 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
               <InputGroup label="Puffs" name="puffs" value={puffs} onChange={(e) => setPuffs(+e.target.value)} type="number" />
               <InputGroup label="ml" name="ml" value={ml} onChange={(e) => setMl(+e.target.value)} type="number" />
 
-              {/* --- 3. SELECT DINÁMICO DE CATEGORÍAS --- */}
               <div className="space-y-1">
                 <label className="block text-sm font-medium text-zinc-400">Categoría</label>
                 <select
@@ -181,7 +181,19 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
               </div>
               
               <div className="flex items-center space-x-2 pt-6">
-                <input id="hasFlavors" type="checkbox" checked={hasFlavors} onChange={(e) => setHasFlavors(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded bg-stone-700" />
+                <input 
+                  id="hasFlavors" 
+                  type="checkbox" 
+                  checked={hasFlavors} 
+                  onChange={(e) => {
+                    setHasFlavors(e.target.checked);
+                    if (!e.target.checked) {
+                      setFlavors([]);
+                      setFlavorsInput("");
+                    }
+                  }} 
+                  className="h-4 w-4 text-emerald-600 rounded bg-stone-700" 
+                />
                 <label htmlFor="hasFlavors" className="text-sm text-zinc-200">Con sabores</label>
               </div>
               
@@ -192,45 +204,48 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
             </div>
 
             <div className="col-span-full mt-4 p-4 bg-zinc-900/50 rounded-xl border border-emerald-500/20">
-            <h4 className="text-emerald-400 text-sm font-bold mb-3 uppercase tracking-wider">Precios de Mayoreo (Tiers)</h4>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <InputGroup 
-                label="Tier 1 (10-30 u.)" 
-                name="tier1" 
-                value={wholesaleRates.tier1} 
-                onChange={(e) => setWholesaleRates({...wholesaleRates, tier1: +e.target.value})} 
-                type="number" 
-              />
-              <InputGroup 
-                label="Tier 2 (31-50 u.)" 
-                name="tier2" 
-                value={wholesaleRates.tier2} 
-                onChange={(e) => setWholesaleRates({...wholesaleRates, tier2: +e.target.value})} 
-                type="number" 
-              />
-              <InputGroup 
-                label="Tier 3 (51+ u.)" 
-                name="tier3" 
-                value={wholesaleRates.tier3} 
-                onChange={(e) => setWholesaleRates({...wholesaleRates, tier3: +e.target.value})} 
-                type="number" 
-              />
+              <h4 className="text-emerald-400 text-sm font-bold mb-3 uppercase tracking-wider">Precios de Mayoreo (Tiers)</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <InputGroup 
+                  label="Tier 1 (10-30 u.)" 
+                  name="tier1" 
+                  value={wholesaleRates.tier1} 
+                  onChange={(e) => setWholesaleRates({...wholesaleRates, tier1: +e.target.value})} 
+                  type="number" 
+                />
+                <InputGroup 
+                  label="Tier 2 (31-50 u.)" 
+                  name="tier2" 
+                  value={wholesaleRates.tier2} 
+                  onChange={(e) => setWholesaleRates({...wholesaleRates, tier2: +e.target.value})} 
+                  type="number" 
+                />
+                <InputGroup 
+                  label="Tier 3 (51+ u.)" 
+                  name="tier3" 
+                  value={wholesaleRates.tier3} 
+                  onChange={(e) => setWholesaleRates({...wholesaleRates, tier3: +e.target.value})} 
+                  type="number" 
+                />
+              </div>
             </div>
-          </div>
 
-
+            {/* CAMPO DE SABORES CORREGIDO */}
             <div className="mt-4">
               <label className="block text-sm font-medium text-zinc-400 mb-1">Sabores (separados por coma)</label>
               <input
-                value={flavors.join(', ')} 
-                onChange={(e) => setFlavors(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                value={flavorsInput} 
+                onChange={(e) => {
+                  setFlavorsInput(e.target.value);
+                  const arrayFlavors = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                  setFlavors(arrayFlavors);
+                }}
                 disabled={!hasFlavors}
                 className={`w-full px-3 py-2 rounded ring-1 text-sm text-zinc-100 ${hasFlavors ? 'bg-[#141619] ring-stone-800' : 'bg-[#1e1e1e] ring-stone-900 opacity-50'}`}
                 placeholder="Menta, Berries, Mango"
               />
             </div>
             
-            {/* --- 4. PLUSES DINÁMICOS --- */}
             <div className="mt-4">
               <label className="block text-sm font-medium text-zinc-400 mb-2">Pluses Disponibles</label>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">

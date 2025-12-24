@@ -123,6 +123,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             flavors: formData.flavors,
             hasFlavors: formData.hasFlavors,
             pluses: formData.pluses,
+            wholesaleRates: formData.wholesaleRates,
             // NOTA: Omitimos 'imageUrl' y 'images' ya que se actualizan con patchProductImage
         });
 

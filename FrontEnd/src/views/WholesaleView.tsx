@@ -2,20 +2,10 @@ import { useEffect, useState } from 'react';
 import { getProducts, type AdminProduct } from '../services/admin';
 import { WholesaleTable } from '../components/wholesale/WholesaleTable';
 import { useWholesaleCart } from '../hooks/useWholesaleCart';
+
 export default function WholesaleView() {
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const { cart, addToCart, total } = useWholesaleCart();
-
-  // 1. Creamos esta función para "adaptar" lo que manda la tabla a lo que recibe el hook
-  const handleAddToCart = (item: { productId: string; flavor: string; quantity: number }) => {
-    // Buscamos el objeto producto completo que corresponde al id
-    const fullProduct = products.find(p => p.id === item.productId);
-    
-    if (fullProduct) {
-      // Llamamos al hook con los 3 argumentos que espera
-      addToCart(fullProduct, item.flavor, item.quantity);
-    }
-  };
 
   const handleSendWhatsApp = () => {
     if (cart.length === 0) return;
@@ -34,6 +24,7 @@ export default function WholesaleView() {
   useEffect(() => {
     async function load() {
       const data = await getProducts();
+      // Filtrar categorías que no son para mayoreo
       const filtered = data.filter(p => 
         p.category?.toLowerCase() !== 'promociones' && 
         p.category?.toLowerCase() !== 'combos'
@@ -50,7 +41,7 @@ export default function WholesaleView() {
           <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
             Portal Mayorista
           </h1>
-          <p className="text-zinc-400 mt-2">Descuentos automáticos a partir de 10 unidades.</p>
+          <p className="text-zinc-400 mt-2">Descuentos automáticos según volumen.</p>
         </div>
         
         <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
@@ -59,8 +50,7 @@ export default function WholesaleView() {
         </div>
       </header>
 
-      {/* 2. Usamos la función intermediaria en lugar de pasarle addToCart directamente */}
-      <WholesaleTable products={products} onAdd={handleAddToCart} />
+      <WholesaleTable products={products} onAdd={addToCart} />
 
       {cart.length > 0 && (
         <div className="fixed bottom-8 right-8">
