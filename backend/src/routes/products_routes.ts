@@ -35,6 +35,7 @@ const mapDoc = (p: any) => {
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
     ml: p.ml ?? 0,                 // ✅ NUEVO: incluir ml al DTO
+    wholesaleRates: p.wholesaleRates ?? { tier1: 0, tier2: 0, tier3: 0 },
     visible: p.isActive ?? true,
     imageUrl: p.imageUrl ?? "",
     category: catName,             // compat: sigue siendo texto para tu UI actual
@@ -43,6 +44,7 @@ const mapDoc = (p: any) => {
     pluses: Array.isArray(p.pluses) ? p.pluses : [],
     description: p.description ?? "",  
     hasFlavors: Array.isArray(p.flavors) ? p.flavors.length > 0 : false,
+    
   };
 };
 
@@ -108,6 +110,18 @@ r.get("/", async (req, res) => {
 //         flavors? (array o CSV), puffs?, ml?, image?, pluses? (string JSON o array)
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
+  let wholesaleRatesParsed = undefined;
+
+if (req.body.wholesaleRates) {
+  try {
+    wholesaleRatesParsed =
+      typeof req.body.wholesaleRates === "string"
+        ? JSON.parse(req.body.wholesaleRates)
+        : req.body.wholesaleRates;
+  } catch {
+    return res.status(400).json({ error: "wholesaleRates inválido" });
+  }
+}
   try {
     const { sku, name, price, stock, category, visible, flavors, puffs, ml, description, hasFlavors } = req.body;
 
@@ -192,6 +206,7 @@ r.post("/", upload.single("image"), async (req, res) => {
       hasFlavors: hasFlavorsBool,
       flavors: flavorsArr,
       pluses: plusesArr,
+      wholesaleRates: wholesaleRatesParsed,
     });
 
     const saved = await Product.findById(created._id).populate("category", "name").lean();
@@ -209,6 +224,7 @@ r.post("/", upload.single("image"), async (req, res) => {
     }
     return res.status(500).json({ error: "Error interno creando producto" });
   }
+  
 });
 
 // =========================
@@ -279,6 +295,22 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       const n = Number(ml);
       if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Mililitros inválido" });
       update.ml = Math.max(0, Math.round(n));
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, "wholesaleRates")) {
+      try {
+        const parsed =
+          typeof req.body.wholesaleRates === "string"
+            ? JSON.parse(req.body.wholesaleRates)
+            : req.body.wholesaleRates;
+
+        update.wholesaleRates = {
+          tier1: Number(parsed.tier1 ?? 0),
+          tier2: Number(parsed.tier2 ?? 0),
+          tier3: Number(parsed.tier3 ?? 0),
+        };
+      } catch {
+        return res.status(400).json({ error: "wholesaleRates inválido" });
+      }
     }
 
     // Visible
