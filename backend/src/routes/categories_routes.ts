@@ -3,8 +3,9 @@ import { Router } from "express";
 import mongoose from "mongoose";
 import Category from "../models/Category";
 import multer from "multer"; 
-// 🚨 Importar la función que utilizas para productos
 import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary"; 
+// Importamos la utilidad de limpieza
+import { deleteImageFromCloudinary } from "../lib/cloudinary";
 
 // Inicialización del Router y Multer
 const r = Router(); 
@@ -20,7 +21,7 @@ const mapCat = (c: {
   _id: unknown; 
   name: string; 
   homeOrder?: number;
-  imageUrl?: string; // Incluido para compatibilidad con el front
+  imageUrl?: string; 
 }) => ({
   id: String(c._id),
   name: c.name,
@@ -42,7 +43,7 @@ r.get("/", async (_req, res) => {
 });
 
 // =========================
-// POST /api/categories {name}
+// POST /api/categories
 // =========================
 r.post("/", async (req, res) => {
   try {
@@ -51,92 +52,76 @@ r.post("/", async (req, res) => {
     const created = await Category.create({ name });
     res.status(201).json(mapCat(created));
   } catch (e: any) {
-    if (e?.code === 11000) {
-      return res.status(409).json({ error: "La categoría ya existe" });
-    }
+    if (e?.code === 11000) return res.status(409).json({ error: "La categoría ya existe" });
     console.error("POST /categories error:", e);
     res.status(500).json({ error: "Error interno creando categoría" });
   }
 });
 
 // =========================
-// PATCH /api/categories/:id (name?, homeOrder?)
+// PATCH /api/categories/:id (datos básicos)
 // =========================
 r.patch("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "ID inválido" });
 
     const update: Partial<{ name: string; homeOrder: number }> = {};
-
     if (typeof req.body?.name === "string") {
       const name = req.body.name.trim();
       if (!name) return res.status(400).json({ error: "Nombre obligatorio" });
       update.name = name;
     }
-
     if (req.body?.homeOrder !== undefined) {
-      const n = Number(req.body.homeOrder);
-      if (!Number.isFinite(n)) {
-        return res.status(400).json({ error: "homeOrder inválido" });
-      }
-      update.homeOrder = Math.round(n);
+      update.homeOrder = Math.round(Number(req.body.homeOrder));
     }
 
-    const updated = await Category.findByIdAndUpdate(id, update, {
-      new: true,
-      runValidators: true,
-    }).lean();
-
+    const updated = await Category.findByIdAndUpdate(id, update, { new: true }).lean();
     if (!updated) return res.status(404).json({ error: "Not found" });
     return res.json(mapCat(updated));
   } catch (e) {
-    console.error("PATCH /categories/:id error:", e);
-    res.status(500).json({ error: "Error interno actualizando categoría" });
+    res.status(500).json({ error: "Error actualizando categoría" });
   }
 });
 
 // =========================
-// 🚨 RUTA DE IMAGEN: PATCH /api/categories/:id/image
+// RUTA DE IMAGEN: PATCH /api/categories/:id/image
 // =========================
 r.patch("/:id/image", upload.single("image"), async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "ID inválido" });
 
     if (!req.file || !req.file.buffer) {
-      return res.status(400).json({ error: "No se encontró el archivo de imagen ('image')" });
+      return res.status(400).json({ error: "No se encontró el archivo de imagen" });
+    }
+
+    // --- LÓGICA DE LIMPIEZA ---
+    // 1. Buscamos la categoría actual para ver si ya tiene una imagen
+    const currentCat = await Category.findById(id);
+    if (currentCat?.imageUrl) {
+      // 2. Si existe, la borramos de Cloudinary
+      await deleteImageFromCloudinary(currentCat.imageUrl);
     }
     
-    // 1. Llamar a la función de subida del archivo de librería
-    // Usamos una carpeta diferente: "vapes/categories"
+    // 3. Subimos la nueva imagen
     const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/categories");
-    
-    // 2. Obtener la URL de forma segura (igual que en products_routes)
-    // @ts-ignore se usa para ignorar el error de tipado de 'secure_url'
+    // @ts-ignore
     const finalImageUrl = up.secure_url as string; 
 
-    // 3. Actualiza el campo imageUrl en la base de datos
+    // 4. Actualizamos la base de datos
     const updated = await Category.findByIdAndUpdate(
       id,
       { imageUrl: finalImageUrl }, 
-      { new: true, runValidators: true }
+      { new: true }
     ).lean();
 
-    if (!updated) {
-        // En un entorno productivo, aquí deberías eliminar la imagen de Cloudinary
-        return res.status(404).json({ error: "Not found" });
-    }
+    if (!updated) return res.status(404).json({ error: "Not found" });
 
-    // 4. Retorna la categoría actualizada con la nueva URL
     return res.json(mapCat(updated));
   } catch (e) {
     console.error("PATCH /categories/:id/image error:", e);
-    res.status(500).json({ error: "Error interno subiendo imagen a Cloudinary" });
+    res.status(500).json({ error: "Error subiendo imagen" });
   }
 });
 
@@ -147,19 +132,22 @@ r.patch("/:id/image", upload.single("image"), async (req, res) => {
 r.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    if (!mongoose.Types.ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "ID inválido" });
-    }
+    if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ error: "ID inválido" });
     
+    // --- LÓGICA DE LIMPIEZA ---
+    const category = await Category.findById(id);
+    if (category?.imageUrl) {
+      // Borramos la imagen de la nube antes de borrar el registro
+      await deleteImageFromCloudinary(category.imageUrl);
+    }
+
     const doc = await Category.findByIdAndDelete(id);
     if (!doc) return res.status(404).json({ error: "Not found" });
     
-    // ⚠️ Recomendación: Lógica para eliminar la imagen de Cloudinary aquí
-
     return res.status(204).send();
   } catch (e) {
     console.error("DELETE /categories/:id error:", e);
-    res.status(500).json({ error: "Error interno eliminando categoría" });
+    res.status(500).json({ error: "Error eliminando categoría" });
   }
 });
 

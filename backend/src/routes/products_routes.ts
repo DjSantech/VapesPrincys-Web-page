@@ -5,6 +5,8 @@ import mongoose from "mongoose";
 import Product from "../models/Product";
 import Category from "../models/Category";
 import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary";
+// Importamos la utilidad de limpieza desde tu config
+import { deleteImageFromCloudinary } from "../lib/cloudinary";
 
 // Router y multer (usa memoria; no escribe archivos en disco)
 const r = Router();
@@ -34,17 +36,16 @@ const mapDoc = (p: any) => {
     price: p.price,
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
-    ml: p.ml ?? 0,                 // ✅ NUEVO: incluir ml al DTO
+    ml: p.ml ?? 0,
     wholesaleRates: p.wholesaleRates ?? { tier1: 0, tier2: 0, tier3: 0 },
     visible: p.isActive ?? true,
     imageUrl: p.imageUrl ?? "",
-    category: catName,             // compat: sigue siendo texto para tu UI actual
-    categoryId: catId,             // por si luego usas el id real en selects
+    category: catName,
+    categoryId: catId,
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
     pluses: Array.isArray(p.pluses) ? p.pluses : [],
-    description: p.description ?? "",  
+    description: p.description ?? "",
     hasFlavors: Array.isArray(p.flavors) ? p.flavors.length > 0 : false,
-    
   };
 };
 
@@ -78,7 +79,6 @@ r.get("/", async (req, res) => {
       filter.name = { $regex: q.trim(), $options: "i" };
     }
 
-    // Soporta ambos: categoryId tiene prioridad si viene
     const catParam =
       categoryId && categoryId.trim() !== ""
         ? categoryId.trim()
@@ -91,7 +91,7 @@ r.get("/", async (req, res) => {
         filter.category = catParam;
       } else {
         const found = await Category.findOne({ name: catParam }).lean();
-        if (!found) return res.json([]); // evita cast error devolviendo vacío si no existe
+        if (!found) return res.json([]); 
         filter.category = found._id;
       }
     }
@@ -105,23 +105,22 @@ r.get("/", async (req, res) => {
 });
 
 // =========================
-// POST /api/products  (multipart/form-data)
-// Campos: sku, name, price, stock?, visible?, category (id o nombre),
-//         flavors? (array o CSV), puffs?, ml?, image?, pluses? (string JSON o array)
+// POST /api/products
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   let wholesaleRatesParsed = undefined;
 
-if (req.body.wholesaleRates) {
-  try {
-    wholesaleRatesParsed =
-      typeof req.body.wholesaleRates === "string"
-        ? JSON.parse(req.body.wholesaleRates)
-        : req.body.wholesaleRates;
-  } catch {
-    return res.status(400).json({ error: "wholesaleRates inválido" });
+  if (req.body.wholesaleRates) {
+    try {
+      wholesaleRatesParsed =
+        typeof req.body.wholesaleRates === "string"
+          ? JSON.parse(req.body.wholesaleRates)
+          : req.body.wholesaleRates;
+    } catch {
+      return res.status(400).json({ error: "wholesaleRates inválido" });
+    }
   }
-}
+
   try {
     const { sku, name, price, stock, category, visible, flavors, puffs, ml, description, hasFlavors } = req.body;
 
@@ -129,24 +128,9 @@ if (req.body.wholesaleRates) {
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
 
     const priceNum = Number(price);
-    if (!Number.isFinite(priceNum) || priceNum < 0) {
-      return res.status(400).json({ error: "Precio inválido" });
-    }
-
     const stockNum = stock != null ? Number(stock) : 0;
-    if (!Number.isFinite(stockNum) || stockNum < 0) {
-      return res.status(400).json({ error: "Stock inválido" });
-    }
-
     const puffsNum = puffs != null ? Number(puffs) : 0;
-    if (!Number.isFinite(puffsNum) || puffsNum < 0) {
-      return res.status(400).json({ error: "Puffs inválido" });
-    }
-
-    const mlNum = ml != null ? Number(ml) : 0;             // ✅ parse ml
-    if (!Number.isFinite(mlNum) || mlNum < 0) {
-      return res.status(400).json({ error: "Mililitros inválido" });
-    }
+    const mlNum = ml != null ? Number(ml) : 0;
 
     // flavors: array o CSV
     let flavorsArr: string[] = [];
@@ -156,17 +140,16 @@ if (req.body.wholesaleRates) {
       flavorsArr = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-      const hasFlavorsBool =
-    typeof hasFlavors === "boolean"
-      ? hasFlavors
-      : typeof hasFlavors === "string"
-        ? hasFlavors === "true"
-        : (flavorsArr.length > 0); // fallback compatible
+    const hasFlavorsBool =
+      typeof hasFlavors === "boolean"
+        ? hasFlavors
+        : typeof hasFlavors === "string"
+          ? hasFlavors === "true"
+          : (flavorsArr.length > 0);
 
-  // Invariante: si está deshabilitado, vaciar sabores
-  if (!hasFlavorsBool) flavorsArr = [];
+    if (!hasFlavorsBool) flavorsArr = [];
 
-    // pluses: JSON (string) o array
+    // pluses
     let plusesArr: string[] = [];
     try {
       if (Array.isArray((req.body as any).pluses)) {
@@ -181,14 +164,12 @@ if (req.body.wholesaleRates) {
       plusesArr = [];
     }
 
-    // resolver categoría (id o nombre)
     const catId = await resolveCategoryId(category);
 
-    // Imagen (opcional) -> Cloudinary
     let imageUrl = "";
     if (req.file) {
       const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
-      // @ts-ignore tipos de cloudinary
+      // @ts-ignore
       imageUrl = up.secure_url as string;
     }
 
@@ -199,7 +180,7 @@ if (req.body.wholesaleRates) {
       price: priceNum,
       stock: stockNum,
       puffs: puffsNum,
-      ml: mlNum,                                      // ✅ guardar ml
+      ml: mlNum,
       imageUrl,
       ...(catId === null ? {} : { category: catId }),
       isActive: visible !== undefined ? String(visible) === "true" : true,
@@ -212,41 +193,29 @@ if (req.body.wholesaleRates) {
     const saved = await Product.findById(created._id).populate("category", "name").lean();
     return res.status(201).json(mapDoc(saved ?? created));
   } catch (e: any) {
-    console.error("POST /products error:", e?.message, e?.errors || e);
-    if (e?.message === "CATEGORY_NOT_FOUND") {
-      return res.status(400).json({ error: "La categoría no existe" });
-    }
-    if (e?.code === 11000 && e?.keyPattern?.sku) {
-      return res.status(409).json({ error: "SKU duplicado" });
-    }
-    if (e?.name === "ValidationError") {
-      return res.status(400).json({ error: e.message });
-    }
+    console.error("POST /products error:", e);
+    if (e?.message === "CATEGORY_NOT_FOUND") return res.status(400).json({ error: "La categoría no existe" });
+    if (e?.code === 11000) return res.status(409).json({ error: "SKU duplicado" });
     return res.status(500).json({ error: "Error interno creando producto" });
   }
-  
 });
 
 // =========================
-// PATCH /api/products/:id  (JSON o multipart)
-// Acepta cambios parciales y/o imagen (campo 'image')
-// category: id, nombre, "" (limpiar) o undefined (no tocar)
-// pluses: string JSON | array | ""
+// PATCH /api/products/:id
 // =========================
 r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
-    // 👇 Saca explícitamente category y pluses para que NO queden en ...rest
     const {
       visible,
       flavors,
       price,
       stock,
       puffs,
-      ml,           // ✅ NUEVO: ml desde body
+      ml,
       sku,
       name,
-      category,     // <- importante
-      pluses,       // <- importante
+      category,
+      pluses,
       description,
       hasFlavors,
       ...rest
@@ -254,149 +223,82 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
 
     const update: Record<string, any> = { ...rest };
 
-    // SKU
-    if (sku !== undefined) {
-      const next = String(sku).trim().toUpperCase();
-      if (!next) return res.status(400).json({ error: "El SKU no puede quedar vacío" });
-      update.sku = next;
-    }
-
-    // Nombre
-    if (name !== undefined) {
-      const next = String(name).trim();
-      if (!next) return res.status(400).json({ error: "El nombre no puede quedar vacío" });
-      update.name = next;
-    }
-
-    if (description !== undefined) {
-      if (typeof description !== "string") {
-        return res.status(400).json({ error: "Descripción inválida" });
+    // --- Lógica de borrado Cloudinary si hay nueva imagen ---
+    if (req.file) {
+      const current = await Product.findById(req.params.id);
+      if (current?.imageUrl) {
+        await deleteImageFromCloudinary(current.imageUrl);
       }
-      update.description = description.trim();
+      const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
+      // @ts-ignore
+      update.imageUrl = up.secure_url as string;
     }
+
+    // SKU y Nombre
+    if (sku !== undefined) update.sku = String(sku).trim().toUpperCase();
+    if (name !== undefined) update.name = String(name).trim();
+    if (description !== undefined) update.description = String(description).trim();
 
     // Numéricos
-    if (price !== undefined) {
-      const n = Number(price);
-      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Precio inválido" });
-      update.price = Math.round(n);
-    }
-    if (stock !== undefined) {
-      const n = Number(stock);
-      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Stock inválido" });
-      update.stock = Math.max(0, Math.round(n));
-    }
-    if (puffs !== undefined) {
-      const n = Number(puffs);
-      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Puffs inválido" });
-      update.puffs = Math.max(0, Math.round(n));
-    }
-    if (ml !== undefined) {                             // ✅ validar y setear ml
-      const n = Number(ml);
-      if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: "Mililitros inválido" });
-      update.ml = Math.max(0, Math.round(n));
-    }
+    if (price !== undefined) update.price = Math.round(Number(price));
+    if (stock !== undefined) update.stock = Math.max(0, Math.round(Number(stock)));
+    if (puffs !== undefined) update.puffs = Math.max(0, Math.round(Number(puffs)));
+    if (ml !== undefined) update.ml = Math.max(0, Math.round(Number(ml)));
+
+    // Wholesale
     if (Object.prototype.hasOwnProperty.call(req.body, "wholesaleRates")) {
       try {
-        const parsed =
-          typeof req.body.wholesaleRates === "string"
-            ? JSON.parse(req.body.wholesaleRates)
-            : req.body.wholesaleRates;
-
+        const parsed = typeof req.body.wholesaleRates === "string" ? JSON.parse(req.body.wholesaleRates) : req.body.wholesaleRates;
         update.wholesaleRates = {
           tier1: Number(parsed.tier1 ?? 0),
           tier2: Number(parsed.tier2 ?? 0),
           tier3: Number(parsed.tier3 ?? 0),
         };
-      } catch {
-        return res.status(400).json({ error: "wholesaleRates inválido" });
-      }
+      } catch { /* ignore */ }
     }
 
     // Visible
-    if (typeof visible === "boolean") {
-      update.isActive = visible;
-    } else if (typeof visible === "string") {
-      update.isActive = visible === "true";
-    }
+    if (visible !== undefined) update.isActive = String(visible) === "true";
 
-    // Flavors: array | CSV
-    if (Array.isArray(flavors)) {
-      update.flavors = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
-    } else if (typeof flavors === "string") {
-      update.flavors = (flavors as string).split(",").map(s => s.trim()).filter(Boolean);
-    }
-
-    // Pluses: JSON string | array | ""
-    if (Object.prototype.hasOwnProperty.call(req.body, "pluses")) {
-      try {
-        if (Array.isArray(pluses)) {
-          update.pluses = (pluses as unknown[]).map(s => String(s).trim()).filter(Boolean);
-        } else if (typeof pluses === "string") {
-          const parsed = JSON.parse(pluses);
-          if (Array.isArray(parsed)) {
-            update.pluses = parsed.map(s => String(s).trim()).filter(Boolean);
-          } else if (pluses.trim() === "") {
-            update.pluses = [];
-          }
-        }
-      } catch {
-        update.pluses = [];
-      }
-    }
-
-   // === Flavors ===
+    // Flavors y hasFlavors (Invariante lógica)
     let flavorsFromBody: string[] | undefined = undefined;
     if (Array.isArray(flavors)) {
       flavorsFromBody = (flavors as string[]).map(s => String(s).trim()).filter(Boolean);
     } else if (typeof flavors === "string") {
-      flavorsFromBody = (flavors as string).split(",").map(s => s.trim()).filter(Boolean);
-    }
-    if (flavorsFromBody !== undefined) {
-      update.flavors = flavorsFromBody;
+      flavorsFromBody = flavors.split(",").map(s => s.trim()).filter(Boolean);
     }
 
-  // hasFlavors: puede venir como string/boolean
-  let hasFlavorsFromBody: boolean | undefined = undefined;
-  if (typeof hasFlavors === "boolean") {
-    hasFlavorsFromBody = hasFlavors;
-  } else if (typeof hasFlavors === "string") {
-    hasFlavorsFromBody = hasFlavors === "true";
-  }
+    let hfBool = typeof hasFlavors === "string" ? hasFlavors === "true" : hasFlavors;
 
-  // Reglas de invariante:
-  // 1) Si el cliente manda hasFlavors=false ⇒ flavors=[]
-  if (hasFlavorsFromBody === false) {
-    update.hasFlavors = false;
-    update.flavors = []; // fuerza limpiar
-  }
-  // 2) Si el cliente manda sabores pero no manda hasFlavors ⇒ deduce
-  if (hasFlavorsFromBody === undefined && flavorsFromBody !== undefined) {
-    update.hasFlavors = (flavorsFromBody.length > 0);
-  }
-  // 3) Si manda hasFlavors=true y no mandó sabores, deja sabores como están (no tocar).
-  if (hasFlavorsFromBody === true) {
-    update.hasFlavors = true;
-    // si además mandó sabores, ya quedaron en update.flavors
-  }
+    if (hfBool === false) {
+      update.hasFlavors = false;
+      update.flavors = [];
+    } else {
+      if (flavorsFromBody !== undefined) update.flavors = flavorsFromBody;
+      if (hfBool !== undefined) update.hasFlavors = hfBool;
+    }
 
-    // Category: id | nombre | "" | undefined
+    // Pluses
+    if (Object.prototype.hasOwnProperty.call(req.body, "pluses")) {
+      try {
+        if (Array.isArray(pluses)) {
+          update.pluses = (pluses as string[]).map(s => String(s).trim()).filter(Boolean);
+        } else if (typeof pluses === "string") {
+          const parsed = JSON.parse(pluses);
+          update.pluses = Array.isArray(parsed) ? parsed.map(s => String(s).trim()).filter(Boolean) : [];
+        }
+      } catch { update.pluses = []; }
+    }
+
+    // Category
     if (Object.prototype.hasOwnProperty.call(req.body, "category")) {
       const catId = await resolveCategoryId(category);
       if (catId === null) {
-        // limpiar categoría
         update.$unset = { ...(update.$unset as any), category: 1 };
         delete update.category;
       } else if (catId !== undefined) {
         update.category = catId;
       }
-    }
-
-    // Imagen (multipart)
-    if (req.file) {
-      const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
-      // @ts-ignore
-      update.imageUrl = up.secure_url as string;
     }
 
     const doc = await Product.findByIdAndUpdate(
@@ -408,16 +310,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     if (!doc) return res.status(404).json({ error: "Not found" });
     return res.json(mapDoc(doc));
   } catch (e: any) {
-    console.error("PATCH /products error:", e?.message, e?.errors || e);
-    if (e?.message === "CATEGORY_NOT_FOUND") {
-      return res.status(400).json({ error: "La categoría no existe" });
-    }
-    if (e?.code === 11000 && e?.keyPattern?.sku) {
-      return res.status(409).json({ error: "SKU duplicado" });
-    }
-    if (e?.name === "ValidationError") {
-      return res.status(400).json({ error: e.message });
-    }
+    console.error("PATCH /products error:", e);
     return res.status(500).json({ error: "Error interno actualizando producto" });
   }
 });
@@ -430,6 +323,12 @@ r.delete("/:id", async (req, res) => {
     const { id } = req.params;
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ error: "ID inválido" });
+    }
+
+    // --- Borrado de Cloudinary antes de eliminar el registro ---
+    const product = await Product.findById(id);
+    if (product?.imageUrl) {
+      await deleteImageFromCloudinary(product.imageUrl);
     }
 
     const doc = await Product.findByIdAndDelete(id);

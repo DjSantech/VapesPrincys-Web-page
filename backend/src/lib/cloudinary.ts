@@ -1,26 +1,16 @@
-// src/config/cloudinary.ts
 import { v2 as cloudinary } from "cloudinary";
 
 const {
-  CLOUDINARY_URL, // opcional (cadena única)
+  CLOUDINARY_URL,
   CLOUDINARY_CLOUD_NAME,
   CLOUDINARY_API_KEY,
   CLOUDINARY_API_SECRET,
 } = process.env;
 
 if (!CLOUDINARY_URL && (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET)) {
-  // Log amigable para debug (no imprimir el secret completo)
-  // eslint-disable-next-line no-console
-  console.error("Cloudinary ENV faltantes:", {
-    CLOUDINARY_CLOUD_NAME,
-    CLOUDINARY_API_KEY_PREFIX: (CLOUDINARY_API_KEY || "").slice(0, 4) + "…",
-    HAS_SECRET: !!CLOUDINARY_API_SECRET,
-  });
   throw new Error("Faltan variables de Cloudinary en .env");
 }
 
-// Si tienes CLOUDINARY_URL, Cloudinary ya parsea todo de esa variable.
-// Si no, usamos las 3 variables separadas.
 cloudinary.config(
   CLOUDINARY_URL
     ? { cloudinary_url: CLOUDINARY_URL }
@@ -30,5 +20,49 @@ cloudinary.config(
         api_secret: CLOUDINARY_API_SECRET,
       }
 );
+
+/**
+ * Extrae el Public ID de una URL de Cloudinary incluyendo carpetas.
+ * Ejemplo: "https://.../v123/vapes/products/foto1.jpg" -> "vapes/products/foto1"
+ */
+export const getPublicIdFromUrl = (url: string): string | null => {
+  if (!url) return null;
+  try {
+    const parts = url.split("/");
+    // El ID con extensión es siempre el último elemento
+    const fileNameWithExtension = parts.pop();
+    if (!fileNameWithExtension) return null;
+    
+    const publicId = fileNameWithExtension.split(".")[0];
+
+    // Buscamos dónde empieza la ruta de nuestras carpetas personalizadas
+    // Esto asume que tus carpetas están bajo el prefijo "vapes"
+    const vapesIndex = parts.indexOf("vapes");
+    if (vapesIndex !== -1) {
+      const folderPath = parts.slice(vapesIndex).join("/");
+      return `${folderPath}/${publicId}`;
+    }
+    
+    return publicId;
+  } catch (error) {
+    console.error("Error parseando URL de Cloudinary:", error);
+    return null;
+  }
+};
+
+/**
+ * Elimina una imagen de Cloudinary a partir de su URL
+ */
+export const deleteImageFromCloudinary = async (url: string) => {
+  const publicId = getPublicIdFromUrl(url);
+  if (publicId) {
+    try {
+      await cloudinary.uploader.destroy(publicId);
+      console.log("✓ Imagen eliminada de Cloudinary:", publicId);
+    } catch (error) {
+      console.error("✗ Error al eliminar de Cloudinary:", error);
+    }
+  }
+};
 
 export default cloudinary;
