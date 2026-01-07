@@ -13,6 +13,7 @@ export interface Product {
   flavors?: string[]; // si el producto tiene sabores (opcional)
   hasFlavors?: boolean; // si el producto tiene sabores (opcional)
   visible?: boolean;
+  visibleWhosale: boolean;
   isActive?: boolean;
   pluses?: string[];   // lista de pluses (por nombre)
 }

@@ -10,6 +10,7 @@ export interface ProductCreateForm {
   puffs: number;
   ml: number;
   visible: boolean;
+  visibleWhosale: boolean;
   category: string;
   flavors: string[];      // Array de strings para los sabores
   hasFlavors: boolean;

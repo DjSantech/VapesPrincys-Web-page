@@ -61,6 +61,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
   const [flavorsInput, setFlavorsInput] = useState(""); 
 
   const [visible, setVisible] = useState(true);
+  const [visibleWhoSale, setVisibleWhoSale] = useState(false);
   const [pluses, setPluses] = useState<string[]>([]);
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -118,6 +119,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
       flavors, // Enviamos el array procesado
       pluses,
       visible, 
+      visibleWhoSale,
       wholesaleRates,
     };
 
@@ -201,7 +203,14 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
                 <input id="visible" type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded bg-stone-700" />
                 <label htmlFor="visible" className="text-sm text-zinc-200">Visible</label>
               </div>
+            
+              
+              <div className="flex items-center space-x-2 pt-6">
+                <input id="visibleWhoSale" type="checkbox" checked={visibleWhoSale} onChange={(e) => setVisibleWhoSale(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded bg-stone-700" />
+                <label htmlFor="visibleWhoSale" className="text-sm text-zinc-200">Visible</label>
+              </div>
             </div>
+            
 
             <div className="col-span-full mt-4 p-4 bg-zinc-900/50 rounded-xl border border-emerald-500/20">
               <h4 className="text-emerald-400 text-sm font-bold mb-3 uppercase tracking-wider">Precios de Mayoreo (Tiers)</h4>

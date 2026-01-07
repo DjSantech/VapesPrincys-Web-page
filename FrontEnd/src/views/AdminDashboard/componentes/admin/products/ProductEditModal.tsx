@@ -43,6 +43,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
   // Inicializamos el estado del formulario con los datos del producto
   const [formData, setFormData] = useState<AdminProduct>({
     ...product,
+    visibleWhoSale: product.visibleWhoSale ?? false,
     wholesaleRates: product.wholesaleRates || { tier1: 0, tier2: 0, tier3: 0 }
   });
   const [isSaving, setIsSaving] = useState(false);
@@ -119,6 +120,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             puffs: formData.puffs,
             ml: formData.ml,
             visible: formData.visible,
+            visibleWhoSale: formData.visibleWhoSale,
             category: formData.category,
             flavors: formData.flavors,
             hasFlavors: formData.hasFlavors,
@@ -233,44 +235,68 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
                 />
                 <label htmlFor="visible" className="text-sm text-zinc-200">Visible</label>
             </div>
-        </div>
-
-        {/* 🚩 NUEVA SECCIÓN: CONFIGURACIÓN DE MAYOREO */}
-        <div className="mt-6 p-4 bg-zinc-900 rounded-xl border border-orange-500/20">
-            <h4 className="text-orange-400 text-xs font-black mb-4 uppercase tracking-widest">Configuración de Descuentos por Niveles</h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-                <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 1: 10 a 30 u.</label>
-                    <input
-                        type="number"
-                        value={formData.wholesaleRates.tier1}
-                        onChange={(e) => handleTierChange('tier1', e.target.value)}
-                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
-                        placeholder="Precio T1"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 2: 31 a 50 u.</label>
-                    <input
-                        type="number"
-                        value={formData.wholesaleRates.tier2}
-                        onChange={(e) => handleTierChange('tier2', e.target.value)}
-                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
-                        placeholder="Precio T2"
-                    />
-                </div>
-                <div className="space-y-1">
-                    <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">Tier 3: 51+ u.</label>
-                    <input
-                        type="number"
-                        value={formData.wholesaleRates.tier3}
-                        onChange={(e) => handleTierChange('tier3', e.target.value)}
-                        className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg focus:border-emerald-500 outline-none"
-                        placeholder="Precio T3"
-                    />
-                </div>
+            <div className="flex items-center space-x-2 pt-6">
+            <input
+                id="visibleWhoSale"
+                type="checkbox"
+                name="visibleWhoSale"
+                checked={formData.visibleWhoSale}
+                onChange={handleChange}
+                className="h-4 w-4 text-orange-500 border-stone-600 rounded bg-stone-700"
+            />
+            <label htmlFor="visibleWhoSale" className="text-sm text-zinc-200">
+                Visible en Mayoreo
+            </label>
             </div>
         </div>
+
+        {/* CONFIGURACIÓN DE NIVELES DE DESCUENTO */}
+        {formData.visibleWhoSale && (
+        <div className="mt-6 p-4 bg-zinc-900 rounded-xl border border-orange-500/20">
+            <h4 className="text-orange-400 text-xs font-black mb-4 uppercase tracking-widest">
+            Configuración de Descuentos por Niveles
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+            <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">
+                Tier 1: 10 a 30 u.
+                </label>
+                <input
+                type="number"
+                value={formData.wholesaleRates.tier1}
+                onChange={(e) => handleTierChange('tier1', e.target.value)}
+                className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg"
+                />
+            </div>
+
+            <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">
+                Tier 2: 31 a 50 u.
+                </label>
+                <input
+                type="number"
+                value={formData.wholesaleRates.tier2}
+                onChange={(e) => handleTierChange('tier2', e.target.value)}
+                className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg"
+                />
+            </div>
+
+            <div className="space-y-1">
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase text-center">
+                Tier 3: 51+ u.
+                </label>
+                <input
+                type="number"
+                value={formData.wholesaleRates.tier3}
+                onChange={(e) => handleTierChange('tier3', e.target.value)}
+                className="w-full bg-[#0a0c0e] px-3 py-2 rounded border border-stone-800 text-center text-emerald-400 font-mono text-lg"
+                />
+            </div>
+            </div>
+        </div>
+        )}
+
 
         {/* SABORES */}
         <div className="mt-4">

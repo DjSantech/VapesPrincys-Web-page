@@ -15,6 +15,7 @@ export interface AdminProduct {
   puffs: number;
   ml: number;
   visible: boolean;
+  visibleWhoSale: boolean;
   imageUrl: string;
   category: string;
   flavors: string[];
@@ -32,6 +33,7 @@ export interface CreateProductPayload {
   puffs: number;
   ml: number;
   visible?: boolean;
+  visibleWhoSale?: boolean;
   category?: string;
   image?: File | null;
   flavors?: string[];
@@ -50,6 +52,7 @@ export type PatchProductPayload = Partial<
       | "stock"
       | "puffs"
       | "visible"
+      | "visibleWhoSale"
       | "category"
       | "flavors"
       | "pluses"
