@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Banner, IBanner, IBannerDay,BannerDays } from "../models/Banner";
 import { uploadBufferToCloudinary } from "../lib/uploadBufferToCloudinary"; 
+import { deleteImageFromCloudinary } from "../lib/cloudinary";
 
 interface FileRequest extends Request {
   // Asumimos que la propiedad 'file' usa el tipo de archivo de Multer.
@@ -47,6 +48,10 @@ export const updateBannerDayImage = async (req: FileRequest, res: Response) => {
     try {
         // 1. Asegurar que exista un documento Banner
         let bannerDoc = await Banner.findOne();
+        // 1.5 Lógica de limpieza: Borrar imagen vieja de la nube si existe
+      if (bannerDoc && bannerDoc[day]?.bannerImageUrl) {
+          await deleteImageFromCloudinary(bannerDoc[day]!.bannerImageUrl!);
+      }
         if (!bannerDoc) {
             bannerDoc = await Banner.create({
                 Lunes: {},
@@ -86,6 +91,7 @@ export const updateBannerDayImage = async (req: FileRequest, res: Response) => {
 };
 
 // POST /api/banner  → Guardar TODO el banner
+// POST /api/banner  → Guardar TODO el banner
 export const updateBanner = async (req: Request, res: Response) => {
   try {
     const data = req.body as Partial<IBanner>;
@@ -94,36 +100,53 @@ export const updateBanner = async (req: Request, res: Response) => {
     if (!banner) {
       banner = await Banner.create(data);
     } else {
-      // 👇 Aquí reemplazamos Object.assign por actualización inteligente
-      for (const day of Object.keys(data)) {
-        const dayData = data[day as keyof IBanner];
-        
-        // Si el día viene vacío → mantener null
+      const keys = Object.keys(data) as (keyof IBanner)[];
+
+      for (const dayKey of keys) {
+        const dayData = data[dayKey];
+
+        // 1. Borrado y asignación de null
         if (!dayData) {
-          banner[day] = null;
+          if (banner[dayKey]?.bannerImageUrl) {
+            await deleteImageFromCloudinary(banner[dayKey]!.bannerImageUrl!);
+          }
+          // Usamos Record<string, any> para que TS permita la asignación de null sin quejarse
+          (banner as Record<string, any>)[dayKey] = null;
           continue;
         }
 
-        // 👇 Mantener la imagen PREVIAMENTE guardada
-        const previousUrl = banner[day]?.bannerImageUrl || null;
+        // 2. Mantener imagen y actualizar datos
+        const previousUrl = banner[dayKey]?.bannerImageUrl || null;
 
-        banner[day] = {
-          ...banner[day],        // ❗ mantiene bannerImageUrl
-          ...dayData,            // ❗ actualiza category, vapeId, descuento
-          bannerImageUrl: previousUrl, // ❗ se asegura de NO borrar la URL
+        // Construimos el objeto nuevo
+        const updatedDayContent = {
+          ...((banner[dayKey] as any) || {}), // Evitamos spread de null
+          ...dayData,
+          bannerImageUrl: previousUrl,
         };
+
+        // Asignamos usando el Record para saltar la validación estricta de Mongoose
+        (banner as Record<string, any>)[dayKey] = updatedDayContent;
       }
+
+      // Obligamos a Mongoose a notar los cambios en campos mixtos/anidados
+      banner.markModified('Lunes');
+      banner.markModified('Martes');
+      banner.markModified('Miercoles');
+      banner.markModified('Jueves');
+      banner.markModified('Viernes');
+      banner.markModified('Sabado');
+      banner.markModified('Domingo');
 
       await banner.save();
     }
 
     res.json({ ok: true, banner });
   } catch (error) {
-    console.error(error);
+    console.error("Error en updateBanner:", error);
     res.status(500).json({ error: "Error al actualizar el banner" });
   }
 };
-
 
 // PATCH /api/banner/:day  → Actualizar **solo un día**
 export const updateBannerDay = async (req: Request, res: Response) => {

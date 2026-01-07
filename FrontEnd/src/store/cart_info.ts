@@ -4,35 +4,42 @@ import { persist } from "zustand/middleware";
 import type { CartItem, CartState } from "../types/Cart";
 import type { DeliveryInfo } from "../types/checkout";
 
-// 🔥 CAMBIO CLAVE: Agregamos 'open' y 'setOpen' al tipo
+// 🔥 DEFINICIÓN DE TIPOS EXTENDIDOS
 type CartStateExtended = CartState & {
-  open: boolean; // <-- NUEVA PROPIEDAD: Estado de visibilidad del carrito (booleano)
-  setOpen: (open: boolean) => void; // <-- NUEVA FUNCIÓN: Para abrir o cerrar el carrito
-  // domicilio
+  open: boolean; 
+  setOpen: (open: boolean) => void; 
   delivery?: DeliveryInfo;
   setDelivery: (d: DeliveryInfo) => void;
-  deliveryFee: () => number;      // en centavos
+  deliveryFee: () => number;      // Retorna centavos
   totalWithDelivery: () => number;
 };
 
+// ☀️ TARIFAS DIURNAS (Normal)
 const DELIVERY_FEES: Record<NonNullable<DeliveryInfo["zone"]>, number> = {
-  DOSQUEBRADAS: 600000,   // $6.000 -> en centavos
-  PEREIRA_CENTRO: 900000,   // $9.000
-  CUBA: 1200000,    // $12.000
-  NACIONAL: 1500000,    // $15.000 (envío nacional contado)
+  DOSQUEBRADAS: 700000,   // $6.000
+  PEREIRA_CENTRO: 1000000, // $9.000
+  CUBA: 1300000,          // $12.000
+  NACIONAL: 1500000,      // $15.000
+};
+
+// 🌙 TARIFAS NOCTURNAS (Después de las 11 PM)
+const NIGHT_FEES: Record<NonNullable<DeliveryInfo["zone"]>, number> = {
+  DOSQUEBRADAS: 800000,   // $8.000
+  PEREIRA_CENTRO: 1200000, // $12.000
+  CUBA: 1500000,          // $15.000
+  NACIONAL: 1500000,      // Se mantiene igual
 };
 
 export const useCart = create<CartStateExtended>()(
   persist(
     (set, get) => ({
-      // 🔥 IMPLEMENTACIÓN: Estado inicial del carrito (cerrado por defecto)
+      // ======= estado visibilidad =======
       open: false,
-      // 🔥 IMPLEMENTACIÓN: Función para cambiar el estado 'open'
       setOpen: (open: boolean) => set({ open }),
 
       // ======= estado carrito =======
       items: [],
-      addItem: (item: CartItem) => {          // 👈 usa CartItem (ya no queda “sin usar”)
+      addItem: (item: CartItem) => {
         const items = get().items.slice();
         const idx = items.findIndex((i) =>
           i.id === item.id &&
@@ -45,10 +52,10 @@ export const useCart = create<CartStateExtended>()(
         else items.push(item);
         set({ items });
       },
+      
       removeItem: (productId: string) =>
         set({ items: get().items.filter((i) => i.id !== productId) }),
 
-      // Modificamos clear para también cerrar el carrito si está abierto
       clear: () => set({ items: [], delivery: undefined, open: false }),
 
       updateQty: (productId: string, qty: number) => {
@@ -64,22 +71,37 @@ export const useCart = create<CartStateExtended>()(
           return acc + i.price * i.qty + addOns;
         }, 0),
 
-      // ======= domicilio =======
+      // ======= estado domicilio =======
       delivery: undefined,
       setDelivery: (d: DeliveryInfo) => set({ delivery: d }),
 
+      /**
+       * Calcula el costo del domicilio basado en la zona y la hora actual.
+       * Si es después de las 11:00 PM o antes de las 6:00 AM, aplica tarifa nocturna.
+       */
       deliveryFee: () => {
         const d = get().delivery;
         if (!d) return 0;
-        return DELIVERY_FEES[d.zone] ?? 0;
+
+        // Obtener hora actual del dispositivo
+        const now = new Date();
+        const hour = now.getHours();
+        
+        // Condición: 11 PM (23h) hasta las 5:59 AM
+        const isNight = hour >= 23 || hour < 6;
+
+        // Seleccionar el diccionario de precios correspondiente
+        const currentFees = isNight ? NIGHT_FEES : DELIVERY_FEES;
+
+        return currentFees[d.zone] ?? 0;
       },
 
       totalWithDelivery: () => get().total() + get().deliveryFee(),
     }),
     {
       name: "vapes-cart",
-      // 🔥 BUENA PRÁCTICA: Usamos `partialize` para excluir 'open' del localStorage.
-      // Esto previene que el carrito se abra automáticamente cada vez que se recarga la página.
+      // Evitamos que 'open' se guarde en localStorage para que el carrito 
+      // no aparezca abierto al recargar la página.
       partialize: (state) => {
         const { open, setOpen, ...persistedState } = state;
         return persistedState;
