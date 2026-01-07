@@ -302,42 +302,51 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
         update.category = catId;
       }
     }
+    
+    // -----------------------------
+    // Visible wholesale
+    // -----------------------------
     let visibleWhoSaleBool: boolean | undefined = undefined;
 
-    if (visibleWhoSale !== undefined) {
-      visibleWhoSaleBool =
-        typeof visibleWhoSale === "boolean"
-          ? visibleWhoSale
-          : typeof visibleWhoSale === "string"
-            ? visibleWhoSale === "true"
-            : false;
+    if (Object.prototype.hasOwnProperty.call(req.body, "visibleWhoSale")) {
+      if (typeof visibleWhoSale === "boolean") {
+        visibleWhoSaleBool = visibleWhoSale;
+      } else if (typeof visibleWhoSale === "string") {
+        visibleWhoSaleBool = visibleWhoSale === "true";
+      }
 
-      update.visibleWhoSale = visibleWhoSaleBool;
+      if (visibleWhoSaleBool !== undefined) {
+        update.visibleWhoSale = visibleWhoSaleBool;
+      }
     }
 
+    // -----------------------------
+    // Wholesale rates
+    // -----------------------------
     if (Object.prototype.hasOwnProperty.call(req.body, "wholesaleRates")) {
-        try {
-          const parsed =
-            typeof req.body.wholesaleRates === "string"
-              ? JSON.parse(req.body.wholesaleRates)
-              : req.body.wholesaleRates;
+      try {
+        const parsed =
+          typeof req.body.wholesaleRates === "string"
+            ? JSON.parse(req.body.wholesaleRates)
+            : req.body.wholesaleRates;
 
-          // 🚩 Si NO es mayoreo → limpia tiers
-          if (visibleWhoSaleBool === false) {
-            update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
-          } else {
-            update.wholesaleRates = {
-              tier1: Number(parsed?.tier1 ?? 0),
-              tier2: Number(parsed?.tier2 ?? 0),
-              tier3: Number(parsed?.tier3 ?? 0),
-            };
-          }
-        } catch {
-          if (visibleWhoSaleBool === false) {
-            update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
-          }
+        // 🚩 Si explícitamente se apagó el mayoreo → limpia tiers
+        if (visibleWhoSaleBool === false) {
+          update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
+        } else {
+          update.wholesaleRates = {
+            tier1: Number(parsed?.tier1 ?? 0),
+            tier2: Number(parsed?.tier2 ?? 0),
+            tier3: Number(parsed?.tier3 ?? 0),
+          };
+        }
+      } catch (error) {
+        // fallback seguro
+        if (visibleWhoSaleBool === false) {
+          update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
         }
       }
+    }
 
 
     const doc = await Product.findByIdAndUpdate(

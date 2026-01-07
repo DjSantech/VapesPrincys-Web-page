@@ -43,7 +43,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
   // Inicializamos el estado del formulario con los datos del producto
   const [formData, setFormData] = useState<AdminProduct>({
     ...product,
-    visibleWhoSale: product.visibleWhoSale ?? false,
+    visibleWhoSale: product.visibleWhoSale !== false,
     wholesaleRates: product.wholesaleRates || { tier1: 0, tier2: 0, tier3: 0 }
   });
   const [isSaving, setIsSaving] = useState(false);
