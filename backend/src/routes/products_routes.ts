@@ -26,9 +26,10 @@ async function resolveCategoryId(input?: unknown) {
 }
 
 // Mapear documento -> DTO para el front
-const mapDoc = (p: any) => {
+  const mapDoc = (p: any) => {
   const catId = p.category ? String(p.category._id ?? p.category) : "";
   const catName = p.category?.name ?? (typeof p.category === "string" ? p.category : "");
+
   return {
     id: String(p._id),
     sku: p.sku ?? "",
@@ -37,7 +38,10 @@ const mapDoc = (p: any) => {
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
     ml: p.ml ?? 0,
-    visibleWholesale: p.wholesaleRates ? true : false,
+
+    // ✅ USA EL VALOR REAL
+    visibleWhoSale: p.visibleWhoSale ?? false,
+
     wholesaleRates: p.wholesaleRates ?? { tier1: 0, tier2: 0, tier3: 0 },
     visible: p.isActive ?? true,
     imageUrl: p.imageUrl ?? "",
@@ -46,7 +50,7 @@ const mapDoc = (p: any) => {
     flavors: Array.isArray(p.flavors) ? p.flavors : [],
     pluses: Array.isArray(p.pluses) ? p.pluses : [],
     description: p.description ?? "",
-    hasFlavors: Array.isArray(p.flavors) ? p.flavors.length > 0 : false,
+    hasFlavors: p.hasFlavors ?? false,
   };
 };
 
