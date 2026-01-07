@@ -14,22 +14,26 @@ type CartStateExtended = CartState & {
   totalWithDelivery: () => number;
 };
 
-// ☀️ TARIFAS DIURNAS (Normal)
-const DELIVERY_FEES: Record<NonNullable<DeliveryInfo["zone"]>, number> = {
-  DOSQUEBRADAS: 700000,   // $6.000
-  PEREIRA_CENTRO: 1000000, // $9.000
-  CUBA: 1300000,          // $12.000
-  NACIONAL: 1500000,      // $15.000
+export const DELIVERY_ZONES = [
+  { value: "DOSQUEBRADAS", label: "Dosquebradas" },
+  { value: "PEREIRA_CENTRO", label: "Pereira Centro" },
+  { value: "CUBA", label: "Cuba" },
+  { value: "NACIONAL", label: "Envío Nacional" },
+] as const;
+
+export const DELIVERY_FEES = {
+  DOSQUEBRADAS: 7000,
+  PEREIRA_CENTRO: 10000,
+  CUBA: 13000,
+  NACIONAL: 15000,
 };
 
-// 🌙 TARIFAS NOCTURNAS (Después de las 11 PM)
-const NIGHT_FEES: Record<NonNullable<DeliveryInfo["zone"]>, number> = {
-  DOSQUEBRADAS: 800000,   // $8.000
-  PEREIRA_CENTRO: 1200000, // $12.000
-  CUBA: 1500000,          // $15.000
-  NACIONAL: 1500000,      // Se mantiene igual
+export const NIGHT_FEES = {
+  DOSQUEBRADAS: 8000,
+  PEREIRA_CENTRO: 120000,
+  CUBA: 15000,
+  NACIONAL: 15000,
 };
-
 export const useCart = create<CartStateExtended>()(
   persist(
     (set, get) => ({

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ShoppingCart } from "lucide-react";
-import { useCart } from "../store/cart_info";
+import { useCart,DELIVERY_ZONES,DELIVERY_FEES,NIGHT_FEES } from "../store/cart_info";
 import { buildWhatsAppUrl, formatCOP } from "../lib/format";
 import type { DeliveryInfo, DeliveryZone } from "../types/checkout";
 
@@ -17,12 +17,12 @@ type FormErrors = {
 
 const PHONE = "573043602980";
 
-const FEE_BY_ZONE: Record<DeliveryZone, number> = {
-  DOSQUEBRADAS: 6000,
-  PEREIRA_CENTRO: 9000,
-  CUBA: 12000,
-  NACIONAL: 20000,
-};
+// ⏰ Detectar tarifa nocturna
+const hour = new Date().getHours();
+const isNight = hour >= 23 || hour < 6;
+
+// 📦 Tarifas activas (las MISMAS que se cobran)
+const ACTIVE_FEES = isNight ? NIGHT_FEES : DELIVERY_FEES;
 
 // ———————————————————————————————————————
 // Listas de Colombia (departamentos y ciudades frecuentes)
@@ -131,6 +131,7 @@ export default function CartButton() {
     total, 
     delivery, 
     setDelivery,
+    deliveryFee,
     open,     // <-- Obtenido del store
     setOpen,  // <-- Obtenido del store
   } = useCart();
@@ -155,7 +156,7 @@ export default function CartButton() {
 
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const fee = FEE_BY_ZONE[form.zone] ?? 0;
+  const fee = deliveryFee();
   const grand = sub + fee;
 
   const handleChange = <K extends keyof DeliveryInfo>(key: K, value: DeliveryInfo[K]) =>
@@ -357,25 +358,28 @@ export default function CartButton() {
 
             {/* Zona */}
             <div className="flex items-center gap-3">
-              <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
-              <select
-                className="flex-1 rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm { color-scheme: dark; }"
-                value={form.zone}
-                onChange={(e) => {
-                  const newZone = e.target.value as DeliveryZone;
-                  handleChange("zone", newZone);
-                  if (newZone === "NACIONAL") {
-                    handleChange("paymentMethod", "TRANSFERENCIA");
-                    handleChange("changeFor", undefined);
+                <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
+
+                <select
+                  value={form.zone}
+                  onChange={(e) =>
+                    setForm({ ...form, zone: e.target.value as DeliveryZone })
                   }
-                }}
-              >
-                <option value="DOSQUEBRADAS">Dosquebradas ($6.000)</option>
-                <option value="PEREIRA_CENTRO">Pereira Centro ($9.000)</option>
-                <option value="CUBA">Cuba ($12.000)</option>
-                <option value="NACIONAL">Envío Nacional ($20.000)</option>
-              </select>
-            </div>
+                  className="w-full rounded-md border bg-black p-2"
+                >
+                  {DELIVERY_ZONES.map((z) => (
+                    <option key={z.value} value={z.value}>
+                      {z.label} ({formatCOP(ACTIVE_FEES[z.value])})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            
+            {isNight && (
+              <p className="text-xs text-amber-400 mt-1">
+                🌙 Tarifa nocturna aplicada (11:00 PM – 6:00 AM)
+              </p>
+            )}
 
             <p className="text-xs text-amber-300 mt-1">
               📦 El precio del envío puede variar según la zona o ciudad de destino.
