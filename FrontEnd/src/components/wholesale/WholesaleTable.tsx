@@ -10,6 +10,19 @@ interface Props {
 }
 
 export function WholesaleTable({ products, onAdd }: Props) {
+  // 👉 SOLO productos visibles para mayoreo
+  const wholesaleProducts = products.filter(
+    (product) => product.visibleWhoSale === true 
+  );
+
+  // 👉 Estado vacío
+  if (wholesaleProducts.length === 0) {
+    return (
+      <div className="py-12 text-center text-zinc-500 italic">
+        No hay productos disponibles para mayoreo.
+      </div>
+    );
+  }
   return (
     <div className="space-y-6">
       <div className="bg-emerald-950/30 border border-emerald-500/30 p-4 rounded-2xl flex items-center gap-4 shadow-lg">
@@ -35,7 +48,7 @@ export function WholesaleTable({ products, onAdd }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-zinc-800">
-            {products.map((product) => (
+            {wholesaleProducts.map((product) => (
               <ProductRowDesktop key={product.id} product={product} onAdd={onAdd} />
             ))}
           </tbody>
@@ -44,7 +57,7 @@ export function WholesaleTable({ products, onAdd }: Props) {
 
       {/* Vista Mobile */}
       <div className="grid grid-cols-1 gap-4 md:hidden">
-        {products.map((product) => (
+        {wholesaleProducts.map((product) => (
           <ProductCardMobile key={product.id} product={product} onAdd={onAdd} />
         ))}
       </div>
@@ -68,6 +81,7 @@ function ProductRowDesktop({ product, onAdd }: { product: AdminProduct; onAdd: P
       return () => clearTimeout(timer);
     }
   }, [numericQty]);
+  
 
   return (
     <tr className="hover:bg-zinc-800/20 transition-colors group">
