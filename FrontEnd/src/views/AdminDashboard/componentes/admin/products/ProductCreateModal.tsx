@@ -207,7 +207,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
               
               <div className="flex items-center space-x-2 pt-6">
                 <input id="visibleWhoSale" type="checkbox" checked={visibleWhoSale} onChange={(e) => setVisibleWhoSale(e.target.checked)} className="h-4 w-4 text-emerald-600 rounded bg-stone-700" />
-                <label htmlFor="visibleWhoSale" className="text-sm text-zinc-200">Visible</label>
+                <label htmlFor="visibleWhoSale" className="text-sm text-zinc-200">Visible para mayoreo</label>
               </div>
             </div>
             

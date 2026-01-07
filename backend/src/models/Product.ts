@@ -13,6 +13,16 @@ const productSchema = new Schema({
   isActive: { type: Boolean, default: true },
   description: { type: String, default: "", trim: true },
   hasFlavors: { type: Boolean, default: false },
+  visible: {
+  type: Boolean,
+  default: true,
+  },
+
+  visibleWhoSale: {
+    type: Boolean,
+    default: false,
+  },
+
   
   // 🚩 NUEVA PROPIEDAD: Precios de mayoreo por niveles
   wholesaleRates: {

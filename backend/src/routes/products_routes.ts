@@ -37,6 +37,7 @@ const mapDoc = (p: any) => {
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
     ml: p.ml ?? 0,
+    visibleWholesale: p.wholesaleRates ? true : false,
     wholesaleRates: p.wholesaleRates ?? { tier1: 0, tier2: 0, tier3: 0 },
     visible: p.isActive ?? true,
     imageUrl: p.imageUrl ?? "",
@@ -109,7 +110,7 @@ r.get("/", async (req, res) => {
 // =========================
 r.post("/", upload.single("image"), async (req, res) => {
   let wholesaleRatesParsed = undefined;
-
+  
   if (req.body.wholesaleRates) {
     try {
       wholesaleRatesParsed =
@@ -122,7 +123,7 @@ r.post("/", upload.single("image"), async (req, res) => {
   }
 
   try {
-    const { sku, name, price, stock, category, visible, flavors, puffs, ml, description, hasFlavors } = req.body;
+    const { sku, name, price, stock, category, visible, visibleWhoSale, flavors, puffs, ml, description, hasFlavors } = req.body;
 
     if (!sku)  return res.status(400).json({ error: "El SKU es obligatorio" });
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
@@ -173,6 +174,15 @@ r.post("/", upload.single("image"), async (req, res) => {
       imageUrl = up.secure_url as string;
     }
 
+    const visibleWhoSaleBool =
+    typeof visibleWhoSale === "boolean"
+      ? visibleWhoSale
+      : typeof visibleWhoSale === "string"
+        ? visibleWhoSale === "true"
+        : false;
+
+    
+
     const created = await Product.create({
       sku: String(sku).trim().toUpperCase(),
       name: String(name).trim(),
@@ -188,6 +198,7 @@ r.post("/", upload.single("image"), async (req, res) => {
       flavors: flavorsArr,
       pluses: plusesArr,
       wholesaleRates: wholesaleRatesParsed,
+      visibleWholesale: visibleWhoSaleBool,
     });
 
     const saved = await Product.findById(created._id).populate("category", "name").lean();
@@ -207,6 +218,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
   try {
     const {
       visible,
+      visibleWhoSale,
       flavors,
       price,
       stock,
@@ -245,17 +257,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     if (puffs !== undefined) update.puffs = Math.max(0, Math.round(Number(puffs)));
     if (ml !== undefined) update.ml = Math.max(0, Math.round(Number(ml)));
 
-    // Wholesale
-    if (Object.prototype.hasOwnProperty.call(req.body, "wholesaleRates")) {
-      try {
-        const parsed = typeof req.body.wholesaleRates === "string" ? JSON.parse(req.body.wholesaleRates) : req.body.wholesaleRates;
-        update.wholesaleRates = {
-          tier1: Number(parsed.tier1 ?? 0),
-          tier2: Number(parsed.tier2 ?? 0),
-          tier3: Number(parsed.tier3 ?? 0),
-        };
-      } catch { /* ignore */ }
-    }
+  
 
     // Visible
     if (visible !== undefined) update.isActive = String(visible) === "true";
@@ -300,6 +302,43 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
         update.category = catId;
       }
     }
+    let visibleWhoSaleBool: boolean | undefined = undefined;
+
+    if (visibleWhoSale !== undefined) {
+      visibleWhoSaleBool =
+        typeof visibleWhoSale === "boolean"
+          ? visibleWhoSale
+          : typeof visibleWhoSale === "string"
+            ? visibleWhoSale === "true"
+            : false;
+
+      update.visibleWhoSale = visibleWhoSaleBool;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, "wholesaleRates")) {
+        try {
+          const parsed =
+            typeof req.body.wholesaleRates === "string"
+              ? JSON.parse(req.body.wholesaleRates)
+              : req.body.wholesaleRates;
+
+          // 🚩 Si NO es mayoreo → limpia tiers
+          if (visibleWhoSaleBool === false) {
+            update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
+          } else {
+            update.wholesaleRates = {
+              tier1: Number(parsed?.tier1 ?? 0),
+              tier2: Number(parsed?.tier2 ?? 0),
+              tier3: Number(parsed?.tier3 ?? 0),
+            };
+          }
+        } catch {
+          if (visibleWhoSaleBool === false) {
+            update.wholesaleRates = { tier1: 0, tier2: 0, tier3: 0 };
+          }
+        }
+      }
+
 
     const doc = await Product.findByIdAndUpdate(
       req.params.id,
