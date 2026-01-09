@@ -18,6 +18,8 @@ export const DELIVERY_ZONES = [
   { value: "DOSQUEBRADAS", label: "Dosquebradas" },
   { value: "PEREIRA_CENTRO", label: "Pereira Centro" },
   { value: "CUBA", label: "Cuba" },
+  { value: "GALICIA", label: "Galicia" },
+  { value: "SANTA_ROSA", label: "Santa Rosa" },
   { value: "NACIONAL", label: "Envío Nacional" },
 ] as const;
 
@@ -25,6 +27,8 @@ export const DELIVERY_FEES = {
   DOSQUEBRADAS: 7000,
   PEREIRA_CENTRO: 10000,
   CUBA: 13000,
+  GALICIA: 18000,
+  SANTA_ROSA: 18000,
   NACIONAL: 15000,
 };
 
@@ -32,6 +36,8 @@ export const NIGHT_FEES = {
   DOSQUEBRADAS: 8000,
   PEREIRA_CENTRO: 12000,
   CUBA: 15000,
+  GALICIA: 20000,
+  SANTA_ROSA: 20000,
   NACIONAL: 15000,
 };
 export const useCart = create<CartStateExtended>()(
