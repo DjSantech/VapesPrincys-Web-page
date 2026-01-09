@@ -162,13 +162,21 @@ export default function CartButton() {
   const handleChange = <K extends keyof DeliveryInfo>(key: K, value: DeliveryInfo[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }));
 
+  const calcDeliveryFeeFromForm = (zone: DeliveryZone) => {
+  const hour = new Date().getHours();
+  const isNight = hour >= 23 || hour < 6;
+  const fees = isNight ? NIGHT_FEES : DELIVERY_FEES;
+  return fees[zone] ?? 0;
+  };
   const handleWhatsApp = () => {
     const e = validateForm(form);
     setErrors(e);
     if (Object.keys(e).length > 0) return;
 
-    setDelivery(form);
-    const url = buildWhatsAppUrl(PHONE, items, sub, form, fee);
+    const feeNow = calcDeliveryFeeFromForm(form.zone);
+
+    setDelivery(form); // solo para persistir
+    const url = buildWhatsAppUrl(PHONE, items, sub, form, feeNow);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
