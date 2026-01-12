@@ -5,7 +5,8 @@ export type CartAddOnGiftVape = { model: string; flavor?: string };
 export type CartItem = {
   id: string;          // productId
   name: string;
-  price: number;       // centavos (del producto principal)
+  price: number; 
+  dropshippingPrice?: number;      
   qty: number;
   flavor?: string;
   imageUrl?: string;

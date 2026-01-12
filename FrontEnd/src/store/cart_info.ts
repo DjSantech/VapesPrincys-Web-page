@@ -4,16 +4,20 @@ import { persist } from "zustand/middleware";
 import type { CartItem, CartState } from "../types/Cart";
 import type { DeliveryInfo } from "../types/checkout";
 
-// 🔥 DEFINICIÓN DE TIPOS EXTENDIDOS
 type CartStateExtended = CartState & {
-  open: boolean; 
-  setOpen: (open: boolean) => void; 
+  open: boolean;
+  setOpen: (open: boolean) => void;
+  // ======= estado dropshipping =======
+  isDropshipping: boolean;
+  setDropshipping: (val: boolean) => void;
+  sellerId?: string;
+  setSellerId: (id: string) => void;
+  // ------------------------------------
   delivery?: DeliveryInfo;
   setDelivery: (d: DeliveryInfo) => void;
-  deliveryFee: () => number;      // Retorna centavos
+  deliveryFee: () => number;
   totalWithDelivery: () => number;
 };
-
 export const DELIVERY_ZONES = [
   { value: "DOSQUEBRADAS", label: "Dosquebradas" },
   { value: "PEREIRA_CENTRO", label: "Pereira Centro" },
@@ -43,6 +47,12 @@ export const NIGHT_FEES = {
 export const useCart = create<CartStateExtended>()(
   persist(
     (set, get) => ({
+      // ======= estado dropshipping =======
+      isDropshipping: false, // Por defecto es falso
+      sellerId: undefined,
+      setDropshipping: (val: boolean) => set({ isDropshipping: val }),
+      setSellerId: (id: string) => set({ sellerId: id }),
+
       // ======= estado visibilidad =======
       open: false,
       setOpen: (open: boolean) => set({ open }),
@@ -50,6 +60,11 @@ export const useCart = create<CartStateExtended>()(
       // ======= estado carrito =======
       items: [],
       addItem: (item: CartItem) => {
+        // 🔥 LÓGICA DE PRECIO SEGÚN MODO
+        const isDrop = get().isDropshipping;
+        // Si el modo dropshipping está activo, usamos dropshippingPrice, si no, el precio normal
+        const finalPrice = isDrop && item.dropshippingPrice ? item.dropshippingPrice : item.price;
+
         const items = get().items.slice();
         const idx = items.findIndex((i) =>
           i.id === item.id &&
@@ -58,15 +73,22 @@ export const useCart = create<CartStateExtended>()(
           JSON.stringify(i.extraVape) === JSON.stringify(item.extraVape) &&
           JSON.stringify(i.giftVape) === JSON.stringify(item.giftVape)
         );
-        if (idx >= 0) items[idx].qty += item.qty;
-        else items.push(item);
+
+        if (idx >= 0) {
+          items[idx].qty += item.qty;
+          // Actualizamos el precio por si acaso el modo cambió
+          items[idx].price = finalPrice; 
+        } else {
+          // Agregamos el item con el precio final calculado
+          items.push({ ...item, price: finalPrice });
+        }
         set({ items });
       },
       
       removeItem: (productId: string) =>
         set({ items: get().items.filter((i) => i.id !== productId) }),
 
-      clear: () => set({ items: [], delivery: undefined, open: false }),
+      clear: () => set({ items: [], delivery: undefined, open: false, isDropshipping: false, sellerId: undefined }),
 
       updateQty: (productId: string, qty: number) => {
         const items = get().items.map((i) => (i.id === productId ? { ...i, qty } : i));
@@ -81,28 +103,16 @@ export const useCart = create<CartStateExtended>()(
           return acc + i.price * i.qty + addOns;
         }, 0),
 
-      // ======= estado domicilio =======
       delivery: undefined,
       setDelivery: (d: DeliveryInfo) => set({ delivery: d }),
 
-      /**
-       * Calcula el costo del domicilio basado en la zona y la hora actual.
-       * Si es después de las 11:00 PM o antes de las 6:00 AM, aplica tarifa nocturna.
-       */
       deliveryFee: () => {
         const d = get().delivery;
         if (!d) return 0;
-
-        // Obtener hora actual del dispositivo
         const now = new Date();
         const hour = now.getHours();
-        
-        // Condición: 11 PM (23h) hasta las 5:59 AM
         const isNight = hour >= 23 || hour < 6;
-
-        // Seleccionar el diccionario de precios correspondiente
         const currentFees = isNight ? NIGHT_FEES : DELIVERY_FEES;
-
         return currentFees[d.zone] ?? 0;
       },
 
@@ -110,9 +120,9 @@ export const useCart = create<CartStateExtended>()(
     }),
     {
       name: "vapes-cart",
-      // Evitamos que 'open' se guarde en localStorage para que el carrito 
-      // no aparezca abierto al recargar la página.
       partialize: (state) => {
+        // Excluimos 'open' pero PERSISTIMOS 'isDropshipping' y 'sellerId'
+        // para que si el cliente refresca la página, sigan los precios de vendedor.
         const { open, setOpen, ...persistedState } = state;
         return persistedState;
       }
