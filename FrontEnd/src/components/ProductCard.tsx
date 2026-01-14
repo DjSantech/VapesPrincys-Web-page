@@ -1,11 +1,13 @@
 // src/components/ProductCard.tsx
 import { Link } from "react-router-dom";
 import { optimizeImage } from "../utils/cloudinary"; // ✅ Importación lista
+import { useCart } from "../store/cart_info";
 
 export type ProductCardProps = {
   id: string;
   name: string;
   price: number;
+  dropshippingPrice?: number;
   imageUrl?: string;
   className?: string;
   categoryName?: string;
@@ -26,6 +28,7 @@ export default function ProductCard({
   id,
   name,
   price,
+  dropshippingPrice,
   imageUrl,
   className = "",
   pluses = [],
@@ -34,8 +37,11 @@ export default function ProductCard({
 }: ProductCardProps) {
   const fallback = "https://picsum.photos/seed/vape/600/600";
   
-  // ✅ Aplicamos la optimización aquí
-  // Usamos 600 como ancho máximo para que se vea bien en móviles y escritorio
+  // ✅ 4. Detectar si el modo dropshipping está activo desde el store
+  const isDropshipping = useCart((state) => state.isDropshipping);
+
+  // ✅ 5. Determinar el precio final a mostrar
+  const finalPrice = isDropshipping && dropshippingPrice ? dropshippingPrice : price;
   const img = imageUrl ? optimizeImage(imageUrl, 600) : fallback;
 
   const hasPlus = Array.isArray(pluses) && pluses.length > 0;
@@ -71,7 +77,7 @@ export default function ProductCard({
 
         <div className="mt-1 flex items-center justify-between">
           <p className="text-sm sm:text-base md:text-lg font-bold text-amber-400">
-            {formatPrice(price)}
+            {formatPrice(finalPrice)}
           </p>
 
           {hasPlus && (
