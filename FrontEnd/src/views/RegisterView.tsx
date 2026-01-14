@@ -1,139 +1,205 @@
-import { Link } from "react-router-dom"
-import { useForm } from 'react-hook-form'
-import  {isAxiosError} from 'axios'
-import ErrorMessage from "../components/ErrorMessage"
-import type { RegisterForm } from "../types"
-import { toast } from 'sonner'
-import {api} from "../services/axios"
+// src/views/RegisterView.tsx
+import { Link, useNavigate } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
 
+type RegisterForm = {
+  nombre: string;
+  apellido: string;
+  cedula: string;
+  email: string;
+  celular: string;
+  fechaNacimiento: string;
+  direccion: string;
+  password: string;
+  confirmPassword: string;
+};
 
 export default function RegisterView() {
-  
-  const initialValues : RegisterForm   = {
-    name:'',
-    email:'',
-    handle:'',
-    password:'',
-    passwordConfirmation:''
-  }
-  
-  
-  const { register, watch, handleSubmit,reset, formState: {errors}} = useForm ({defaultValues:initialValues})
-  
-  const password = watch('password')
+  const navigate = useNavigate();
 
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<RegisterForm>();
 
-  
-  const handleRegister = async (formData:RegisterForm) => {
+  // Validación de edad (Mínimo 18 años recomendado para vapes, pero ajustado a 12 según pediste)
+  const validarEdad = (fecha: string) => {
+    const hoy = new Date();
+    const cumple = new Date(fecha);
+    let edad = hoy.getFullYear() - cumple.getFullYear();
+    const m = hoy.getMonth() - cumple.getMonth();
+    if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) edad--;
+    return edad >= 12 || "Debes ser mayor de 12 años";
+  };
+
+  const onSubmit = async (data: RegisterForm) => {
     try {
-      const {data } = await api.post(`/auth/register` , formData)
-      toast.success(data)
-      reset()
-    } catch (error) {
-      if (isAxiosError(error) && error.response) {
-        toast.error(error.response?.data.error)
-      }
+      console.log("Datos para registro:", data);
+      // Aquí irá tu llamada al backend: await registerUser(data);
+      toast.success("¡Cuenta creada con éxito! Bienvenido al equipo.");
+      navigate("/auth/login");
+    } catch  {
+      toast.error("Error al crear la cuenta");
     }
-    
-  }
-  return (
-    <>
+  };
 
-      <h1 className="text-4xl text-white font-bold">Crear cuenta</h1>
+  const inputStyle = "w-full rounded-xl bg-[#0f1113] ring-1 ring-stone-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-stone-600";
+  const labelStyle = "text-sm font-medium text-zinc-300";
+
+  return (
+    <div className="min-h-screen py-10 grid place-content-center px-4">
+      <h1 className="text-3xl sm:text-4xl font-bold text-zinc-100 text-center">
+        Únete como Dropshipper
+      </h1>
+      <p className="text-zinc-400 text-center mt-2 text-sm">Crea tu cuenta para obtener tu link de vendedor</p>
 
       <form
-        onSubmit={handleSubmit(handleRegister)}
-        className="bg-white px-5 py-20 rounded-lg space-y-10 mt-10"
+        onSubmit={handleSubmit(onSubmit)}
+        className="mt-8 w-full max-w-2xl mx-auto rounded-2xl border border-stone-800 bg-[#1a1d1f] p-6 sm:p-8 shadow-xl"
+        noValidate
       >
-        <div className="grid grid-cols-1 space-y-3">
-          <label htmlFor="name" className="text-2xl text-slate-500">Nombre</label>
-          <input
-            id="name"
-            type="text"
-            placeholder="Tu Nombre"
-            className="bg-slate-100 border-none p-3 rounded-lg placeholder-slate-400"
-            {...register("name", {
-              required:"El nombre es obligatorio"
-            })}
-          />
-          {errors.name && <ErrorMessage>{errors.name.message}</ErrorMessage>}
-        </div>
-        <div className="grid grid-cols-1 space-y-3">
-          <label htmlFor="email" className="text-2xl text-slate-500">E-mail</label>
-          <input
-            id="email"
-            type="email"
-            placeholder="Email de Registro"
-            className="bg-slate-100 border-none p-3 rounded-lg placeholder-slate-400"
-            {...register("email", {
-              required:"El email es obligatorio",
-              pattern: {
-                value: /\S+@\S+\.\S+/,
-                message: "E-mail no válido",
-              },
-            })}
-          />
-          {errors.email && <ErrorMessage>{errors.email.message}</ErrorMessage>}
-        </div>
-        <div className="grid grid-cols-1 space-y-3">
-          <label htmlFor="handle" className="text-2xl text-slate-500">Handle</label>
-          <input
-            id="handle"
-            type="text"
-            placeholder="Nombre de usuario: sin espacios"
-            className="bg-slate-100 border-none p-3 rounded-lg placeholder-slate-400"
-            {...register("handle", {
-              required:"El handle es obligatorio"
-            })}
-          />
-          {errors.handle && <ErrorMessage>{errors.handle.message}</ErrorMessage>}
-        </div>
-        <div className="grid grid-cols-1 space-y-3">
-          <label htmlFor="password" className="text-2xl text-slate-500">Password</label>
-          <input
-            id="password"
-            type="password"
-            placeholder="Password de Registro"
-            className="bg-slate-100 border-none p-3 rounded-lg placeholder-slate-400"
-            {...register("password", {
-              required:"El password es obligatorio",
-              minLength: {
-                value:8,
-                message:"El password debe ser de minimo 8 caracteres."
-              }
-            })}
-          />
-        </div>
-        {errors.password && <ErrorMessage>{errors.password.message}</ErrorMessage>}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Nombre */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Nombre</label>
+            <input
+              type="text"
+              placeholder="Tu nombre"
+              className={inputStyle}
+              {...register("nombre", { required: "Campo obligatorio" })}
+            />
+            {errors.nombre && <p className="text-xs text-red-400">{errors.nombre.message}</p>}
+          </div>
 
-        <div className="grid grid-cols-1 space-y-3">
-          <label htmlFor="password_confirmation" className="text-2xl text-slate-500">Repetir Password</label>
-          <input
-            id="password_confirmation"
-            type="password"
-            placeholder="Repetir Password"
-            className="bg-slate-100 border-none p-3 rounded-lg placeholder-slate-400"
-            {...register('passwordConfirmation', {
-              required:"Por favor escriba el passwordConfirmation",
-              validate:(value) => password === value || "los passwords no son iguales"
-            })}
-          />
-           {errors.passwordConfirmation && <ErrorMessage>{errors.passwordConfirmation.message}</ErrorMessage>}
+          {/* Apellido */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Apellido</label>
+            <input
+              type="text"
+              placeholder="Tu apellido"
+              className={inputStyle}
+              {...register("apellido", { required: "Campo obligatorio" })}
+            />
+            {errors.apellido && <p className="text-xs text-red-400">{errors.apellido.message}</p>}
+          </div>
+
+          {/* Cédula */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Cédula / ID</label>
+            <input
+              type="text"
+              placeholder="Número de documento"
+              className={inputStyle}
+              {...register("cedula", { required: "Campo obligatorio" })}
+            />
+            {errors.cedula && <p className="text-xs text-red-400">{errors.cedula.message}</p>}
+          </div>
+
+          {/* Celular */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Celular (10 dígitos)</label>
+            <input
+              type="tel"
+              placeholder="3001234567"
+              className={inputStyle}
+              {...register("celular", { 
+                required: "Campo obligatorio",
+                pattern: { value: /^[0-9]{10}$/, message: "Debe tener 10 dígitos" }
+              })}
+            />
+            {errors.celular && <p className="text-xs text-red-400">{errors.celular.message}</p>}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1 md:col-span-2">
+            <label className={labelStyle}>Correo electrónico</label>
+            <input
+              type="email"
+              placeholder="usuario@gmail.com"
+              className={inputStyle}
+              {...register("email", { 
+                required: "Campo obligatorio",
+                pattern: { 
+                    value: /^[a-zA-Z0-9._%+-]+@gmail\.com$/, 
+                    message: "Solo se permiten correos de @gmail.com" 
+                }
+              })}
+            />
+            {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
+          </div>
+
+          {/* Fecha de Nacimiento */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Fecha de Nacimiento</label>
+            <input
+              type="date"
+              className={inputStyle}
+              {...register("fechaNacimiento", { 
+                required: "Campo obligatorio",
+                validate: validarEdad
+              })}
+            />
+            {errors.fechaNacimiento && <p className="text-xs text-red-400">{errors.fechaNacimiento.message}</p>}
+          </div>
+
+          {/* Dirección */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Dirección</label>
+            <input
+              type="text"
+              placeholder="Calle 123 #..."
+              className={inputStyle}
+              {...register("direccion", { required: "Campo obligatorio" })}
+            />
+            {errors.direccion && <p className="text-xs text-red-400">{errors.direccion.message}</p>}
+          </div>
+
+          {/* Contraseña */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Contraseña</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              className={inputStyle}
+              {...register("password", { 
+                required: "La contraseña es obligatoria",
+                minLength: { value: 6, message: "Mínimo 6 caracteres" }
+              })}
+            />
+            {errors.password && <p className="text-xs text-red-400">{errors.password.message}</p>}
+          </div>
+
+          {/* Confirmar Contraseña */}
+          <div className="space-y-1">
+            <label className={labelStyle}>Confirmar Contraseña</label>
+            <input
+              type="password"
+              placeholder="••••••••"
+              className={inputStyle}
+              {...register("confirmPassword", { 
+                required: "Confirme su contraseña",
+                validate: (value) => value === watch("password") || "Las contraseñas no coinciden"
+              })}
+            />
+            {errors.confirmPassword && <p className="text-xs text-red-400">{errors.confirmPassword.message}</p>}
+          </div>
         </div>
-       
-        <input
+
+        <button
           type="submit"
-          className="bg-cyan-400 p-3 text-lg w-full uppercase text-slate-600 rounded-lg font-bold cursor-pointer"
-          value='Crear Cuenta'
-        />
-      </form>
+          disabled={isSubmitting}
+          className="mt-8 w-full rounded-xl bg-[#6ee7b7] text-black font-semibold py-2.5 hover:bg-[#86f1c5] disabled:opacity-60 transition-colors"
+        >
+          {isSubmitting ? "Procesando..." : "Registrarme como Vendedor"}
+        </button>
 
-      <nav className="mt-10">
-        <Link
-          className="text-center text-white text-lg block"
-          to="/auth/login"
-        >¿Ya tienes una cuenta? Inicia sesion  aqui.</Link>
-      </nav>
-    </>
-  )
+        <div className="mt-6 text-center text-sm text-zinc-400">
+          <Link to="/auth/login" className="hover:underline">¿Ya tienes cuenta? Inicia sesión</Link>
+        </div>
+      </form>
+    </div>
+  );
 }
