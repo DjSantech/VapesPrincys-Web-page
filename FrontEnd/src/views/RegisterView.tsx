@@ -35,14 +35,26 @@ export default function RegisterView() {
     return edad >= 12 || "Debes ser mayor de 12 años";
   };
 
+  const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8080/api";
+    
   const onSubmit = async (data: RegisterForm) => {
     try {
-      console.log("Datos para registro:", data);
-      // Aquí irá tu llamada al backend: await registerUser(data);
-      toast.success("¡Cuenta creada con éxito! Bienvenido al equipo.");
-      navigate("/auth/login");
+      const response = await fetch(`${API_URL}/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast.success(`¡Bienvenido! Tu código de vendedor es: ${result.referralCode}`);
+        navigate("/auth/login");
+      } else {
+        toast.error(result.message || "Error al registrarse");
+      }
     } catch  {
-      toast.error("Error al crear la cuenta");
+      toast.error("No se pudo conectar con el servidor");
     }
   };
 
