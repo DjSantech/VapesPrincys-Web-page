@@ -12,32 +12,32 @@ export default function LoginView() {
     useForm<LoginForm>({ defaultValues: { email: "", password: "" } });
 
   const onSubmit = async ({ email, password }: LoginForm) => {
-    try {
-      // 🚀 Llamada real a tu API
-      const data = await loginUser({ email, password });
+  try {
+    const data = await loginUser({ email, password });
 
-      // Guardamos info esencial en localStorage
-      localStorage.setItem("user_role", data.user.rol);
-      localStorage.setItem("user_data", JSON.stringify(data.user));
-      
-      // Si usas tokens (JWT), guárdalo también
-      if (data.token) localStorage.setItem("admin_token", data.token);
+    localStorage.setItem("AUTH_TOKEN", data.token); 
+    localStorage.setItem("user_data", JSON.stringify(data.user));
 
-      toast.success(`¡Bienvenido de nuevo, ${data.user.nombre}!`);
+    toast.success(`¡Bienvenido, ${data.user.nombre}!`);
 
-      // 🔀 Redirección basada en el ROL que viene de la DB
-      if (data.user.rol === "ADMIN") {
-        navigate("/admin", { replace: true });
-      } else if (data.user.rol === "DROPSHIPPER") {
-        navigate("/dashboard-vendedor", { replace: true });
-      }
+    // 🚩 Agrega este console.log para ver qué está llegando realmente
+    console.log("Datos del usuario al loguear:", data.user);
 
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "Credenciales inválidas";
-      toast.error(errorMessage);
+    // 🔀 Redirección forzada
+    if (data.user.rol === "ADMIN") {
+      navigate("/admin", { replace: true });
+    } else if (data.user.rol === "DROPSHIPPER") {
+      // 🚀 Asegúrate de que esta ruta exista en tu Router.tsx
+      navigate("/dashboard-vendedor", { replace: true });
+    } else {
+      console.warn("Rol no reconocido, mandando al home por defecto");
+      navigate("/", { replace: true });
     }
-  };
 
+  } catch  {
+    toast.error("Error al iniciar sesión");
+  }
+};
   return (
     <div className="min-h-[70vh] grid place-content-center px-4">
       <h1 className="text-3xl sm:text-4xl font-bold text-zinc-100 text-center">
@@ -52,14 +52,14 @@ export default function LoginView() {
         {/* ... (tus inputs de email y password se mantienen exactamente igual) ... */}
         <div className="space-y-1">
           <label htmlFor="email" className="text-sm font-medium text-zinc-300">
-            Correo o Usuario
+            Correo o Cedula
           </label>
           <input
             id="email"
             type="text"
             placeholder="ejemplo@gmail.com"
             className="w-full rounded-xl bg-[#0f1113] ring-1 ring-stone-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-stone-600"
-            {...register("email", { required: "El usuario es obligatorio" })}
+            {...register("email", { required: "Este campo es obligatorio" })}
           />
           {errors.email && <p className="text-xs text-red-400">{errors.email.message}</p>}
         </div>
