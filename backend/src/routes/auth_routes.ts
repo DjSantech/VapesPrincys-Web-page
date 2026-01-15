@@ -51,8 +51,12 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     // 1. Buscar al usuario
-    const user = await Dropshipper.findOne({ email });
-
+    const user = await Dropshipper.findOne({
+      $or: [
+        { email: email.toLowerCase() },
+        { cedula: email } 
+      ]
+    });
     if (!user) {
       return res.status(404).json({ message: "Usuario no encontrado" });
     }
