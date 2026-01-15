@@ -6,11 +6,17 @@ export type User = {
     email: string
 }
 
-export type RegisterForm = Pick <User,'handle'|'email'|'name'> & {
+export type DropshipperRegisterForm = {
+    nombre: string
+    apellido: string
+    cedula: string
+    email: string
+    celular: string
+    fechaNacimiento: string
+    direccion: string
     password: string
-    passwordConfirmation: string
+    confirmPassword: string
 }
-
 export type LoginForm = Pick<User, 'email'> & {
     password: string
 }

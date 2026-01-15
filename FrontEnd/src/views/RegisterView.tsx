@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import { registerDropshipper } from "../services/auth.services";
 
 type RegisterForm = {
   nombre: string;
@@ -35,28 +36,21 @@ export default function RegisterView() {
     return edad >= 12 || "Debes ser mayor de 12 años";
   };
 
-  const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:8080/api";
+ 
+  const onSubmit = async (data: RegisterForm) => { // Aquí ya no debería dar error
+  try {
+    const result = await registerDropshipper(data);
     
-  const onSubmit = async (data: RegisterForm) => {
-    try {
-      const response = await fetch(`${API_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+    toast.success(`¡Registro exitoso! Tu código es: ${result.referralCode}`);
+    navigate("/auth/login");
+  } catch (error) {
+    const errorMessage = error instanceof Error 
+      ? error.message 
+      : "Error desconocido";
+    toast.error(errorMessage);
+  }
+};
 
-      const result = await response.json();
-
-      if (response.ok) {
-        toast.success(`¡Bienvenido! Tu código de vendedor es: ${result.referralCode}`);
-        navigate("/auth/login");
-      } else {
-        toast.error(result.message || "Error al registrarse");
-      }
-    } catch  {
-      toast.error("No se pudo conectar con el servidor");
-    }
-  };
 
   const inputStyle = "w-full rounded-xl bg-[#0f1113] ring-1 ring-stone-800 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-stone-600";
   const labelStyle = "text-sm font-medium text-zinc-300";
