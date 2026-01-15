@@ -17,6 +17,25 @@ export type DropshipperRegisterForm = {
     password: string
     confirmPassword: string
 }
-export type LoginForm = Pick<User, 'email'> & {
-    password: string
-}
+// Datos que envías al servidor
+export type LoginCredentials = {
+  email: string;
+  password: string;
+};
+
+// Estructura del usuario que devuelve el backend
+export type AuthUser = {
+  id: string;
+  nombre: string;
+  email: string;
+  rol: 'ADMIN' | 'DROPSHIPPER';
+  referralCode?: string; // Opcional porque el Admin podría no tener uno
+};
+
+// Respuesta completa del Login
+export type AuthResponse = {
+  ok: boolean;
+  token: string;
+  user: AuthUser;
+  message?: string;
+};
