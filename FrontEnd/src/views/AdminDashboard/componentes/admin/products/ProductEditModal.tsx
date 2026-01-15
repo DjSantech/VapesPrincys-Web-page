@@ -44,7 +44,8 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
   const [formData, setFormData] = useState<AdminProduct>({
     ...product,
     visibleWhoSale: product.visibleWhoSale !== false,
-    wholesaleRates: product.wholesaleRates || { tier1: 0, tier2: 0, tier3: 0 }
+    wholesaleRates: product.wholesaleRates || { tier1: 0, tier2: 0, tier3: 0 },
+    dropshipperPrice: product.dropshipperPrice || 0 
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -115,6 +116,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             sku: formData.sku,
             name: formData.name,
             price: formData.price,
+            dropshipperPrice: formData.dropshipperPrice,
             description: formData.description,
             stock: formData.stock,
             puffs: formData.puffs,
@@ -191,6 +193,7 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
             <InputGroup label="SKU" name="sku" value={formData.sku} onChange={handleChange} type="text" />
             <InputGroup label="Precio Base (COP)" name="price" value={formData.price} onChange={handleChange} type="number" />
+            <InputGroup label="Precio Dropshipper" name="dropshipperPrice" value={formData.dropshipperPrice || 0} onChange={handleChange} type="number" />
             <InputGroup label="Stock" name="stock" value={formData.stock} onChange={handleChange} type="number" />
             <InputGroup label="Puffs" name="puffs" value={formData.puffs} onChange={handleChange} type="number" />
             <InputGroup label="ml" name="ml" value={formData.ml} onChange={handleChange} type="number" />

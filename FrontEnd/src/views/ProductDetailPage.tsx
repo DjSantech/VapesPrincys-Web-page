@@ -43,6 +43,8 @@ function StepNotice({ children }: { children: React.ReactNode }) {
   );
 }
 
+
+
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -70,10 +72,13 @@ export default function ProductDetailPage() {
 
   const productId = useMemo(() => id ?? "", [id]);
 
-  const DEFAULT_FLAVORS: string[] = ["Mango", "Ice Mint", "Sandía", "Uva"];
+  const DEFAULT_FLAVORS = useMemo(() => ["Mango", "Ice Mint", "Sandía", "Uva"], []);
   const giftVapeModels: GiftVapeModel[] = [
     { name: "Vape Classic 1000 (Regalo)", basePrice: 0 },
   ];
+
+
+  
 
   /* ==== Categorías ==== */
   const baseURL: string =
@@ -149,6 +154,11 @@ export default function ProductDetailPage() {
       active = false;
     };
   }, [productId, product]);
+
+  const basePrice = useMemo(() => {
+  if (!product) return 0; // Maneja el caso de que sea undefined aquí adentro
+  return discount > 0 && overridePrice > 0 ? overridePrice : product.price;
+  }, [product, discount, overridePrice]);
 
   /* ==== Cargar categorías ==== */
   useEffect(() => {
@@ -288,11 +298,6 @@ export default function ProductDetailPage() {
   const img = optimizeImage(rawImg, 1000);
   const inStock: number = product.stock ?? 0;
 
-  /* ==== PRECIO CON DESCUENTO ==== */
-  const basePrice =
-    discount > 0 && overridePrice > 0
-      ? overridePrice
-      : product.price;
 
   /* ==== PRECIOS ==== */
   const addOnTotal: number = extraVape.price ?? 0;

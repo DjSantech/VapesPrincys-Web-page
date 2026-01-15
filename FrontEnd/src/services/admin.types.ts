@@ -11,6 +11,7 @@ export interface AdminProduct {
   name: string;
   description?: string;
   price: number;
+  dropshipperPrice: number;
   stock: number;
   puffs: number;
   ml: number;
@@ -29,6 +30,7 @@ export interface CreateProductPayload {
   name: string;
   description?: string;
   price: number;
+  dropshipperPrice: number;
   stock?: number;
   puffs: number;
   ml: number;
@@ -49,6 +51,7 @@ export type PatchProductPayload = Partial<
       | "name"
       | "description"
       | "price"
+      | "dropshipperPrice"
       | "stock"
       | "puffs"
       | "visible"

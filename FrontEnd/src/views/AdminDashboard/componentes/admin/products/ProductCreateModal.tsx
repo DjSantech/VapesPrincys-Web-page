@@ -55,6 +55,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
   const [ml, setMl] = useState(0);
   const [category, setCategory] = useState("");
   const [hasFlavors, setHasFlavors] = useState(false);
+  const [dropshipperPrice, setDropshipperPrice] = useState(0);
   
   // ESTADOS DE SABORES (Separados para evitar pérdida de foco)
   const [flavors, setFlavors] = useState<string[]>([]);
@@ -109,6 +110,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
       sku: sku.trim(),
       name: name.trim(),
       price,
+      dropshipperPrice: dropshipperPrice,
       image,
       description: description.trim(),
       stock,
@@ -161,6 +163,7 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <InputGroup label="SKU" name="sku" value={sku} onChange={(e) => setSku(e.target.value)} type="text" />
               <InputGroup label="Precio" name="price" value={price} onChange={(e) => setPrice(+e.target.value)} type="number" />
+              <InputGroup label="Precio Dropshipper" name="dropshipperPrice" value={dropshipperPrice} onChange={(e) => setDropshipperPrice(+e.target.value)} type="number" />
               <InputGroup label="Stock" name="stock" value={stock} onChange={(e) => setStock(+e.target.value)} type="number" />
               <InputGroup label="Puffs" name="puffs" value={puffs} onChange={(e) => setPuffs(+e.target.value)} type="number" />
               <InputGroup label="ml" name="ml" value={ml} onChange={(e) => setMl(+e.target.value)} type="number" />

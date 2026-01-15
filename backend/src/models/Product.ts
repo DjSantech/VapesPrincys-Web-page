@@ -7,7 +7,7 @@ const productSchema = new Schema({
   puffs:    { type: Number, required: true, min: 0 },
   ml:       { type: Number, required: true, min: 0 },
   price:    { type: Number, required: true, min: 0 },
-  dropshippingPrice: { type: Number, required: true, default: 9999 },
+  dropshipperPrice: { type: Number, required: true, default: 9999 },
   stock:    { type: Number, default: 0, min: 0 },
   imageUrl: { type: String, default: "" },
   category: { type: Schema.Types.ObjectId, ref: "Category", default: null },

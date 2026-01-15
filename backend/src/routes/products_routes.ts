@@ -35,6 +35,7 @@ async function resolveCategoryId(input?: unknown) {
     sku: p.sku ?? "",
     name: p.name,
     price: p.price,
+    dropshipperPrice: p.dropshipperPrice,
     stock: p.stock ?? 0,
     puffs: p.puffs ?? 0,
     ml: p.ml ?? 0,

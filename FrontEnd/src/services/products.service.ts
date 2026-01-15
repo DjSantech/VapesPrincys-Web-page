@@ -52,6 +52,7 @@ export async function createProduct(
   fd.append("name", payload.name);
   if (payload.description) fd.append("description", payload.description);
   fd.append("price", String(payload.price));
+  fd.append("dropshipperPrice", String(payload.dropshipperPrice));
   fd.append("stock", String(payload.stock ?? 0));
   fd.append("visible", String(payload.visible ?? true));
   fd.append("category", payload.category || "");

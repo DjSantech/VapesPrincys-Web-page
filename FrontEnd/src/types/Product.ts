@@ -2,7 +2,7 @@ export interface Product {
   id: string;
   name: string;
   price: number;       // en centavos
-  dropshippingPrice?: number; // en centavos, opcional
+  dropshipperPrice?: number; // en centavos, opcional
   brand?: string;    // opcional
   description?: string; // opcional
   stock?: number;       // opcional
