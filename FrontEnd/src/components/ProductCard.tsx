@@ -1,13 +1,13 @@
 // src/components/ProductCard.tsx
 import { Link } from "react-router-dom";
 import { optimizeImage } from "../utils/cloudinary"; // ✅ Importación lista
-import { useCart } from "../store/cart_info";
+import { useCart } from "../store/cart_info"; // ✅ 1. Importa el store
 
 export type ProductCardProps = {
   id: string;
   name: string;
   price: number;
-  dropshippingPrice?: number;
+  dropshipperPrice?: number;
   imageUrl?: string;
   className?: string;
   categoryName?: string;
@@ -28,7 +28,7 @@ export default function ProductCard({
   id,
   name,
   price,
-  dropshippingPrice,
+  dropshipperPrice,
   imageUrl,
   className = "",
   pluses = [],
@@ -37,11 +37,16 @@ export default function ProductCard({
 }: ProductCardProps) {
   const fallback = "https://picsum.photos/seed/vape/600/600";
   
-  // ✅ 4. Detectar si el modo dropshipping está activo desde el store
+ 
+  // ✅ 2. ESTA ES LA CLAVE: Lee el estado global, NO la URL
   const isDropshipping = useCart((state) => state.isDropshipping);
-
-  // ✅ 5. Determinar el precio final a mostrar
-  const finalPrice = isDropshipping && dropshippingPrice ? dropshippingPrice : price;
+  console.log(`Producto: ${name} | ModoDS: ${isDropshipping} | PrecioDS: ${dropshipperPrice}`);
+  // ✅ 3. Determinar el precio final
+  // Usamos el precio de dropshipper solo si el modo está activo Y el precio existe (> 0)
+  const finalPrice = isDropshipping && (dropshipperPrice ?? 0) > 0 
+    ? dropshipperPrice! 
+    : price;
+    console.log(`Precio final para ${name}: ${finalPrice}`);
   const img = imageUrl ? optimizeImage(imageUrl, 600) : fallback;
 
   const hasPlus = Array.isArray(pluses) && pluses.length > 0;
@@ -83,10 +88,7 @@ export default function ProductCard({
           {hasPlus && (
             <span
               title={pluses.join(", ")}
-              className="inline-flex items-center gap-1 rounded-lg
-                         border border-amber-400/30
-                         bg-gradient-to-br from-amber-500/20 via-fuchsia-500/20 to-sky-500/20
-                         px-2 py-0.5
+              className="inline-flex items-center gap-1 rounded-lg border border-amber-400/30 bg-gradient-to-br from-amber-500/20 via-fuchsia-500/20 to-sky-500/20 px-2 py-0.5
                          text-[10px] sm:text-xs font-extrabold tracking-wide text-amber-200
                          shadow-[0_0_0_1px_rgba(251,191,36,0.12),0_0_12px_rgba(251,191,36,0.25)]
                          ring-1 ring-amber-400/30

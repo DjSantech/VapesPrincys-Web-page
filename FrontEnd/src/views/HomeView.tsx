@@ -222,7 +222,7 @@ const promoProduct = useMemo(() => {
             id={p.id}
             name={p.name}
             price={p.price}
-            dropshippingPrice={p.dropshippingPrice}
+            dropshipperPrice={p.dropshipperPrice}
             imageUrl={optimizeImage(rawImageUrl || "", 500)}
             brand={p.brand} 
             categoryName={getCategoryNameFromProduct(p)}

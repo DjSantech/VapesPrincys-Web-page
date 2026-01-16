@@ -2,6 +2,7 @@ export interface ProductCreateForm {
   sku: string;
   name: string;
   price: number;
+  dropshipperPrice: number;
   image: File | null;
   
   // AÑADIDOS para el formulario detallado:
