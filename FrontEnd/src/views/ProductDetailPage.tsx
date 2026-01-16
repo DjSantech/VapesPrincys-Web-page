@@ -51,6 +51,10 @@ export default function ProductDetailPage() {
   const state = (location.state as LocationState) ?? {};
   const { addItem, setOpen } = useCart();
 
+  /* ==== Dropshipping ==== */
+  const isDropshipping = useCart((state) => state.isDropshipping);
+  
+
   /* ==== Descuento recibido desde DailyPromotion ==== */
   const searchParams = new URLSearchParams(location.search);
   const discount = Number(searchParams.get("discount") ?? 0);
@@ -77,7 +81,21 @@ export default function ProductDetailPage() {
     { name: "Vape Classic 1000 (Regalo)", basePrice: 0 },
   ];
 
+  /* ==== Precio base con descuento ==== */
+  const basePrice = useMemo(() => {
+    if (!product) return 0;
 
+    // Prioridad 1: Descuento de promoción (DailyPromotion)
+    if (discount > 0 && overridePrice > 0) return overridePrice;
+
+    // Prioridad 2: Precio de dropshipper (si el modo está activo y el precio existe)
+    if (isDropshipping && (product.dropshipperPrice ?? 0) > 0) {
+      return product.dropshipperPrice as number;
+    }
+
+    // Por defecto: Precio normal
+    return product.price;
+  }, [product, discount, overridePrice, isDropshipping]);
   
 
   /* ==== Categorías ==== */
@@ -155,10 +173,6 @@ export default function ProductDetailPage() {
     };
   }, [productId, product]);
 
-  const basePrice = useMemo(() => {
-  if (!product) return 0; // Maneja el caso de que sea undefined aquí adentro
-  return discount > 0 && overridePrice > 0 ? overridePrice : product.price;
-  }, [product, discount, overridePrice]);
 
   /* ==== Cargar categorías ==== */
   useEffect(() => {
@@ -384,18 +398,21 @@ export default function ProductDetailPage() {
             </h1>
 
             {/* PRECIO CON DESCUENTO */}
+            {/* Lógica de precios actualizada */}
             {discount > 0 ? (
               <>
-                <div className="text-zinc-400 line-through">
-                  {formatCOP(product.price)}
-                </div>
-                <div className="mt-1 text-2xl font-bold text-green-400">
+                <div className="text-zinc-400 line-through">{formatCOP(product.price)}</div>
+                <div className="mt-1 text-2xl font-bold text-green-400">{formatCOP(basePrice)}</div>
+              </>
+            ) : isDropshipping && product.dropshipperPrice ? (
+              <div>
+                <div className="mt-1 text-2xl font-bold text-amber-400">
                   {formatCOP(basePrice)}
                 </div>
-                <div className="text-xs text-green-400">
-                  Descuento aplicado: {discount}%
-                </div>
-              </>
+                <span className="text-[10px] font-bold text-emerald-500 uppercase bg-emerald-500/10 px-2 py-1 rounded">
+                   Dropshipper 
+                </span>
+              </div>
             ) : (
               <div className="mt-2 text-2xl font-bold text-amber-400">
                 {formatCOP(product.price)}
