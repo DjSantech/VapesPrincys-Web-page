@@ -10,7 +10,8 @@ export const buildWhatsAppUrl = (
   items: CartItem[],
   subtotal: number,
   delivery?: DeliveryInfo,
-  deliveryFee = 0
+  deliveryFee = 0,
+  sellerId?: string
 ) => {
   const lines: string[] = [];
 
@@ -45,6 +46,10 @@ export const buildWhatsAppUrl = (
     if (delivery.paymentMethod === "EFECTIVO" && delivery.changeFor) {
       lines.push(`💵 Cambio para: ${formatCOP(delivery.changeFor)}`);
     }
+  }
+  if (sellerId) {
+    lines.push(`--------------------------------`);
+    lines.push(`🛍️ Vendedor: ${sellerId}`);
   }
 
   const text = encodeURIComponent(lines.join("\n"));

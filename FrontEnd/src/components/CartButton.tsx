@@ -134,6 +134,7 @@ export default function CartButton() {
     deliveryFee,
     open,     // <-- Obtenido del store
     setOpen,  // <-- Obtenido del store
+    sellerId,  // <-- Obtenido del store
   } = useCart();
 
   const count = items.reduce((n, i) => n + i.qty, 0);
@@ -176,7 +177,7 @@ export default function CartButton() {
     const feeNow = calcDeliveryFeeFromForm(form.zone);
 
     setDelivery(form); // solo para persistir
-    const url = buildWhatsAppUrl(PHONE, items, sub, form, feeNow);
+    const url = buildWhatsAppUrl(PHONE, items, sub, form, feeNow, sellerId);
     window.open(url, "_blank", "noopener,noreferrer");
   };
 
