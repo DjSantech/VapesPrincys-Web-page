@@ -40,13 +40,13 @@ export default function ProductCard({
  
   // ✅ 2. ESTA ES LA CLAVE: Lee el estado global, NO la URL
   const isDropshipping = useCart((state) => state.isDropshipping);
-  console.log(`Producto: ${name} | ModoDS: ${isDropshipping} | PrecioDS: ${dropshipperPrice}`);
-  // ✅ 3. Determinar el precio final
+    // ✅ 3. Determinar el precio final
   // Usamos el precio de dropshipper solo si el modo está activo Y el precio existe (> 0)
   const finalPrice = isDropshipping && (dropshipperPrice ?? 0) > 0 
     ? dropshipperPrice! 
     : price;
-    console.log(`Precio final para ${name}: ${finalPrice}`);
+    // Para depuración
+    // console.log(`Precio final para ${name}: ${finalPrice}`);
   const img = imageUrl ? optimizeImage(imageUrl, 600) : fallback;
 
   const hasPlus = Array.isArray(pluses) && pluses.length > 0;

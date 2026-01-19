@@ -368,6 +368,7 @@ const promoProduct = useMemo(() => {
 
 
       {error && <p className="mt-4 text-red-400">{error}</p>}
+      
 
       {loading ? (
         <div className="mt-6 grid gap-2 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
@@ -435,6 +436,51 @@ const promoProduct = useMemo(() => {
             ))}
           </div>
         </section>
+        {/* SECCIÓN DROPSHIPPING / TRABAJA CON NOSOTROS */}
+        <div className="relative group overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 to-teal-700 p-8 shadow-2xl transition-all hover:scale-[1.01]">
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div>
+              <h3 className="text-2xl font-black text-white leading-tight mb-3">
+                ¿QUIERES TRABAJAR CON NOSOTROS?
+              </h3>
+              <p className="text-indigo-100 text-sm md:text-base mb-6 leading-relaxed">
+                Gana comisiones reales vendiendo nuestros productos. No lo pienses más, crea tu cuenta y empieza a generar ingresos desde hoy mismo.
+              </p>
+            </div>
+            <a 
+              href="/auth/register" // Ajusta a tu ruta de registro
+              className="inline-flex items-center justify-center w-full sm:w-max px-8 py-4 bg-white text-indigo-700 font-bold rounded-2xl hover:bg-indigo-50 transition-colors shadow-lg active:scale-95"
+            >
+              Empezar Ahora
+            </a>
+          </div>
+          {/* Decoración de fondo */}
+          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all"></div>
+        </div>
+
+        {/* SECCIÓN MAYORISTAS */}
+        <div className="relative group overflow-hidden rounded-3xl border border-white/10 bg-zinc-900 p-8 shadow-2xl transition-all hover:border-white/20">
+          <div className="relative z-10 flex flex-col h-full justify-between">
+            <div>
+              <div className="inline-flex items-center px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-bold mb-4 border border-emerald-500/20">
+                PRECIOS ESPECIALES
+              </div>
+              <h3 className="text-2xl font-black text-white leading-tight mb-3">
+                COMPRAS AL POR MAYOR
+              </h3>
+              <p className="text-zinc-400 text-sm md:text-base mb-6 leading-relaxed">
+                Accede a descuentos exclusivos para mayoristas. Si buscas surtir tu negocio con los mejores precios del mercado, esta sección es para ti.
+              </p>
+            </div>
+            <a 
+              href="/mayoristas" // Ajusta a tu ruta de mayoristas
+              className="inline-flex items-center justify-center w-full sm:w-max px-8 py-4 bg-zinc-800 text-white font-bold rounded-2xl border border-white/10 hover:bg-zinc-700 transition-all shadow-lg active:scale-95"
+            >
+              Ver Catálogo Mayorista
+            </a>
+          </div>
+        </div>
+
           
           {/* 1. SECCIÓN PRINCIPAL (homeOrder: 1) */}
           {mainCategoryGroup && mainCategoryGroup.products.length > 0 && (
