@@ -11,6 +11,7 @@ import bannerRoutes from "./routes/banner_routes";
 import CategoriesRouter from "./routes/categories_routes";
 import adminSettingsRoutes from "./routes/adminSettings.routes";
 import auth_routes from "./routes/auth_routes";
+import adminRoutes from "./routes/admin.routes";
 
 const app = express();
 
@@ -31,6 +32,7 @@ app.use("/api/products", productsRouter);
 app.use("/api/categories", CategoriesRouter);
 app.use("/api/pluses", plusesRouter);
 app.use("/api/banner", bannerRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/settings", adminSettingsRoutes);
 app.use("/api/auth", auth_routes);
 console.log("Pluses router mounted at /api/pluses");

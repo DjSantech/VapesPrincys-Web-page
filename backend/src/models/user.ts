@@ -1,4 +1,4 @@
-import { Schema, model } from "mongoose";
+import { Model, Schema, model, models } from "mongoose";
 
 const userSchema = new Schema({
   // Campos básicos de acceso
@@ -25,4 +25,6 @@ const userSchema = new Schema({
   isActive: { type: Boolean, default: true }
 }, { timestamps: true });
 
-export default model("User", userSchema);
+const User = (models.User as Model<any>) || model("User", userSchema);
+
+export default User;
