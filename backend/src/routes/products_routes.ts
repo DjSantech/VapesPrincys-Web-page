@@ -128,12 +128,13 @@ r.post("/", upload.single("image"), async (req, res) => {
   }
 
   try {
-    const { sku, name, price, stock, category, visible, visibleWhoSale, flavors, puffs, ml, description, hasFlavors } = req.body;
+    const { sku, name, price, dropshipperPrice, stock, category, visible, visibleWhoSale, flavors, puffs, ml, description, hasFlavors } = req.body;
 
     if (!sku)  return res.status(400).json({ error: "El SKU es obligatorio" });
     if (!name) return res.status(400).json({ error: "El nombre es obligatorio" });
 
     const priceNum = Number(price);
+    const dropshipperPriceNum = Number(dropshipperPrice || 0);
     const stockNum = stock != null ? Number(stock) : 0;
     const puffsNum = puffs != null ? Number(puffs) : 0;
     const mlNum = ml != null ? Number(ml) : 0;
@@ -193,6 +194,7 @@ r.post("/", upload.single("image"), async (req, res) => {
       name: String(name).trim(),
       description: typeof description === "string" ? description.trim() : "",
       price: priceNum,
+      dropshipperPrice: dropshipperPriceNum,
       stock: stockNum,
       puffs: puffsNum,
       ml: mlNum,
@@ -226,6 +228,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
       visibleWhoSale,
       flavors,
       price,
+      dropshipperPrice,
       stock,
       puffs,
       ml,
@@ -258,6 +261,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
 
     // Numéricos
     if (price !== undefined) update.price = Math.round(Number(price));
+    if (dropshipperPrice !== undefined) update.dropshipperPrice = Number(dropshipperPrice);
     if (stock !== undefined) update.stock = Math.max(0, Math.round(Number(stock)));
     if (puffs !== undefined) update.puffs = Math.max(0, Math.round(Number(puffs)));
     if (ml !== undefined) update.ml = Math.max(0, Math.round(Number(ml)));

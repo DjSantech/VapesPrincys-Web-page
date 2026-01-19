@@ -6,6 +6,7 @@ import type {
   AdminPlus, 
   CreateProductPayload 
 } from "../../../../../services/admin";
+import toast from 'react-hot-toast'; 
 
 interface ProductCreateModalProps {
   onClose: () => void;
@@ -100,17 +101,19 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
     }
   };
 
-  const submit = () => {
-    if (!name.trim() || !sku.trim() || !category) {
-      alert("Nombre, SKU y Categoría son obligatorios.");
-      return;
-    }
-    
+  const submit = async () => { // <--- Agregamos 'async' aquí
+  if (!name.trim() || !sku.trim() || !category) {
+    // Cambiamos alert por toast.error para mantener el estilo
+    toast.error("Nombre, SKU y Categoría son obligatorios.", {
+      style: { background: '#1f2937', color: '#fff' }
+    });
+    return;
+  }
     const payload: CreateProductPayload = {
       sku: sku.trim(),
       name: name.trim(),
       price,
-      dropshipperPrice: dropshipperPrice,
+      dropshipperPrice,
       image,
       description: description.trim(),
       stock,
@@ -124,8 +127,40 @@ export function ProductCreateModal({ onClose, onCreate }: ProductCreateModalProp
       visibleWhoSale,
       wholesaleRates,
     };
+    const creationPromise = onCreate(payload);
 
-    onCreate(payload);
+    toast.promise(
+      // Pasamos la promesa de creación
+      Promise.resolve(creationPromise), 
+      {
+        loading: 'Creando producto...',
+        success: '¡Producto creado con éxito! 🚀',
+        error: 'Hubo un error al crear el producto. ❌',
+      },
+      {
+        style: {
+          minWidth: '250px',
+          background: '#1f2937', // Fondo oscuro para tu tema
+          color: '#fff',
+        },
+        success: {
+          duration: 4000,
+          iconTheme: {
+            primary: '#10b981', // Verde esmeralda
+            secondary: '#fff',
+          },
+        },
+      }
+    );
+
+    // Esperamos a que termine para cerrar el modal si fue exitoso
+    try {
+      await creationPromise;
+      // Opcional: onClose(); // Si quieres que se cierre solo al terminar
+    } catch (e) {
+      console.error(e);
+    }
+    
   };
 
   return (
