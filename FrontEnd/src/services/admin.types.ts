@@ -5,6 +5,15 @@ export interface WholesaleRates {
   tier3: number; // 51 a 80 unidades
 }
 
+export interface DropshipperUser {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  createdAt: string;
+  role: string;
+}
+
 export interface AdminProduct {
   id: string;
   sku: string;
