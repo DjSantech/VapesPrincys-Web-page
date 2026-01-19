@@ -6,10 +6,15 @@ export const getDropshippersList = async (req: Request, res: Response) => {
     // 1. Forzamos a 'any' para evitar el error "This expression is not callable"
     const userModel = User as any; 
 
+    
+
     // 2. Ejecutamos la consulta usando el modelo casteado
     const users = await userModel.find({ role: "DROPSHIPPER" })
       .select("nombre apellido email celular createdAt")
       .lean();
+      // ESTO ES PARA DEPURAR: Mira la consola de tu VSCode (el backend)
+    console.log("Dropshippers encontrados en BD:", users.length);
+    console.log("Primer resultado:", users[0]);
 
     // 3. Mapeamos igual que antes
     const formattedUsers = users.map((user: any) => ({

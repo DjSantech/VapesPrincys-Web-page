@@ -1,18 +1,20 @@
-const jwt = require("jsonwebtoken");
-const User = require("../models/User");
+// backend/src/middlewares/auth_middleware.ts
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
-// 1. Verifica que el usuario envió un token válido
-export const verifyToken = async (req, res, next) => {
+export const verifyToken = (req: any, res: Response, next: NextFunction) => {
+  const token = req.headers.authorization?.split(" ")[1];
+
+  if (!token) {
+    return res.status(403).json({ message: "No se proporcionó un token" });
+  }
+
   try {
-    const token = req.headers.authorization?.split(" ")[1]; // Extrae el token del Bearer
-
-    if (!token) {
-      return res.status(403).json({ message: "No se proporcionó un token de acceso" });
-    }
-
-    // Decodifica el token (asegúrate de que JWT_SECRET sea el mismo que usas al hacer login)
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "tu_clave_secreta");
-    req.userId = decoded.id; // Guardamos el ID del usuario en la petición
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "tu_clave_secreta") as any;
+    
+    // Guardamos TODO lo que viene en el JWT en el objeto request
+    req.userId = decoded.id;
+    req.userRole = decoded.role; // <--- AQUÍ GUARDAMOS EL ROL DEL JWT
 
     next();
   } catch (error) {
@@ -20,21 +22,11 @@ export const verifyToken = async (req, res, next) => {
   }
 };
 
-// 2. Verifica que el usuario sea Administrador
-export const isAdmin = async (req, res, next) => {
-  try {
-    const user = await User.findById(req.userId);
-    
-    if (!user) {
-      return res.status(404).json({ message: "Usuario no encontrado" });
-    }
-
-    if (user.role !== "ADMIN") {
-      return res.status(403).json({ message: "Requiere privilegios de administrador" });
-    }
-
-    next(); // Si es admin, continúa a la ruta
-  } catch (error) {
-    return res.status(500).json({ message: "Error al validar rol" });
+export const isAdmin = (req: any, res: Response, next: NextFunction) => {
+  // En lugar de ir a la base de datos, revisamos lo que pusimos en verifyToken
+  if (req.userRole === "ADMIN") {
+    next(); // Es admin, puede pasar
+  } else {
+    return res.status(403).json({ message: "No tienes permisos de administrador" });
   }
 };

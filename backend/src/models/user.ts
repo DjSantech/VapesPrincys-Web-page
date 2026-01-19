@@ -23,7 +23,10 @@ const userSchema = new Schema({
   referralCode: { type: String, unique: true, sparse: true },
   
   isActive: { type: Boolean, default: true }
-}, { timestamps: true });
+}, { timestamps: true ,
+    collection: 'dropshippers'
+});
+
 
 const User = (models.User as Model<any>) || model("User", userSchema);
 
