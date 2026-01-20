@@ -12,6 +12,7 @@ export interface DropshipperUser {
   phone: string;
   createdAt: string;
   role: string;
+  referralCode: string;
 }
 
 export interface AdminProduct {

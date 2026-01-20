@@ -10,7 +10,7 @@ export const getDropshippersList = async (req: Request, res: Response) => {
 
     // 2. Ejecutamos la consulta usando el modelo casteado
     const users = await userModel.find({ role: "DROPSHIPPER" })
-      .select("nombre apellido email celular createdAt")
+      .select("nombre apellido email celular createdAt referralCode")
       .lean();
       // ESTO ES PARA DEPURAR: Mira la consola de tu VSCode (el backend)
     console.log("Dropshippers encontrados en BD:", users.length);
@@ -23,6 +23,7 @@ export const getDropshippersList = async (req: Request, res: Response) => {
       email: user.email,
       phone: user.celular || "No registrado",
       createdAt: user.createdAt
+      ,referralCode: user.referralCode || ""
     }));
 
     res.json(formattedUsers);

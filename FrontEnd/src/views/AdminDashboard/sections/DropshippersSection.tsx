@@ -31,6 +31,7 @@ export function DropshippersSection() {
                 <th className="p-4">Correo Electrónico</th>
                 <th className="p-4">Teléfono</th>
                 <th className="p-4">Fecha Registro</th>
+                <th className="p-4">Codigo del vendedor</th>
               </tr>
             </thead>
             <tbody className="text-sm text-zinc-300">
@@ -44,6 +45,9 @@ export function DropshippersSection() {
                     <td className="p-4">{user.phone}</td>
                     <td className="p-4 text-zinc-500 text-xs">
                       {new Date(user.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="p-4 font-mono text-amber-500 font-bold">
+                    {user.referralCode || "Sin código"}
                     </td>
                   </tr>
                 ))
@@ -77,6 +81,10 @@ export function DropshippersSection() {
                 <p className="text-zinc-400 flex items-center gap-2">
                   <span className="text-zinc-600 font-semibold uppercase text-[10px]">Teléfono:</span> 
                   {user.phone}
+                </p>
+                <p className="text-zinc-400 flex items-center gap-2">
+                  <span className="text-zinc-600 font-semibold uppercase text-[10px]">Código:</span> 
+                  <span className="text-amber-500 font-bold">{user.referralCode}</span>
                 </p>
               </div>
             </div>
