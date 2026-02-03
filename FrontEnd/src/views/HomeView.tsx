@@ -13,6 +13,7 @@ import {
   type BannerWeek,
   type BannerDay
 } from "../services/banner_services";
+import { useCart } from "../store/cart_info"; 
 
 /* =========================
    Helpers de tipado seguro
@@ -311,10 +312,14 @@ const promoProduct = useMemo(() => {
       ];
   }, [mainCategoryGroup, secondaryCategoriesGroup]);
   
-  const originalPrice = promoProduct?.price ?? 0;
-  const discount = todayBanner?.descuento ?? 0;
-  const finalPrice = originalPrice - (originalPrice * discount) / 100;
+  const { isDropshipping } = useCart();
+  const basePrice = (isDropshipping && promoProduct?.dropshipperPrice) 
+    ? promoProduct.dropshipperPrice 
+    : (promoProduct?.price ?? 0);
 
+  const discount = todayBanner?.descuento ?? 0;
+  const finalPrice = basePrice - (basePrice * discount) / 100;
+  const priceBeforeDiscount = basePrice;
 
   /* =========================
    Render
@@ -333,13 +338,13 @@ const promoProduct = useMemo(() => {
           <p className="text-sm text-white/70">
             Precio antes:{" "}
             <span className="line-through text-red-400">
-              ${originalPrice}
+              ${priceBeforeDiscount.toLocaleString('es-CO')}
             </span>
           </p>
 
           <p className="text-lg font-semibold text-green-400">
-            Precio después: ${finalPrice.toFixed(0)}
-          </p>
+        Precio con -{discount}%: ${finalPrice.toLocaleString('es-CO')}
+      </p>
         </div>
       )}
 
@@ -358,6 +363,7 @@ const promoProduct = useMemo(() => {
             )}
             discount={discount}
             finalPrice={finalPrice}
+            dropshipperPrice={promoProduct.dropshipperPrice}
         />
         </div>
       ) : (

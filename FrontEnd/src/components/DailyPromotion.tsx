@@ -1,6 +1,7 @@
 // src/components/DailyPromotion.tsx
 import { Link } from "react-router-dom";
 import { optimizeImage } from "../utils/cloudinary";
+import { useCart } from "../store/cart_info";
 
 interface DailyPromotionProps {
   productId: string;
@@ -8,6 +9,7 @@ interface DailyPromotionProps {
   imageUrl: string;
   discount: number;
   finalPrice: number;
+  dropshipperPrice?: number;
 }
 
 export default function DailyPromotion({ 
@@ -15,11 +17,17 @@ export default function DailyPromotion({
   productName, 
   imageUrl, 
   discount, 
-  finalPrice 
+  finalPrice,
+  dropshipperPrice
 }: DailyPromotionProps) {
+
+  const { isDropshipping } = useCart();
+  const displayPrice = isDropshipping ? dropshipperPrice : finalPrice;
+
+  console.log("Dropshipping:", isDropshipping, "Display Price:", displayPrice);
   return (
     <Link
-      to={`/product/${productId}?discount=${discount}&finalPrice=${finalPrice}`}
+      to={`/product/${productId}?discount=${discount}&finalPrice=${displayPrice}`}
       className="relative block w-full h-full group overflow-hidden"
     >
       {/* 1. La Imagen: Ahora ocupa todo el espacio del contenedor */}

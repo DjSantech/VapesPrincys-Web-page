@@ -71,7 +71,7 @@ router.post("/login", async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role }, 
       process.env.JWT_SECRET || "clave_secreta_provisional_123", 
-      { expiresIn: "7d" } // El token dura 7 días
+      { expiresIn: "60d" } // El token dura 7 días
     );
 
     // 4. Responder con el TOKEN REAL
