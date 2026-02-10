@@ -53,16 +53,18 @@ export const getPublicIdFromUrl = (url: string): string | null => {
 /**
  * Elimina una imagen de Cloudinary a partir de su URL
  */
-export const deleteImageFromCloudinary = async (url: string) => {
-  const publicId = getPublicIdFromUrl(url);
-  if (publicId) {
-    try {
-      await cloudinary.uploader.destroy(publicId);
-      console.log("✓ Imagen eliminada de Cloudinary:", publicId);
-    } catch (error) {
-      console.error("✗ Error al eliminar de Cloudinary:", error);
-    }
+export const deleteImageFromCloudinary = async (sku: string) => {
+  try {
+    // IMPORTANTE: Debes incluir la ruta completa de la carpeta
+    // Si en el upload usaste "vapes/products", aquí también.
+    const publicId = `vapes/products/${sku}`;
+    
+    const result = await cloudinary.uploader.destroy(publicId);
+    console.log("Resultado borrado Cloudinary:", result);
+    return result;
+  } catch (error) {
+    console.error("Error al borrar imagen de Cloudinary:", error);
+    throw error;
   }
 };
-
 export default cloudinary;

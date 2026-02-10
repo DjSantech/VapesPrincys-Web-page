@@ -113,7 +113,32 @@ r.get("/", async (req, res) => {
 // =========================
 // POST /api/products
 // =========================
+
 r.post("/", upload.single("image"), async (req, res) => {
+  // Localiza este bloque en el POST
+  try {
+    // 1. Extraemos el SKU (y otros datos necesarios) del body
+    const { sku, name } = req.body;
+
+    if (!sku) {
+      return res.status(400).json({ error: "El SKU es obligatorio para identificar la imagen." });
+    }
+
+    let imageUrl = "";
+
+    // 2. Ahora 'sku' ya existe y podemos usarlo
+    if (req.file) {
+      // Limpiamos el SKU de espacios y lo pasamos a mayúsculas para que sea un ID consistente
+      const customId = String(sku).trim().toUpperCase();
+      
+      const up = await uploadBufferToCloudinary(
+        req.file.buffer, 
+        "vapes/products", 
+        customId
+      ); 
+      
+      imageUrl = up.secure_url as string;
+    }
   let wholesaleRatesParsed = undefined;
   
   if (req.body.wholesaleRates) {
@@ -173,12 +198,7 @@ r.post("/", upload.single("image"), async (req, res) => {
 
     const catId = await resolveCategoryId(category);
 
-    let imageUrl = "";
-    if (req.file) {
-      const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
-      // @ts-ignore
-      imageUrl = up.secure_url as string;
-    }
+    
 
     const visibleWhoSaleBool =
     typeof visibleWhoSale === "boolean"
@@ -216,6 +236,10 @@ r.post("/", upload.single("image"), async (req, res) => {
     if (e?.code === 11000) return res.status(409).json({ error: "SKU duplicado" });
     return res.status(500).json({ error: "Error interno creando producto" });
   }
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al crear el producto" });
+  }
 });
 
 // =========================
@@ -243,17 +267,7 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
 
     const update: Record<string, any> = { ...rest };
 
-    // --- Lógica de borrado Cloudinary si hay nueva imagen ---
-    if (req.file) {
-      const current = await Product.findById(req.params.id);
-      if (current?.imageUrl) {
-        await deleteImageFromCloudinary(current.imageUrl);
-      }
-      const up = await uploadBufferToCloudinary(req.file.buffer, "vapes/products");
-      // @ts-ignore
-      update.imageUrl = up.secure_url as string;
-    }
-
+  
     // SKU y Nombre
     if (sku !== undefined) update.sku = String(sku).trim().toUpperCase();
     if (name !== undefined) update.name = String(name).trim();
@@ -266,6 +280,27 @@ r.patch("/:id", upload.single("image"), async (req, res) => {
     if (puffs !== undefined) update.puffs = Math.max(0, Math.round(Number(puffs)));
     if (ml !== undefined) update.ml = Math.max(0, Math.round(Number(ml)));
 
+    // Imagen (si se sube una nueva, reemplaza la anterior usando el SKU como public_id)
+    if (req.file) {
+    // 1. Buscamos el producto actual para obtener su SKU
+    const current = await Product.findById(req.params.id);
+    
+    if (!current) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
+    // 2. Subimos la nueva imagen usando el SKU como identificador.
+    // Esto reemplazará la imagen anterior automáticamente en Cloudinary.
+    const up = await uploadBufferToCloudinary(
+      req.file.buffer, 
+      "vapes/products", 
+      current.sku // 👈 Usamos el SKU para sobreescribir
+    );
+
+    // 3. Actualizamos la URL en la base de datos
+    // @ts-ignore
+    update.imageUrl = up.secure_url;
+  }
   
 
     // Visible
@@ -382,14 +417,21 @@ r.delete("/:id", async (req, res) => {
       return res.status(400).json({ error: "ID inválido" });
     }
 
-    // --- Borrado de Cloudinary antes de eliminar el registro ---
+    // 1. Buscamos el producto para obtener su SKU antes de borrarlo
     const product = await Product.findById(id);
-    if (product?.imageUrl) {
-      await deleteImageFromCloudinary(product.imageUrl);
+    
+    if (!product) {
+      return res.status(404).json({ error: "Producto no encontrado" });
     }
 
-    const doc = await Product.findByIdAndDelete(id);
-    if (!doc) return res.status(404).json({ error: "Not found" });
+    // 2. Borrado de Cloudinary usando el SKU
+    if (product.sku) {
+      // Usamos el sku porque así nombramos el archivo al subirlo
+      await deleteImageFromCloudinary(product.sku); 
+    }
+
+    // 3. Eliminar el registro de la base de datos
+    await Product.findByIdAndDelete(id);
 
     return res.status(204).send();
   } catch (e) {
@@ -397,5 +439,4 @@ r.delete("/:id", async (req, res) => {
     return res.status(500).json({ error: "Error interno eliminando producto" });
   }
 });
-
 export default r;
