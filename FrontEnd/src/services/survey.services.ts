@@ -84,3 +84,12 @@ export async function submitSurveyResponse(
 
   return res.json();
 }
+
+export async function deleteSurvey(id: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/surveys/${id}`, {
+    method: "DELETE",
+    headers: { ...authHeader() },
+  });
+  
+  if (!res.ok) throw new Error("Error al eliminar la encuesta");
+}

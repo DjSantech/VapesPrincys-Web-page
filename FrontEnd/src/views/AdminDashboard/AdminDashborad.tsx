@@ -28,6 +28,8 @@ import { BannerSection } from "./sections/BannerSection";
 import { ProductCreateModal } from "./componentes/admin/products/ProductCreateModal.tsx"; // Importación correcta
 import { AnnouncementSection } from "./sections/AnnouncementSection"; // Importar la nueva sección
 import { DropshippersSection } from "./sections/DropshippersSection"; // Importar la sección de Dropshippers
+import { SurveysSection } from "./sections/SurveysSection";
+import { SurveyResultsSection } from "./sections/SurveyResultsSection";
 // =======================
 // INTERFACE Y COMPONENTE MODAL GENÉRICO
 // Lo definimos aquí para usarlo en Categorías y Pluses.
@@ -98,6 +100,12 @@ export default function AdminDashboard() {
   const [announcementImg, setAnnouncementImg] = useState(""); // Esto debería venir de tu API
   
   const [showDropshippersModal, setShowDropshippersModal] = useState(false);
+
+  // =======================
+  // ESTADO: Encuestas
+  // =======================
+  const [showSurveysModal, setShowSurveysModal] = useState(false);
+  const [showResponsesModal, setShowResponsesModal] = useState(false);
 
   // =======================
   // LOAD DATA
@@ -189,6 +197,20 @@ export default function AdminDashboard() {
 
         {/* Contenedor de Botones */}
         <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+          <button
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 transition shadow-lg shadow-indigo-900/20"
+            onClick={() => setShowSurveysModal(true)}>
+            📝 Encuestas
+          </button>
+
+          {/* NUEVO: Botón Resultados */}
+          <button
+            className="rounded-lg bg-rose-600 px-4 py-2 text-sm font-medium text-white hover:bg-rose-700 transition shadow-lg shadow-rose-900/20"
+            onClick={() => setShowResponsesModal(true)}>
+            📊 Resultados
+          </button>
+
+         
 
           <button
             className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 transition shadow-lg shadow-teal-900/20"
@@ -328,6 +350,29 @@ export default function AdminDashboard() {
         </GenericModalWrapper>
       )}
 
+      {/* ======================= */}
+      {/* MODAL GESTIÓN ENCUESTAS */}
+      {/* ======================= */}
+      {showSurveysModal && (
+        <GenericModalWrapper 
+          title="Configuración de Encuestas" 
+          onClose={() => setShowSurveysModal(false)}
+        >
+          <SurveysSection />
+        </GenericModalWrapper>
+      )}
+
+      {/* ======================= */}
+      {/* MODAL RESULTADOS ENCUESTAS */}
+      {/* ======================= */}
+      {showResponsesModal && (
+        <GenericModalWrapper 
+          title="Resultados y Cupones Generados" 
+          onClose={() => setShowResponsesModal(false)}
+        >
+          <SurveyResultsSection />
+        </GenericModalWrapper>
+      )}
     </div>
   );
 }

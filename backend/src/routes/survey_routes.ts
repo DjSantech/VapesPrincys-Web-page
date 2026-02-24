@@ -63,6 +63,25 @@ r.post("/submit", async (req, res) => {
     message: "Encuesta enviada", 
     couponCode: response.couponCode 
   });
+  
 });
 
+// src/routes/survey_routes.ts
+
+r.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Opcional: También podrías eliminar todas las SurveyResponse asociadas a esta encuesta
+    // await SurveyResponse.deleteMany({ surveyId: id });
+
+    const deleted = await Survey.findByIdAndDelete(id);
+    
+    if (!deleted) return res.status(404).json({ error: "Encuesta no encontrada" });
+    
+    res.json({ message: "Encuesta eliminada correctamente" });
+  } catch (err) {
+    res.status(500).json({ error: "Error al eliminar la encuesta" });
+  }
+});
 export default r;
