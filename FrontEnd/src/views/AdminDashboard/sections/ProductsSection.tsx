@@ -1,5 +1,5 @@
   import { useState } from "react";
-  import type { AdminProduct, CreateProductPayload } from "../../../services/admin";
+  import type { AdminCategory, AdminProduct, CreateProductPayload } from "../../../services/admin";
   // Importar SÓLO lo necesario para la creación, edición y eliminación.
   import { createProduct, patchProductImage, deleteProduct } from "../../../services/admin"; 
   import { ProductTable } from "../componentes/admin/products/ProducTable";
@@ -11,9 +11,10 @@
     items: AdminProduct[];
     setItems: React.Dispatch<React.SetStateAction<AdminProduct[]>>;
     loading: boolean;
+    categories: AdminCategory[]; // Añadimos categorías como prop para pasarlas a ProductEditModal
   }
 
-  export function ProductsSection({ items, setItems, loading }: ProductsSectionProps) {
+  export function ProductsSection({ items, setItems, loading,categories }: ProductsSectionProps) {
     // ESTADO DE CREACIÓN (Devuelto desde AdminDashboard)
     const [showCreate, setShowCreate] = useState(false); 
 
@@ -80,6 +81,7 @@
         {productToEdit && (
           <ProductEditModal
             product={productToEdit}
+            categories={categories}
             onClose={() => setProductToEdit(null)}
             onSave={onUpdateProduct}
           />

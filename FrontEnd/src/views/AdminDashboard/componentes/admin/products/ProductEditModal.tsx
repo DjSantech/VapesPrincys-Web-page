@@ -2,9 +2,16 @@
 
 import { useState } from "react";
 // Importa el tipo de producto completo que manejas en tu backend
-import type { AdminProduct } from "../../../../../services/admin"; 
+import type { AdminProduct, AdminCategory } from "../../../../../services/admin"; 
 import { patchProduct } from "../../../../../services/products.service";
 
+
+interface ProductEditModalProps {
+  product: AdminProduct;
+  categories: AdminCategory[]; // <--- NUEVA PROP
+  onClose: () => void;
+  onSave: (updatedProduct: AdminProduct) => void; 
+}
 
 // Componente auxiliar para simplificar los inputs
 interface InputGroupProps {
@@ -33,13 +40,14 @@ const InputGroup: React.FC<InputGroupProps> = ({ label, name, value, onChange, t
 
 interface ProductEditModalProps {
   product: AdminProduct;
+  categories: AdminCategory[];
   onClose: () => void;
   // onSave espera el producto actualizado para actualizar el estado global en ProductsSection
   onSave: (updatedProduct: AdminProduct) => void; 
   // Podrías añadir props para categorías y pluses disponibles si el producto es muy complejo
 }
 
-export function ProductEditModal({ product, onClose, onSave }: ProductEditModalProps) {
+export function ProductEditModal({ product, categories, onClose, onSave }: ProductEditModalProps) {
   // Inicializamos el estado del formulario con los datos del producto
   const [formData, setFormData] = useState<AdminProduct>({
     ...product,
@@ -199,21 +207,28 @@ export function ProductEditModal({ product, onClose, onSave }: ProductEditModalP
             <InputGroup label="ml" name="ml" value={formData.ml} onChange={handleChange} type="number" />
 
             <div className="space-y-1">
-                <label className="block text-sm font-medium text-zinc-400">Categoría</label>
-                <select
-                    name="category"
-                    value={formData.category || ''}
-                    onChange={(e) => handleChange(e as React.ChangeEvent<HTMLSelectElement>)}
-                    className="w-full bg-[#141619] px-3 py-2 rounded ring-1 ring-stone-800 text-sm text-zinc-100 h-10 appearance-none"
-                >
-                    <option value="" disabled>Seleccionar Categoría</option> 
-                    <option value="POPULARES">POPULARES</option>
-                    <option value="NOVEDADES">NOVEDADES</option>
-                    {formData.category && !['POPULARES', 'NOVEDADES'].includes(formData.category) && (
-                        <option value={formData.category}>{formData.category} (Personalizada)</option>
-                    )}
-                </select>
-            </div>
+        <label className="block text-sm font-medium text-zinc-400">Categoría</label>
+        <select
+            name="category"
+            value={formData.category || ''}
+            onChange={(e) => handleChange(e as React.ChangeEvent<HTMLSelectElement>)}
+            className="w-full bg-[#141619] px-3 py-2 rounded ring-1 ring-stone-800 text-sm text-zinc-100 h-10 appearance-none"
+        >
+            <option value="" disabled>Seleccionar Categoría</option> 
+            
+            {/* Agregamos ?. para que si es undefined no rompa la página */}
+            {categories?.map((cat) => (
+                <option key={cat.id} value={cat.name}>
+                    {cat.name}
+                </option>
+            ))}
+
+            {/* Verificación extra para evitar errores de búsqueda en undefined */}
+            {formData.category && categories && !categories.find(c => c.name === formData.category) && (
+                <option value={formData.category}>{formData.category} (Actual)</option>
+            )}
+        </select>
+    </div>
 
             <div className="flex items-center space-x-2 pt-6">
                 <input

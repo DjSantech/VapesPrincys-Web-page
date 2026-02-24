@@ -1,4 +1,4 @@
-// =========================
+// =========================ProductsSection
 // AdminDashboard.tsx FINAL
 // =========================
 
@@ -251,6 +251,7 @@ export default function AdminDashboard() {
           items={filteredProducts}
           setItems={setProducts}
           loading={productsLoading}
+          categories={categories} // Pasamos categorías para el filtro en ProductEditModal
         />
       </div>
       {/* ======================= */}
