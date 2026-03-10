@@ -16,5 +16,6 @@ export interface Product {
   visible?: boolean;
   visibleWhosale: boolean;
   isActive?: boolean;
-  pluses?: string[];   // lista de pluses (por nombre)
+  pluses?: string[];  
+   // lista de pluses (por nombre)
 }

@@ -11,6 +11,7 @@ import ProductDetailPage from "./views/ProductDetailPage";
 import AdminDashboard from "./views/AdminDashboard/AdminDashborad";
 import WholesaleView from "./views/WholesaleView";
 import DropshipperDashboard from "../src/views/DashboardVendedor/DropshipperDashboard"; // Nueva vista
+import InventoryExcelView from "../src/views/AdminEstadisticas/InventoryExcelView"; // 
 
 import AdminRoute from "./routes/AdminRoute";
 import DropshipperRoute from "../src/routes/DropshipperRoute"; // Nuevo componente de protección
@@ -45,6 +46,17 @@ export default function Router() {
             element={
               <AdminRoute>
                 <AdminDashboard />
+              </AdminRoute>
+            }
+          />
+        </Route>
+
+         <Route element={<MainLayout />}>
+          <Route
+            path="/admin/estadisticas"
+            element={
+              <AdminRoute>
+                <InventoryExcelView />
               </AdminRoute>
             }
           />

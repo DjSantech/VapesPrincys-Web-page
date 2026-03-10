@@ -147,7 +147,7 @@ export default function CartButton() {
       address: "",
       paymentMethod: "EFECTIVO",
       changeFor: undefined,
-      zone: "PEREIRA_CENTRO",
+      zone: "" as DeliveryZone,
       idCard: undefined,
       cedula: "",
       department: "",
@@ -368,7 +368,7 @@ export default function CartButton() {
             {/* Zona */}
             <div className="flex items-center gap-3">
                 <label className="text-sm w-36 text-zinc-300">Zona / Envío</label>
-
+                <option value="" disabled>Selecciona tu zona...</option>
                 <select
                   value={form.zone}
                   onChange={(e) =>
